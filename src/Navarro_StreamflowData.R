@@ -4,12 +4,6 @@
 
 source("src/paths+packages.R")
 
-# provide USGS gaging station ID number (string format)
-station <- "11468000"
-
-# gage contributing area (from https://waterdata.usgs.gov/nwis/inventory/?site_no=11468000)
-area.mi2 <- 303
-
 ## get data from USGS
 df <- importDVs(station, code="00060", stat="00003", sdate="1900-01-01", edate="2017-12-31")
 df.info <- siteInfo(station)
@@ -64,7 +58,7 @@ df.fdc$exceed.prob <- 100*df.fdc$rank/(dim(df.fdc)[1]+1)d
 p.logQ.date <- 
   ggplot(df, aes(x=dates, y=discharge.mm_d)) + 
   geom_line(color="blue") +
-  labs(title=paste0("USGS ", df.info$staid, ": ", df.info$staname)) +
+  labs(title=paste0("USGS ", station, ": ", station.name)) +
   scale_y_log10(name="Discharge [mm/d]") +
   scale_x_date(name="Date", date_breaks="10 years", date_labels="%Y", expand=c(0,0)) +
   theme_scz() +
@@ -76,7 +70,7 @@ ggsave("results/streamflow/Navarro_StreamflowData_p.logQ.date.png",
 p.logQ.date.mo <-
   ggplot(df.yr.mo, aes(x=date.mid, y=discharge.mm_d.mean)) + 
   geom_line(color="blue") +
-  labs(title=paste0("USGS ", df.info$staid, ": ", df.info$staname)) +
+  labs(title=paste0("USGS ", station, ": ", station.name)) +
   scale_y_log10(name="Mean Monthly Discharge [mm/d]") +
   scale_x_date(name="Date", date_breaks="10 years", date_labels="%Y", expand=c(0,0)) +
   theme_scz() +
@@ -89,7 +83,7 @@ p.Q.yr.water <-
   ggplot(df.yr.water, aes(x=water.year, y=discharge.mm)) + 
   geom_line(color="blue") +
   geom_point(color="blue") +
-  labs(title=paste0("USGS ", df.info$staid, ": ", df.info$staname)) +
+  labs(title=paste0("USGS ", station, ": ", station.name)) +
   scale_y_continuous(name="Cumulative Discharge [mm]") +
   scale_x_continuous(name="Water Year", expand=c(0,0)) +
   theme_scz() +
@@ -102,7 +96,7 @@ p.Q.DOY <-
   ggplot() +
   geom_line(data=df, aes(x=DOY, y=discharge.mm_d, group=year), color="grey65", alpha=0.25) +
   geom_line(data=df.DOY, aes(x=DOY, y=discharge.mm_d.mean), color="blue") +
-  labs(title=paste0("USGS ", df.info$staid, ": ", df.info$staname)) +
+  labs(title=paste0("USGS ", station, ": ", station.name)) +
   scale_y_log10(name="Discharge [mm/d]") +
   scale_x_continuous(name="Day of Year", expand=c(0,0)) +
   theme_scz()
@@ -127,7 +121,7 @@ p.Q.mo.trend <-
   geom_point() +
   stat_smooth(method="lm") +
   facet_wrap(~month, scales="free_y", labeller=as_labeller(labs.mo)) +
-  labs(title=paste0("USGS ", df.info$staid, ": ", df.info$staname)) +
+  labs(title=paste0("USGS ", station, ": ", station.name)) +
   scale_x_continuous(name="Year", expand=c(0,0)) +
   scale_y_continuous(name="Mean Monthly Discharge [mm/d]") +
   theme_scz()
