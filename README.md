@@ -1,2 +1,2 @@
 # TNC-PilotProject
-Repository for UVic/Foundry Spatial/TNC pilot project in California
+Repository for UVic/Foundry Spatial/TNC pilot project in California.

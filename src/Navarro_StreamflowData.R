@@ -21,7 +21,6 @@ if (sum(is.na(df$val))>0) stop(paste0('no data: ', paste(df$dates[is.na(df$val)]
 
 ## unit conversions
 # cfs to mm/d
-area.km2 <- area.mi2*1.609344*1.609344
 cfs.to.mm <- (0.3048^3)*(0.001^3)*(1/area.km2)*86400*1000*1000
 df$discharge.mm_d <- df$val*cfs.to.mm
 

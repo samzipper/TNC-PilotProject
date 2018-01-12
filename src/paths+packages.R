@@ -20,6 +20,7 @@ require(broom)
 station <- "11468000"  # USGS gage station number
 station.name <- "NAVARRO R NR NAVARRO CA"
 area.mi2 <- 303  # gage contributing area (from https://waterdata.usgs.gov/nwis/inventory/?site_no=11468000)
+area.km2 <- area.mi2*1.609344*1.609344
 
 ## labels
 labs.mo <- c("1"="Jan", "2"="Feb", "3"="Mar", "4"="Apr", "5"="May", "6"="Jun",
