@@ -50,7 +50,7 @@ dir.gis <- "results/GIS/"
 
 ## paths to external datasets (e.g. global geospatial datasets on GSAS server)
 # dem from NED
-path.dem.NED <- "Z:/2.active_projects/Zipper/1.Spatial_data/regional/SouthForkEel/dem_topography/1original/NED10mDEM/NED10mDEM.vrt"
+dir.dem.NED <- "Z:/2.active_projects/Zipper/1.Spatial_data/regional/SouthForkEel/dem_topography/2derived/NED10mDEM/"
 
 # dem, slope, river network from HydroSHEDS
 path.dem.hysheds <- "Z:/2.active_projects/Zipper/1.Spatial_data/global/dem_topography/1original/HydroSHEDS/DEM_15s/na_dem_15s.tif"
