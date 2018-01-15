@@ -6,7 +6,7 @@ source("src/paths+packages.R")
 
 ## open basin boundary and river network shapefiles
 shp <- readOGR(dsn="data/HydroBASINS", layer="hybas_navarro_lev07")
-shp.riv <- readOGR(dsn="data", layer="HydroSHEDS_Navarro_RiverNetwork_15s")
+shp.riv <- readOGR(dsn="data/HydroBASINS", layer="HydroSHEDS_Navarro_RiverNetwork_15s")
 
 ## HydroSHEDS data: dem and slope
 # load raw data
@@ -18,8 +18,8 @@ r.dem.s <- crop.mask(r.dem, shp)
 r.slope.s <- crop.mask(r.slope, shp)
 
 # write rasters
-writeRaster(r.dem.s, paste0(dir.gis, "DEM_m_HydroSHEDS_15s.tif"), datatype="INT2S", overwrite=T)
-writeRaster(r.slope.s, paste0(dir.gis, "slope_deg_HydroSHEDS_15s.tif"), datatype="FLT4S", overwrite=T)
+writeRaster(r.dem.s, paste0(dir.gis, "Navarro_DEM_m_HydroSHEDS_15s.tif"), datatype="INT2S", overwrite=T)
+writeRaster(r.slope.s, paste0(dir.gis, "Navarro_slope_deg_HydroSHEDS_15s.tif"), datatype="FLT4S", overwrite=T)
 
 ## soilgrids data: % sand (top 10 cm)
 # load raw data
@@ -34,8 +34,8 @@ r.sand.s <- crop.mask(r.sand, shp)
 r.dtb.s <- r.dtb.s/100
 
 # write rasters
-writeRaster(r.dtb.s, paste0(dir.gis, "DTB_m_SoilGrids1km.tif"), datatype="FLT4S", overwrite=T)
-writeRaster(r.sand.s, paste0(dir.gis, "sand_prc_top15cm_SoilGrids1km.tif"), datatype="FLT4S", overwrite=T)
+writeRaster(r.dtb.s, paste0(dir.gis, "Navarro_DTB_m_SoilGrids1km.tif"), datatype="FLT4S", overwrite=T)
+writeRaster(r.sand.s, paste0(dir.gis, "Navarro_sand_prc_top15cm_SoilGrids1km.tif"), datatype="FLT4S", overwrite=T)
 
 ## GLHYMPS data: porosity and permeability
 # load raw data
@@ -55,8 +55,8 @@ r.porosity.s <- r.porosity.s/100
 r.logK.s <- r.logK.s/100
 
 # write rasters
-writeRaster(r.porosity.s, paste0(dir.gis, "porosity_GLHYMPS.tif"), datatype="FLT4S", overwrite=T)
-writeRaster(r.logK.s, paste0(dir.gis, "logK_GLHYMPS.tif"), datatype="FLT4S", overwrite=T)
+writeRaster(r.porosity.s, paste0(dir.gis, "Navarro_porosity_GLHYMPS.tif"), datatype="FLT4S", overwrite=T)
+writeRaster(r.logK.s, paste0(dir.gis, "Navarro_logK_GLHYMPS.tif"), datatype="FLT4S", overwrite=T)
 
 ## WTD from Fan et al. (2013)
 # load raw data
@@ -66,7 +66,7 @@ r.wtd <- raster(path.wtd)
 r.wtd.s <- crop.mask(r.wtd, shp)
 
 # write rasters
-writeRaster(r.wtd.s, paste0(dir.gis, "WTD_m_FanEtAl2013.tif"), datatype="FLT4S", overwrite=T)
+writeRaster(r.wtd.s, paste0(dir.gis, "Navarro_WTD_m_FanEtAl2013.tif"), datatype="FLT4S", overwrite=T)
 
 ## make plots
 # tidy data
@@ -109,7 +109,7 @@ p.dem <-
   theme(panel.border=element_blank(),
         legend.position=c(0.05,0.05),
         legend.justification=c(0,0))
-ggsave(paste0(dir.gis, "DEM_m_HydroSHEDS_15s.png"),
+ggsave(paste0(dir.gis, "Navarro_DEM_m_HydroSHEDS_15s.png"),
        p.dem, width=6.25, height=5.5, units="in")
 
 p.slope <- 
@@ -126,7 +126,7 @@ p.slope <-
   theme(panel.border=element_blank(),
         legend.position=c(0.05,0.05),
         legend.justification=c(0,0))
-ggsave(paste0(dir.gis, "slope_deg_HydroSHEDS_15s.png"),
+ggsave(paste0(dir.gis, "Navarro_slope_deg_HydroSHEDS_15s.png"),
        p.slope, width=6.25, height=5.5, units="in")
 
 p.dtb <- 
@@ -143,7 +143,7 @@ p.dtb <-
   theme(panel.border=element_blank(),
         legend.position=c(0.05,0.05),
         legend.justification=c(0,0))
-ggsave(paste0(dir.gis, "DTB_m_SoilGrids1km.png"),
+ggsave(paste0(dir.gis, "Navarro_DTB_m_SoilGrids1km.png"),
        p.dtb, width=6.25, height=5.5, units="in")
 
 p.sand <- 
@@ -160,7 +160,7 @@ p.sand <-
   theme(panel.border=element_blank(),
         legend.position=c(0.05,0.05),
         legend.justification=c(0,0))
-ggsave(paste0(dir.gis, "sand_prc_top15cm_SoilGrids1km.png"),
+ggsave(paste0(dir.gis, "Navarro_sand_prc_top15cm_SoilGrids1km.png"),
        p.sand, width=6.25, height=5.5, units="in")
 
 p.porosity <- 
@@ -177,7 +177,7 @@ p.porosity <-
   theme(panel.border=element_blank(),
         legend.position=c(0.05,0.05),
         legend.justification=c(0,0))
-ggsave(paste0(dir.gis, "porosity_GLHYMPS.png"),
+ggsave(paste0(dir.gis, "Navarro_porosity_GLHYMPS.png"),
        p.porosity, width=6.25, height=5.5, units="in")
 
 p.logK <- 
@@ -194,7 +194,7 @@ p.logK <-
   theme(panel.border=element_blank(),
         legend.position=c(0.05,0.05),
         legend.justification=c(0,0))
-ggsave(paste0(dir.gis, "logK_GLHYMPS.png"),
+ggsave(paste0(dir.gis, "Navarro_logK_GLHYMPS.png"),
        p.logK, width=6.25, height=5.5, units="in")
 
 p.wtd <- 
@@ -211,5 +211,5 @@ p.wtd <-
   theme(panel.border=element_blank(),
         legend.position=c(0.05,0.05),
         legend.justification=c(0,0))
-ggsave(paste0(dir.gis, "WTD_m_FanEtAl2013.png"),
+ggsave(paste0(dir.gis, "Navarro_WTD_m_FanEtAl2013.png"),
        p.wtd, width=6.25, height=5.5, units="in")
