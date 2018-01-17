@@ -17,6 +17,13 @@ shp.riv.WGS <- spTransform(shp.riv, crs.WGS)
 shp.adj.WGS <- spTransform(shp.adj, crs.WGS)
 shp.adj.riv.WGS <- spTransform(shp.adj.riv, crs.WGS)
 
+## diversions data
+# load raw data
+df.diversions <- read.csv(paste0(dir.div, "/eWRIMS_Export_18010106.csv"))
+
+# write output
+write.csv(df.diversions, "results/GIS/SouthForkEel_Diversions_eWRIMS_18010106.csv", row.names=F)
+
 ## NLCD data: impervious, canopy, and lulc
 # load raw data
 r.can <- raster(paste0(dir.nlcd, "NLCD2011_CAN_California/NLCD2011_CAN_California.tif"))
@@ -133,6 +140,8 @@ colnames(df.nlcd.imp) <- c("lon", "lat", "imp_prc")
 
 df.nlcd.lulc <- as.data.frame(rasterToPoints(r.lulc.mask))
 colnames(df.nlcd.lulc) <- c("lon", "lat", "lulc")
+
+df.diversions <- tidy(shp.div.eel)
 
 # make plots
 p.dem <- 
@@ -285,7 +294,6 @@ p.nlcd.imp <-
 ggsave(paste0(dir.gis, "SouthForkEel_ImpervCover_NLCD2011_30m.png"),
        p.nlcd.imp, width=4, height=6, units="in")
 
-
 p.nlcd.lulc <- 
   ggplot() +
   geom_raster(data=df.nlcd.lulc, aes(x=lon, y=lat, fill=factor(lulc))) +
@@ -300,3 +308,25 @@ p.nlcd.lulc <-
   theme(panel.border=element_blank())
 ggsave(paste0(dir.gis, "SouthForkEel_LULC_NLCD2011_30m.png"),
        p.nlcd.lulc, width=4.5, height=6, units="in")
+
+## diversions from eWRIMS
+p.diversions <-
+  ggplot() +
+  geom_path(data=df.riv, aes(x=long, y=lat, group=group), color="blue") +
+  geom_polygon(data=df.shp, aes(x=long, y=lat, group=group), fill=NA, color="black") +
+  geom_point(data=df.diversions, aes(x=LONGITUDE, y=LATITUDE, fill=POD_STATUS), shape=21) +
+  coord_equal() +
+  labs(title=paste0("South Fork Eel River, HUC " , HUC)) +
+  scale_x_continuous(name="Longitude", expand=c(0,0)) +
+  scale_y_continuous(name="Latitude", expand=c(0,0)) +
+  scale_fill_manual(name="Status", values=c("Active"="red", 
+                                            "Canceled"="#b3e2cd", 
+                                            "Inactive"="#cbd5e8",
+                                            "Revoked"="#e6f5c9",
+                                            "Removed"="#fff2ae",
+                                            "NA"="white")) +
+  theme_scz() +
+  theme(panel.border=element_blank(),
+        legend.position="bottom")
+ggsave(paste0(dir.gis, "SouthForkEel_Diversions_eWRIMS_18010106.png"),
+       p.diversions, width=5.25, height=6, units="in")
