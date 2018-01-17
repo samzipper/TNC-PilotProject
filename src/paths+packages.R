@@ -37,6 +37,8 @@ df.info <- structure(list(staid = c("11476500", "11476600", "11475560", "1147561
                      row.names = c(NA, -5L), 
                      class = "data.frame")
 df.info$area.km2 <- c(303, 28.1, 6.50, 5.09, 248)*1.609344*1.609344   # area from website, converted from mi2 to km2
+df.info$baseflow.cfs <- c(54, 1.9, 1.3, 2.4, 25)   # baseflow requirement from Table 4 in final cannabis policy https://www.waterboards.ca.gov/board_decisions/adopted_orders/resolutions/2017/final_cannabis_policy_with_att_a.pdf
+df.info$baseflow.mm_d <- df.info$baseflow.cfs*(0.3048^3)*(0.001^3)*(1/df.info$area.km2)*86400*1000*1000
 
 ## labels
 labs.mo <- c("1"="Jan", "2"="Feb", "3"="Mar", "4"="Apr", "5"="May", "6"="Jun",
@@ -49,6 +51,9 @@ crs.WGS <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
 dir.gis <- "results/GIS/"
 
 ## paths to external datasets (e.g. global geospatial datasets on GSAS server)
+# directory with diversions data
+dir.div <- "Z:/2.active_projects/Zipper/1.Spatial_data/regional/SouthForkEel/use_withdrawl_abstraction_use/1original/CaliforniaWaterRights"
+
 # dem from NED
 dir.dem.NED <- "Z:/2.active_projects/Zipper/1.Spatial_data/regional/SouthForkEel/dem_topography/2derived/NED10mDEM/"
 

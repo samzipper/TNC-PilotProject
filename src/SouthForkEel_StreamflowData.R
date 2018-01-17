@@ -42,6 +42,7 @@ for (s in 1:length(df.info$staid)){
   # station
   station <- df.info$staid[s]
   station.name <- df.info$staname[s]
+  baseflow.mm_d <- df.info$baseflow.mm_d[s]
   
   ## get data from USGS
   df <- importDVs(station, code="00060", stat="00003", sdate="1900-01-01", edate="2017-12-31")
@@ -55,7 +56,7 @@ for (s in 1:length(df.info$staid)){
   plotParam(df)
   cleanUp(df, task = "view")  # appear to be no bad values
   if (df$date[dim(df)[1]] - df$date[1] != dim(df)[1]-1) stop('missing dates')
-  if (sum(is.na(df$val))>0) stop(paste0('no data: ', paste(df$dates[is.na(df$val)], collapse=", ")))
+  #if (sum(is.na(df$val))>0) stop(paste0('no data: ', paste(df$dates[is.na(df$val)], collapse=", ")))
   
   ## unit conversions
   # cfs to mm/d
@@ -94,6 +95,7 @@ for (s in 1:length(df.info$staid)){
   # daily timeseries: log(discharge) vs date
   p.logQ.date <- 
     ggplot(df, aes(x=dates, y=discharge.mm_d)) + 
+    geom_hline(yintercept=baseflow.mm_d, color="red") +
     geom_line(color="blue") +
     labs(title=paste0("USGS ", station, ": ", station.name)) +
     scale_y_log10(name="Discharge [mm/d]") +
@@ -106,6 +108,7 @@ for (s in 1:length(df.info$staid)){
   # monthly timeseries: log(discharge) vs date
   p.logQ.date.mo <-
     ggplot(df.yr.mo, aes(x=date.mid, y=discharge.mm_d.mean)) + 
+    geom_hline(yintercept=baseflow.mm_d, color="red") +
     geom_line(color="blue") +
     labs(title=paste0("USGS ", station, ": ", station.name)) +
     scale_y_log10(name="Mean Monthly Discharge [mm/d]") +
@@ -131,6 +134,7 @@ for (s in 1:length(df.info$staid)){
   # mean annual hydrograph
   p.Q.DOY <-
     ggplot() +
+    geom_hline(yintercept=baseflow.mm_d, color="red") +
     geom_line(data=df, aes(x=DOY, y=discharge.mm_d, group=year), color="grey65", alpha=0.25) +
     geom_line(data=df.DOY, aes(x=DOY, y=discharge.mm_d.mean), color="blue") +
     labs(title=paste0("USGS ", station, ": ", station.name)) +
@@ -143,6 +147,7 @@ for (s in 1:length(df.info$staid)){
   # flow duration curve
   p.fdc <-
     ggplot(df.fdc, aes(y=discharge.mm_d, x=exceed.prob)) +
+    geom_hline(yintercept=baseflow.mm_d, color="red") +
     geom_point(color="blue", shape=21) +
     scale_y_log10(name="Discharge [mm/d]") + 
     scale_x_continuous("Percent Exceedance", limits=c(0,100), breaks=seq(0,100,25)) +
@@ -174,6 +179,7 @@ for (s in 1:length(df.info$staid)){
   p.Q.mo.trend <-
     ggplot(df.yr.mo, aes(x=year, y=discharge.mm_d.mean)) +
     geom_hline(yintercept=0, color="gray65") +
+    geom_hline(yintercept=baseflow.mm_d, color="red") +
     geom_point() +
     stat_smooth(method="lm") +
     facet_wrap(~month, scales="free_y", labeller=as_labeller(labs.mo.sig)) +
