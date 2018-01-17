@@ -17,6 +17,25 @@ shp.riv.WGS <- spTransform(shp.riv, crs.WGS)
 shp.adj.WGS <- spTransform(shp.adj, crs.WGS)
 shp.adj.riv.WGS <- spTransform(shp.adj.riv, crs.WGS)
 
+## NLCD data: impervious, canopy, and lulc
+# load raw data
+r.can <- raster(paste0(dir.nlcd, "NLCD2011_CAN_California/NLCD2011_CAN_California.tif"))
+r.imp <- raster(paste0(dir.nlcd, "NLCD2011_IMP_California/NLCD2011_IMP_California.tif"))
+r.lulc <- raster(paste0(dir.nlcd, "NLCD2011_LC_California/NLCD2011_LC_California.tif"))
+
+# crop to basin boundary
+r.can.crop <- crop(r.can, extent(spTransform(shp, crs(r.can))))
+r.imp.crop <- crop(r.imp, extent(spTransform(shp, crs(r.can))))
+r.lulc.crop <- crop(r.lulc, extent(spTransform(shp, crs(r.can))))
+
+# mask
+r.can.mask <- mask(r.can.crop, spTransform(shp, crs(r.can)), 
+                   filename=paste0(dir.gis, "SouthForkEel_CanopyCover_NLCD2011_30m.tif"), datatype="INT2S", overwrite=T)
+r.imp.mask <- mask(r.imp.crop, spTransform(shp, crs(r.can)), 
+                   filename=paste0(dir.gis, "SouthForkEel_ImpervCover_NLCD2011_30m.tif"), datatype="INT2S", overwrite=T)
+r.lulc.mask <- mask(r.lulc.crop, spTransform(shp, crs(r.can)), 
+                    filename=paste0(dir.gis, "SouthForkEel_LULC_NLCD2011_30m.tif"), datatype="INT2S", overwrite=T)
+
 ## HydroSHEDS data: dem and slope
 # load raw data
 r.dem.hysheds <- raster(path.dem.hysheds)
@@ -82,6 +101,9 @@ writeRaster(r.wtd.s, paste0(dir.gis, "SouthForkEel_WTD_m_FanEtAl2013.tif"), data
 df.shp <- tidy(shp.WGS)
 df.riv <- tidy(shp.riv.WGS)
 
+df.nlcd.shp <- tidy(spTransform(shp, crs(r.can.mask)))
+df.nlcd.riv <- tidy(spTransform(shp.riv, crs(r.can.mask)))
+
 df.dem <- as.data.frame(rasterToPoints(r.dem.s))
 colnames(df.dem) <- c("lon", "lat", "dem")
 
@@ -102,6 +124,15 @@ colnames(df.logK) <- c("lon", "lat", "logK")
 
 df.wtd <- as.data.frame(rasterToPoints(r.wtd.s))
 colnames(df.wtd) <- c("lon", "lat", "wtd")
+
+df.nlcd.can <- as.data.frame(rasterToPoints(r.can.mask))
+colnames(df.nlcd.can) <- c("lon", "lat", "canopy_prc")
+
+df.nlcd.imp <- as.data.frame(rasterToPoints(r.imp.mask))
+colnames(df.nlcd.imp) <- c("lon", "lat", "imp_prc")
+
+df.nlcd.lulc <- as.data.frame(rasterToPoints(r.lulc.mask))
+colnames(df.nlcd.lulc) <- c("lon", "lat", "lulc")
 
 # make plots
 p.dem <- 
@@ -222,3 +253,50 @@ p.wtd <-
         legend.justification=c(0,0))
 ggsave(paste0(dir.gis, "SouthForkEel_WTD_m_FanEtAl2013.png"),
        p.wtd, width=5.25, height=6, units="in")
+
+## NLCD plots
+p.nlcd.can <- 
+  ggplot() +
+  geom_raster(data=df.nlcd.can, aes(x=lon, y=lat, fill=canopy_prc)) +
+  geom_path(data=df.nlcd.riv, aes(x=long, y=lat, group=group), color="white") +
+  geom_polygon(data=df.nlcd.shp, aes(x=long, y=lat, group=group), fill=NA, color="black") +
+  coord_equal() +
+  labs(title=paste0("South Fork Eel River, HUC " , HUC)) +
+  scale_x_continuous(name="Easting [m]", expand=c(0,0)) +
+  scale_y_continuous(name="Northing [m]", expand=c(0,0)) +
+  scale_fill_viridis(name="Canopy\nCover [%]", direction=-1, limits=c(0,100), breaks=seq(0,100,25)) +
+  theme_scz() +
+  theme(panel.border=element_blank())
+ggsave(paste0(dir.gis, "SouthForkEel_CanopyCover_NLCD2011_30m.png"),
+       p.nlcd.can, width=4, height=6, units="in")
+
+p.nlcd.imp <- 
+  ggplot() +
+  geom_raster(data=df.nlcd.imp, aes(x=lon, y=lat, fill=imp_prc)) +
+  geom_path(data=df.nlcd.riv, aes(x=long, y=lat, group=group), color="white") +
+  geom_polygon(data=df.nlcd.shp, aes(x=long, y=lat, group=group), fill=NA, color="black") +
+  coord_equal() +
+  labs(title=paste0("South Fork Eel River, HUC " , HUC)) +
+  scale_x_continuous(name="Easting [m]", expand=c(0,0)) +
+  scale_y_continuous(name="Northing [m]", expand=c(0,0)) +
+  scale_fill_viridis(name="Impervious\nCover [%]", direction=1, limits=c(0,100), breaks=seq(0,100,25)) +
+  theme_scz() +
+  theme(panel.border=element_blank())
+ggsave(paste0(dir.gis, "SouthForkEel_ImpervCover_NLCD2011_30m.png"),
+       p.nlcd.imp, width=4, height=6, units="in")
+
+
+p.nlcd.lulc <- 
+  ggplot() +
+  geom_raster(data=df.nlcd.lulc, aes(x=lon, y=lat, fill=factor(lulc))) +
+  geom_path(data=df.nlcd.riv, aes(x=long, y=lat, group=group), color="white") +
+  geom_polygon(data=df.nlcd.shp, aes(x=long, y=lat, group=group), fill=NA, color="black") +
+  coord_equal() +
+  labs(title=paste0("South Fork Eel River, HUC " , HUC)) +
+  scale_x_continuous(name="Easting [m]", expand=c(0,0)) +
+  scale_y_continuous(name="Northing [m]", expand=c(0,0)) +
+  scale_fill_manual(name="LULC, NLCD", values=pal.NLCD, labels=labels.NLCD) +
+  theme_scz() +
+  theme(panel.border=element_blank())
+ggsave(paste0(dir.gis, "SouthForkEel_LULC_NLCD2011_30m.png"),
+       p.nlcd.lulc, width=4.5, height=6, units="in")

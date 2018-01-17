@@ -52,6 +52,9 @@ dir.gis <- "results/GIS/"
 # dem from NED
 dir.dem.NED <- "Z:/2.active_projects/Zipper/1.Spatial_data/regional/SouthForkEel/dem_topography/2derived/NED10mDEM/"
 
+# NLCD: impervious, canopy, land cover
+dir.nlcd <- "Z:/2.active_projects/Zipper/1.Spatial_data/regional/SouthForkEel/lulc/1original/"
+
 # dem, slope, river network from HydroSHEDS
 path.dem.hysheds <- "Z:/2.active_projects/Zipper/1.Spatial_data/global/dem_topography/1original/HydroSHEDS/DEM_15s/na_dem_15s.tif"
 path.slope.hysheds <- "Z:/2.active_projects/Zipper/1.Spatial_data/global/dem_topography/1original/HydroSHEDS/slope_15s/na_slope_15s.tif"
@@ -79,6 +82,50 @@ theme_scz <- function(...){
       legend.text=element_text(size=rel(1)),
       panel.grid=element_blank())
 }
+
+## color palettes
+# NLCD color palette
+pal.NLCD <- c("11"="#5475A8", 
+              "12"="#ffffff", 
+              "21"="#E8D1D1", 
+              "22"="#E29E8C", 
+              "23"="#ff0000", 
+              "24"="#B50000", 
+              "31"="#D2CDC0", 
+              "41"="#85C77E", 
+              "42"="#38814E", 
+              "43"="#D4E7B0", 
+              "51"="#AF963C", 
+              "52"="#DCCA8F", 
+              "71"="#FDE9AA", 
+              "72"="#D1D182", 
+              "73"="#A3CC51", 
+              "74"="#82BA9E", 
+              "81"="#FBF65D", 
+              "82"="#CA9146", 
+              "90"="#C8E6F8", 
+              "95"="#64B3D5")
+
+labels.NLCD <- c("11"="Open Water", 
+                 "12"="Perennial Ice", 
+                 "21"="Developed-Open", 
+                 "22"="Developed-Low", 
+                 "23"="Developed-Med", 
+                 "24"="Developed-High", 
+                 "31"="Barren", 
+                 "41"="Decid Forest", 
+                 "42"="Everg Forest", 
+                 "43"="Mixed Forest", 
+                 "51"="Dwarf Scrub", 
+                 "52"="Shrub/Scrub", 
+                 "71"="Grassland", 
+                 "72"="Sedge", 
+                 "73"="Lichen", 
+                 "74"="Moss", 
+                 "81"="Pasture/Hay", 
+                 "82"="Cropland", 
+                 "90"="Woody Wetland", 
+                 "95"="Herb. Wetland")
 
 ## functions
 # crop and mask a raster based on a shapefile
