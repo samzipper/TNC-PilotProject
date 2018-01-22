@@ -16,6 +16,7 @@ require(rgeos)
 require(maptools)
 require(broom)
 require(viridis)
+require(stringr)
 
 ## metadata about watershed
 station.outlet <- "11468000"  # USGS gage station number for outlet gauge
@@ -53,6 +54,9 @@ crs.WGS <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
 dir.gis <- "results/GIS/"
 
 ## paths to external datasets (e.g. global geospatial datasets on GSAS server)
+# directory with CA-DWR water table depth data
+dir.gw.dwr <- "Z:/2.active_projects/Zipper/1.Spatial_data/regional/NavarroRiver/wt_water_table_wells/1original/Statewide_GWL_Data_20170905/"
+
 # directory with diversions data
 dir.div <- "Z:/2.active_projects/Zipper/1.Spatial_data/regional/SouthForkEel/use_withdrawl_abstraction_use/1original/CaliforniaWaterRights"
 
@@ -60,7 +64,7 @@ dir.div <- "Z:/2.active_projects/Zipper/1.Spatial_data/regional/SouthForkEel/use
 dir.dem.NED <- "Z:/2.active_projects/Zipper/1.Spatial_data/regional/SouthForkEel/dem_topography/2derived/NED10mDEM/"
 
 # NLCD: impervious, canopy, land cover
-dir.nlcd <- "Z:/2.active_projects/Zipper/1.Spatial_data/regional/SouthForkEel/lulc/1original/"
+dir.nlcd <- "Z:/2.active_projects/Zipper/1.Spatial_data/regional/NavarroRiver/lulc/1original/"
 
 # dem, slope, river network from HydroSHEDS
 path.dem.hysheds <- "Z:/2.active_projects/Zipper/1.Spatial_data/global/dem_topography/1original/HydroSHEDS/DEM_15s/na_dem_15s.tif"
