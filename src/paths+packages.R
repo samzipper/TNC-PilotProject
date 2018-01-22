@@ -17,6 +17,7 @@ require(maptools)
 require(broom)
 require(viridis)
 require(stringr)
+require(gtable)
 
 ## metadata about watershed
 station.outlet <- "11468000"  # USGS gage station number for outlet gauge
@@ -152,3 +153,10 @@ lmp <- function (modelobject) {
   attributes(p) <- NULL
   return(p)
 }
+
+# extract legend - https://stackoverflow.com/questions/13649473/add-a-common-legend-for-combined-ggplots
+g_legend<-function(a.gplot){
+  tmp <- ggplot_gtable(ggplot_build(a.gplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)}
