@@ -5,8 +5,8 @@
 source("src/paths+packages.R")
 
 ## get data from USGS
-df <- importDVs(station, code="00060", stat="00003", sdate="1900-01-01", edate="2017-12-31")
-df.info <- siteInfo(station)
+df <- importDVs(station.outlet, code="00060", stat="00003", sdate="1900-01-01", edate="2017-12-31")
+df.info <- siteInfo(station.outlet)
 # df colnames:
 #   staid = station (char)
 #   val = discharge [cfs] (numeric)
@@ -50,14 +50,15 @@ df.DOY <- summarize(group_by(df, DOY),
 df.fdc <- df[order(-df$discharge.mm_d), ]
 df.fdc <- subset(df.fdc, is.finite(discharge.mm_d))
 df.fdc$rank <- seq(1,dim(df.fdc)[1])
-df.fdc$exceed.prob <- 100*df.fdc$rank/(dim(df.fdc)[1]+1)d
+df.fdc$exceed.prob <- 100*df.fdc$rank/(dim(df.fdc)[1]+1)
 
 ## plots
 # daily timeseries: log(discharge) vs date
 p.logQ.date <- 
   ggplot(df, aes(x=dates, y=discharge.mm_d)) + 
+  geom_hline(yintercept=baseflow.mm_d, color="red") +
   geom_line(color="blue") +
-  labs(title=paste0("USGS ", station, ": ", station.name)) +
+  labs(title=paste0("USGS ", station.outlet, ": ", station.outlet.name)) +
   scale_y_log10(name="Discharge [mm/d]") +
   scale_x_date(name="Date", date_breaks="10 years", date_labels="%Y", expand=c(0,0)) +
   theme_scz() +
@@ -68,8 +69,9 @@ ggsave("results/streamflow/Navarro_StreamflowData_p.logQ.date.png",
 # monthly timeseries: log(discharge) vs date
 p.logQ.date.mo <-
   ggplot(df.yr.mo, aes(x=date.mid, y=discharge.mm_d.mean)) + 
+  geom_hline(yintercept=baseflow.mm_d, color="red") +
   geom_line(color="blue") +
-  labs(title=paste0("USGS ", station, ": ", station.name)) +
+  labs(title=paste0("USGS ", station.outlet, ": ", station.outlet.name)) +
   scale_y_log10(name="Mean Monthly Discharge [mm/d]") +
   scale_x_date(name="Date", date_breaks="10 years", date_labels="%Y", expand=c(0,0)) +
   theme_scz() +
@@ -82,7 +84,7 @@ p.Q.yr.water <-
   ggplot(df.yr.water, aes(x=water.year, y=discharge.mm)) + 
   geom_line(color="blue") +
   geom_point(color="blue") +
-  labs(title=paste0("USGS ", station, ": ", station.name)) +
+  labs(title=paste0("USGS ", station.outlet, ": ", station.outlet.name)) +
   scale_y_continuous(name="Cumulative Discharge [mm]") +
   scale_x_continuous(name="Water Year", expand=c(0,0)) +
   theme_scz() +
@@ -93,9 +95,10 @@ ggsave("results/streamflow/Navarro_StreamflowData_p.Q.yr.water.png",
 # mean annual hydrograph
 p.Q.DOY <-
   ggplot() +
+  geom_hline(yintercept=baseflow.mm_d, color="red") +
   geom_line(data=df, aes(x=DOY, y=discharge.mm_d, group=year), color="grey65", alpha=0.25) +
   geom_line(data=df.DOY, aes(x=DOY, y=discharge.mm_d.mean), color="blue") +
-  labs(title=paste0("USGS ", station, ": ", station.name)) +
+  labs(title=paste0("USGS ", station.outlet, ": ", station.outlet.name)) +
   scale_y_log10(name="Discharge [mm/d]") +
   scale_x_continuous(name="Day of Year", expand=c(0,0)) +
   theme_scz()
@@ -105,6 +108,7 @@ ggsave("results/streamflow/Navarro_StreamflowData_p.Q.DOY.png",
 # flow duration curve
 p.fdc <-
   ggplot(df.fdc, aes(y=discharge.mm_d, x=exceed.prob)) +
+  geom_hline(yintercept=baseflow.mm_d, color="red") +
   geom_point(color="blue", shape=21) +
   scale_y_log10(name="Discharge [mm/d]") + 
   scale_x_continuous("Percent Exceedance", limits=c(0,100), breaks=seq(0,100,25)) +
@@ -113,20 +117,7 @@ p.fdc <-
 ggsave("results/streamflow/Navarro_StreamflowData_p.fdc.png",
        p.fdc, width=6.25, height=6, units="in")
 
-# mean monthly trends
-p.Q.mo.trend <-
-  ggplot(df.yr.mo, aes(x=year, y=discharge.mm_d.mean)) +
-  geom_hline(yintercept=0, color="gray65") +
-  geom_point() +
-  stat_smooth(method="lm") +
-  facet_wrap(~month, scales="free_y", labeller=as_labeller(labs.mo)) +
-  labs(title=paste0("USGS ", station, ": ", station.name)) +
-  scale_x_continuous(name="Year", expand=c(0,0)) +
-  scale_y_continuous(name="Mean Monthly Discharge [mm/d]") +
-  theme_scz()
-ggsave("results/streamflow/Navarro_StreamflowData_p.Q.mo.trend.png",
-       p.Q.mo.trend, width=8, height=6, units="in")
-
+## mean monthly trends
 # mean month trends table
 df.mo.trend <- data.frame(month=seq(1,12),
                           R2 = NaN,
@@ -135,3 +126,27 @@ for (mo in seq(1,12)){
   df.mo.trend$R2[mo] <- summary(lm(discharge.mm_d.mean ~ year, subset(df.yr.mo, month==mo)))$r.squared
   df.mo.trend$p[mo] <- lmp(lm(discharge.mm_d.mean ~ year, subset(df.yr.mo, month==mo)))
 }
+
+# significance label
+df.mo.trend$sig.label <- ""
+df.mo.trend$sig.label[df.mo.trend$p<0.05] <- "*"
+df.mo.trend$sig.label[df.mo.trend$p<0.01] <- "**"
+df.mo.trend$sig.label[df.mo.trend$p<0.001] <- "***"
+labs.mo.sig <- labs.mo
+for (mo in seq(1,12)){
+  labs.mo.sig[mo] <- paste0(labs.mo[mo], df.mo.trend$sig.label[mo])
+}
+
+p.Q.mo.trend <-
+  ggplot(df.yr.mo, aes(x=year, y=discharge.mm_d.mean)) +
+  geom_hline(yintercept=0, color="gray65") +
+  geom_hline(yintercept=baseflow.mm_d, color="red") +
+  geom_point() +
+  stat_smooth(method="lm") +
+  facet_wrap(~month, scales="free_y", labeller=as_labeller(labs.mo.sig)) +
+  labs(title=paste0("USGS ", station.outlet, ": ", station.outlet.name)) +
+  scale_x_continuous(name="Year", expand=c(0,0)) +
+  scale_y_continuous(name="Mean Monthly Discharge [mm/d]") +
+  theme_scz()
+ggsave(paste0("results/streamflow/Navarro_StreamflowData_p.Q.mo.trend.png"),
+       p.Q.mo.trend, width=8, height=6, units="in")
