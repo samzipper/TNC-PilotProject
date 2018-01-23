@@ -51,6 +51,9 @@ labs.mo <- c("1"="Jan", "2"="Feb", "3"="Mar", "4"="Apr", "5"="May", "6"="Jun",
 ## CRS for WGS plots
 crs.WGS <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
 
+## CRS for MODFLOW
+crs.MODFLOW <- "+init=epsg:26910"   # NAD83 UTM Zone 10 N
+
 ## path to save cropped geospatial datasets
 dir.gis <- "results/GIS/"
 
