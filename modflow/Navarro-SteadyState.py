@@ -7,8 +7,6 @@
 import os
 import numpy as np
 import flopy
-import shapefile as shp
-import matplotlib.pyplot as plt
 import pandas as pd
 
 # where is your MODFLOW-2005 executable?
@@ -74,6 +72,31 @@ rch = flopy.modflow.ModflowRch(mf, rech=rchrate, nrchop=3)
 spd = {(0, 0): ['save head', 'save budget', 'save drawdown']}
 oc = flopy.modflow.ModflowOc(mf, stress_period_data=spd, compact=True)
 
+## river boundary condition
+iriv = pd.read_table(os.path.join('modflow', 'input', 'iriv.txt'), delimiter=' ')
+
+# constant domain parameters
+depth = 2  # river depth?
+
+# estimate conductance based on: river width, river length, riverbed thickness, riverbed K
+river_width = 5
+river_length = 2*(delr + delc)/2
+riverbed_thickness = 1
+riverbed_K = hk/10
+cond = riverbed_K*river_width*river_length*riverbed_thickness   # river bottom conductance? 
+
+# empty list to hold stress period data
+riv_list = []
+
+# populate list
+for r in range(0,iriv.shape[0]):
+    riv_list.append([iriv['lay'][r], iriv['row'][r], iriv['col'][r], 
+                     iriv['stage'][r], cond, iriv['stage'][r]-depth])    
+riv_spd = {0: riv_list}
+
+# make MODFLOW object
+riv = flopy.modflow.ModflowRiv(mf, stress_period_data=riv_spd)
+
 ## write inputs and run model
 # write input datasets
 mf.write_input()
@@ -82,3 +105,27 @@ mf.write_input()
 success, mfoutput = mf.run_model()
 if not success:
     raise Exception('MODFLOW did not terminate normally.')
+
+#### plot results ####
+# Imports
+import matplotlib.pyplot as plt
+import flopy.utils.binaryfile as bf
+import flopy.utils.sfroutputfile as sf
+
+## look at input
+# plot the top of the model
+mf.dis.plot()
+mf.dis.top.plot(colorbar=True, filename_base=os.path.join('modflow', 'output', 'dis_top'))
+mf.dis.botm.plot(colorbar=True, filename_base=os.path.join('modflow', 'output', 'dis_botm'))
+
+mf.lpf.hk.plot(colorbar=True)
+mf.rch.rech.plot(colorbar=True)
+mf.riv.plot()
+
+## look at head output
+# Create the headfile object
+h = bf.HeadFile(os.path.join('modflow', modelname+'.hds'), text='head')
+
+# get data
+time = perlen[0]
+h.plot(totim=time, colorbar=True)

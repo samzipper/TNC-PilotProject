@@ -81,11 +81,46 @@ if (riv){
   #  [lay, row, col, stage, cond, rbot]
   
   # load shapefile
-  shp.riv.adj <- readOGR(dsn="data/NHD/HYD", layer="NHDFlowline_HU12_Navarro+Adjacent")
+  shp.riv.adj <- readOGR(dsn="data/NHDPlusV2/HYD", layer="NHDPlusV21_National_Seamless NHDFlowline_Network_WBDHU12_Navarro+Adjacent",
+                         stringsAsFactors=F)
+  
+  # convert stream order to numeric
+  shp.riv.adj@data$StreamOrde <- as.numeric(shp.riv.adj@data$StreamOrde)
+  
+  # get rid of coastline (StreamOrde = -9)
+  shp.riv.adj <- subset(shp.riv.adj, StreamOrde>0)
+  
+  # eliminate tiny streams - some useful options might be:
+  #   StreamOrde = stream order
+  #   TotDASqKM = total upstream drainage area [km2]
+  # plot(shp.riv.adj)
+  # plot(subset(shp.riv.adj, StreamOrde >= 2))
+  # plot(subset(shp.riv.adj, TotDASqKM >= 5))
+  shp.riv.adj <- subset(shp.riv.adj, StreamOrde >= 2)
   
   # reproject to UTM
   shp.riv.adj.UTM <- spTransform(shp.riv.adj, crs.MODFLOW)
   
   # rasterize
-  r.riv <- rasterize(shp.riv.adj.UTM, r.ibound)
+  r.riv <- rasterize(shp.riv.adj.UTM, r.ibound, field="StreamOrde", fun='max')
+  
+  # extract as matrix
+  m.riv <- as.matrix(r.riv)
+  
+  # matrix indices
+  i.riv <- data.frame(which(is.finite(m.riv), arr.ind=T))
+  
+  # add layer
+  i.riv$lay <- 1
+  
+  # extract elevation, to use as stage
+  i.riv$stage <- m.dem.proj[which(is.finite(m.riv))]
+  
+  # because lay/row/col are all 0-based in Python, subtract 1
+  i.riv$row <- i.riv$row-1
+  i.riv$col <- i.riv$col-1
+  i.riv$lay <- i.riv$lay-1
+  
+  # save as text file
+  write.table(i.riv, "modflow/input/iriv.txt", sep=" ", row.names=F, col.names=T)
 }
