@@ -1,3 +1,17 @@
+# MODFLOW files
+*.bas
+*.dis
+*.nam
+*.lpf
+*.riv
+*.wel
+*.oc
+*.hds
+*.ddn
+*.list
+*.lst
+*.pcg
+
 # Image files
 *.png
 

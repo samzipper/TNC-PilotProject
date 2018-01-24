@@ -65,7 +65,7 @@ dir.gw.dwr <- "Z:/2.active_projects/Zipper/1.Spatial_data/regional/NavarroRiver/
 dir.div <- "Z:/2.active_projects/Zipper/1.Spatial_data/regional/SouthForkEel/use_withdrawl_abstraction_use/1original/CaliforniaWaterRights"
 
 # dem from NED
-dir.dem.NED <- "Z:/2.active_projects/Zipper/1.Spatial_data/regional/SouthForkEel/dem_topography/2derived/NED10mDEM/"
+dir.dem.NED <- "Z:/2.active_projects/Zipper/1.Spatial_data/regional/NavarroRiver/dem_topography/1original/NED10mDEM/"
 
 # NLCD: impervious, canopy, land cover
 dir.nlcd <- "Z:/2.active_projects/Zipper/1.Spatial_data/regional/NavarroRiver/lulc/1original/"

@@ -17,6 +17,17 @@ shp.riv.WGS <- spTransform(shp.riv, crs.WGS)
 shp.adj.WGS <- spTransform(shp.adj, crs.WGS)
 shp.adj.riv.WGS <- spTransform(shp.adj.riv, crs.WGS)
 
+## NED data
+# load raw data
+r.dem.NED <- raster(paste0(dir.dem.NED, "Navarro_NED10m.vrt"))
+
+# reproject boundary
+r.dem.NED.crop <- crop(r.dem.NED, extent(spTransform(shp, crs(r.dem.NED))))
+
+# mask
+r.dem.NED.mask <- mask(r.dem.NED.crop, spTransform(shp, crs(r.dem.NED.crop)), 
+                    filename=paste0(dir.gis, "Navarro_DEM_m_NED10m.tif"), datatype="FLT4S", overwrite=T)
+
 ## NLCD data: impervious, canopy, and lulc
 # load raw data
 r.can <- raster(paste0(dir.nlcd, "NLCD2011_CAN_California/NLCD2011_CAN_California.tif"))
@@ -104,6 +115,9 @@ df.riv <- tidy(shp.riv.WGS)
 df.nlcd.shp <- tidy(spTransform(shp, crs(r.can.mask)))
 df.nlcd.riv <- tidy(spTransform(shp.riv, crs(r.can.mask)))
 
+df.ned.shp <- tidy(spTransform(shp, crs(r.dem.NED.mask)))
+df.ned.riv <- tidy(spTransform(shp.riv, crs(r.dem.NED.mask)))
+
 df.dem <- as.data.frame(rasterToPoints(r.dem.hysheds.s))
 colnames(df.dem) <- c("lon", "lat", "dem")
 
@@ -133,6 +147,9 @@ colnames(df.nlcd.imp) <- c("lon", "lat", "imp_prc")
 
 df.nlcd.lulc <- as.data.frame(rasterToPoints(r.lulc.mask))
 colnames(df.nlcd.lulc) <- c("lon", "lat", "lulc")
+
+df.ned.dem <- as.data.frame(rasterToPoints(r.dem.NED.mask))
+colnames(df.ned.dem) <- c("lon", "lat", "dem")
 
 # make plots
 p.dem <- 
@@ -299,3 +316,21 @@ p.nlcd.lulc <-
   theme(panel.border=element_blank())
 ggsave(paste0(dir.gis, "Navarro_NLCD2011_LULC_30m.png"),
        p.nlcd.lulc, width=6, height=6, units="in")
+
+## NED DEM
+p.ned.dem <- 
+  ggplot() +
+  geom_raster(data=df.ned.dem, aes(x=lon, y=lat, fill=dem)) +
+  geom_path(data=df.ned.riv, aes(x=long, y=lat, group=group), color="white") +
+  geom_polygon(data=df.ned.shp, aes(x=long, y=lat, group=group), fill=NA, color="black") +
+  coord_equal() +
+  labs(title=paste0("Navarro River, HUC " , HUC)) +
+  scale_x_continuous(name="Longitude", expand=c(0,0)) +
+  scale_y_continuous(name="Latitude", expand=c(0,0)) +
+  scale_fill_viridis(name="Elevation [m]") +
+  theme_scz() +
+  theme(panel.border=element_blank(),
+        legend.position=c(0.05,0.05),
+        legend.justification=c(0,0))
+ggsave(paste0(dir.gis, "Navarro_DEM_m_NED10m.png"),
+       p.ned.dem, width=6.25, height=5.25, units="in")
