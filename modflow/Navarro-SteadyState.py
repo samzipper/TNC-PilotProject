@@ -22,13 +22,12 @@ mf = flopy.modflow.Modflow(modelname, exe_name=path2mf,
 ibound = np.array(pd.read_csv(os.path.join('modflow', 'input', 'ibound.txt'),
                               header=None, delim_whitespace=True), dtype=np.int32)
                               
-# discretization (space) - these should be the same as in your R script
-                              
+# discretization (space) - these should be the same as in your R script                         
 nlay = 1
 nrow = ibound.shape[0]
 ncol = ibound.shape[1]
-delr = 500
-delc = 500
+delr = 250
+delc = 250
 
 # discretization (time)
 nper = 1
@@ -43,14 +42,16 @@ ztop = np.array(pd.read_csv(os.path.join('modflow', 'input', 'ztop.txt'),
 # define starting head (set to land surface elevation for now)
 strt = ztop
 
-# define bottom elevation (100 m thick everywhere)
-zbot = ztop - 100
+# define bottom elevation (-100 m everywhere)
+zbot = -100
 
 # make MODFLOW objects
-dis = flopy.modflow.ModflowDis(mf, nlay, nrow, ncol, delr=delr, delc=delc,
+dis = flopy.modflow.ModflowDis(mf, nlay, nrow, ncol, 
+                               delr=delr, delc=delc,
                                top=ztop, botm=zbot,
-                               nper=nper, perlen=perlen, nstp=nstp, steady=steady)
-bas = flopy.modflow.ModflowBas(mf, ibound=ibound, strt=strt)
+                               nper=nper, perlen=perlen, 
+                               nstp=nstp, steady=steady)
+bas = flopy.modflow.ModflowBas(mf, ibound=ibound, strt=0)
 
 ## flow properties
 # properties
@@ -65,7 +66,8 @@ lpf = flopy.modflow.ModflowLpf(mf, hk=hk, vka=vka, sy=sy, ss=ss, laytyp=laytyp)
 pcg = flopy.modflow.ModflowPcg(mf)
 
 ## recharge
-rchrate = 0.000  # [m/d]
+# long-term average baseflow is 150 mm/yr
+rchrate = 150/(1000*365)  # [m/d]
 rch = flopy.modflow.ModflowRch(mf, rech=rchrate, nrchop=3)
 
 ## output control
@@ -91,7 +93,7 @@ riv_list = []
 # populate list
 for r in range(0,iriv.shape[0]):
     riv_list.append([iriv['lay'][r], iriv['row'][r], iriv['col'][r], 
-                     iriv['stage'][r], cond, iriv['stage'][r]-depth])    
+                     iriv['stage'][r], 1, iriv['stage'][r]-depth])    
 riv_spd = {0: riv_list}
 
 # make MODFLOW object
@@ -111,6 +113,7 @@ if not success:
 import matplotlib.pyplot as plt
 import flopy.utils.binaryfile as bf
 import flopy.utils.sfroutputfile as sf
+from flopy.utils.postprocessing import get_transmissivities, get_water_table, get_gradients, get_saturated_thickness
 
 ## look at input
 # plot the top of the model
@@ -123,9 +126,38 @@ mf.rch.rech.plot(colorbar=True)
 mf.riv.plot()
 
 ## look at head output
+# figure out timestep
+time = perlen[0]
+
 # Create the headfile object
 h = bf.HeadFile(os.path.join('modflow', modelname+'.hds'), text='head')
 
-# get data
-time = perlen[0]
-h.plot(totim=time, colorbar=True)
+h.plot(totim=time, colorbar=True, contour=True,
+       masked_values=[bas.hnoflo])
+
+# extract data matrix
+head = h.get_data(totim=time)
+head[head <= bas.hnoflo] = np.nan
+plt.imshow(head[0,:,:])
+plt.colorbar()
+
+# calculate WTD
+wtd = ztop - head[0,:,:]
+plt.imshow(wtd); plt.colorbar
+
+
+### experimental
+
+head[head <= -9999] = -100
+plt.imshow(head[0,:,:])
+plt.colorbar()
+
+# water table
+wt = get_water_table(head, mf, nodata=[bas.hnoflo])
+plt.imshow(wt)
+plt.colorbar(label='Water Table')
+
+# saturated thickness
+st = get_saturated_thickness(head, mf, nodata=head[0,0,0])
+plt.imshow(st)
+plt.colorbar(label='Saturated Thickness')

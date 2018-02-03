@@ -11,6 +11,9 @@
 *.list
 *.lst
 *.pcg
+*.rch
+*.sfr
+*.spyderworkspace
 
 # Image files
 *.png
