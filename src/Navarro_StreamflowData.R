@@ -19,10 +19,18 @@ cleanUp(df, task = "view")  # appear to be no bad values
 if (df$date[dim(df)[1]] - df$date[1] != dim(df)[1]-1) stop('missing dates')
 if (sum(is.na(df$val))>0) stop(paste0('no data: ', paste(df$dates[is.na(df$val)], collapse=", ")))
 
+# gap-fill with linear interpolation
+df$val <- na.approx(df$val, maxgap=14)
+
 ## unit conversions
 # cfs to mm/d
 cfs.to.mm <- (0.3048^3)*(0.001^3)*(1/area.km2)*86400*1000*1000
 df$discharge.mm_d <- df$val*cfs.to.mm
+
+# calculate baseflow using Nathan & McMahon digital filter
+bf <- BaseflowSeparation(df$discharge.mm_d)
+df$baseflow.mm_d <- bf[,1]
+df$quickflow.mm_d <- bf[,2]
 
 # year and water year
 df$year <- year(df$date)
@@ -34,17 +42,21 @@ df$DOY <- yday(df$date)
 df.yr.mo <-
   summarize(group_by(df, year, month),
             discharge.mm_d.mean = mean(discharge.mm_d),
-            discharge.mm_d.cum = sum(discharge.mm_d))
+            discharge.mm_d.cum = sum(discharge.mm_d),
+            baseflow.mm_d.mean = mean(baseflow.mm_d),
+            baseflow.mm_d.cum = sum(baseflow.mm_d))
 df.yr.mo$date.mid <- ymd(paste0(df.yr.mo$year, "-", df.yr.mo$month, "-", round(days_in_month(df.yr.mo$month)/2)))
 
 # summarize by water year
 df.yr.water <-
   summarize(group_by(df, water.year),
-            discharge.mm = sum(discharge.mm_d))
+            discharge.mm = sum(discharge.mm_d),
+            baseflow.mm = sum(baseflow.mm_d))
 
 # summarize by DOY
 df.DOY <- summarize(group_by(df, DOY),
-                    discharge.mm_d.mean = mean(discharge.mm_d, na.rm=T))
+                    discharge.mm_d.mean = mean(discharge.mm_d, na.rm=T),
+                    baseflow.mm_d.mean = mean(baseflow.mm_d, na.rm=T))
 
 # flow-duration curve
 df.fdc <- df[order(-df$discharge.mm_d), ]
@@ -97,7 +109,8 @@ p.Q.DOY <-
   ggplot() +
   geom_hline(yintercept=baseflow.mm_d, color="red") +
   geom_line(data=df, aes(x=DOY, y=discharge.mm_d, group=year), color="grey65", alpha=0.25) +
-  geom_line(data=df.DOY, aes(x=DOY, y=discharge.mm_d.mean), color="blue") +
+  geom_line(data=df.DOY, aes(x=DOY, y=discharge.mm_d.mean), color="black", size=2) +
+  geom_line(data=df.DOY, aes(x=DOY, y=baseflow.mm_d.mean), color="blue", size=2) +
   labs(title=paste0("USGS ", station.outlet, ": ", station.outlet.name)) +
   scale_y_log10(name="Discharge [mm/d]") +
   scale_x_continuous(name="Day of Year", expand=c(0,0)) +

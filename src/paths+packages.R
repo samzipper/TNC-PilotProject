@@ -18,6 +18,8 @@ require(broom)
 require(viridis)
 require(stringr)
 require(gtable)
+require(EcoHydRology)
+require(zoo)
 
 ## metadata about watershed
 station.outlet <- "11468000"  # USGS gage station number for outlet gauge
