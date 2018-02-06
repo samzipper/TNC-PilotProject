@@ -55,19 +55,19 @@ bas = flopy.modflow.ModflowBas(mf, ibound=ibound, strt=0)
 
 ## flow properties
 # properties
-hk = 1.     # horizontal K
+hk = (1e-5)*86400     # horizontal K, convert [m/s] to [m/d]
 vka = 1.    # anisotropy
-sy = 0.1    # specific yield
-ss = 1.e-4  # specific storage
+sy = 0.2    # specific yield
+ss = 1e-5  # specific storage
 laytyp = 1  # layer type
 
 # make MODFLOW objects
 lpf = flopy.modflow.ModflowLpf(mf, hk=hk, vka=vka, sy=sy, ss=ss, laytyp=laytyp)
-pcg = flopy.modflow.ModflowPcg(mf)
+pcg = flopy.modflow.ModflowPcg(mf, hclose=1e-2, rclose=1e-2)
 
 ## recharge
 # long-term average baseflow is 150 mm/yr
-rchrate = 150/(1000*365)  # [m/d]
+rchrate = 150/(1000*365)  # [mm/yr] --> [m/d]
 rch = flopy.modflow.ModflowRch(mf, rech=rchrate, nrchop=3)
 
 ## output control
@@ -78,22 +78,24 @@ oc = flopy.modflow.ModflowOc(mf, stress_period_data=spd, compact=True)
 iriv = pd.read_table(os.path.join('modflow', 'input', 'iriv.txt'), delimiter=' ')
 
 # constant domain parameters
-depth = 2  # river depth?
+depth = 4  # river depth?
 
 # estimate conductance based on: river width, river length, riverbed thickness, riverbed K
 river_width = 5
 river_length = 2*(delr + delc)/2
 riverbed_thickness = 1
 riverbed_K = hk/10
-cond = riverbed_K*river_width*river_length*riverbed_thickness   # river bottom conductance? 
+cond = round(riverbed_K*river_width*river_length*riverbed_thickness)   # river bottom conductance? 
 
 # empty list to hold stress period data
 riv_list = []
 
 # populate list
 for r in range(0,iriv.shape[0]):
+#    riv_list.append([iriv['lay'][r], iriv['row'][r], iriv['col'][r], 
+#                     0, cond, 0-depth]) 
     riv_list.append([iriv['lay'][r], iriv['row'][r], iriv['col'][r], 
-                     iriv['stage'][r], 1, iriv['stage'][r]-depth])    
+                     iriv['stage'][r], cond, iriv['stage'][r]-depth])    
 riv_spd = {0: riv_list}
 
 # make MODFLOW object
@@ -118,8 +120,6 @@ from flopy.utils.postprocessing import get_transmissivities, get_water_table, ge
 ## look at input
 # plot the top of the model
 mf.dis.plot()
-mf.dis.top.plot(colorbar=True, filename_base=os.path.join('modflow', 'output', 'dis_top'))
-mf.dis.botm.plot(colorbar=True, filename_base=os.path.join('modflow', 'output', 'dis_botm'))
 
 mf.lpf.hk.plot(colorbar=True)
 mf.rch.rech.plot(colorbar=True)
@@ -138,22 +138,46 @@ h.plot(totim=time, colorbar=True, contour=True,
 # extract data matrix
 head = h.get_data(totim=time)
 head[head <= bas.hnoflo] = np.nan
-plt.imshow(head[0,:,:])
-plt.colorbar()
+plt.imshow(head[0,:,:]); plt.colorbar()
 
 # calculate WTD
 wtd = ztop - head[0,:,:]
-plt.imshow(wtd); plt.colorbar
+plt.imshow(wtd); plt.colorbar()
+plt.imshow(wtd<0)
 
+## save data to plot in R
+# head and water table depth
+np.savetxt(os.path.join('modflow', 'output', 'head.txt'), head[0,:,:])
+np.savetxt(os.path.join('modflow', 'output', 'wtd.txt'), wtd)
+
+## make some plots in Python if you want
+plt.subplot(1,2,1)
+plt.imshow(head[0,:,:])
+plt.title('Head [m]')
+plt.viridis()
+divider = make_axes_locatable(ax)
+cax = divider.append_axes("right", size="5%", pad=0.05)
+plt.colorbar()
+
+plt.subplot(1,2,2)
+plt.imshow(wtd)
+plt.title('Water Table Depth [m]')
+plt.viridis()
+plt.colorbar()
+
+plt.savefig(os.path.join('modflow', 'output', 'head+WTD'), 
+            bbox_inches='tight', dpi=300)
+
+mf.dis.top.plot(colorbar=True, filename_base=)
+mf.dis.botm.plot(colorbar=True, filename_base=os.path.join('modflow', 'output', 'dis_botm'))
 
 ### experimental
-
 head[head <= -9999] = -100
 plt.imshow(head[0,:,:])
 plt.colorbar()
 
 # water table
-wt = get_water_table(head, mf, nodata=[bas.hnoflo])
+wt = get_water_table(head, mf, nodata=bas.hnoflo)
 plt.imshow(wt)
 plt.colorbar(label='Water Table')
 

@@ -100,6 +100,10 @@ theme_scz <- function(...){
       panel.grid=element_blank())
 }
 
+## axis breaks
+map.breaks.x <- seq(440000, 480000, 20000)
+map.breaks.y <- seq(4300000, 4340000, 20000)
+
 ## color palettes
 # NLCD color palette
 pal.NLCD <- c("11"="#5475A8", 
