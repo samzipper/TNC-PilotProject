@@ -203,14 +203,27 @@ if (riv){
   # rasterize
   r.riv <- rasterize(shp.riv.adj.streams.UTM, r.ibound, field="StreamOrde", fun='max')
   
+  # calculate length of river in a cell
+  r.riv.length <- r.riv
+  r.riv.length[is.finite(r.riv.length[])] <- 1:sum(is.finite(r.riv.length[]))
+  shp.riv.length <- rasterToPolygons(r.riv.length)
+  riv.int <- intersect(shp.riv.adj.streams.UTM, shp.riv.length)
+  riv.int$length <- gLength(riv.int, byid=TRUE)
+  x <- tapply(riv.int$length, riv.int$layer, sum)
+  r.riv.length[is.finite(r.riv.length[])] <- x
+  
   # extract as matrix
-  m.riv <- as.matrix(r.riv)
+  m.riv <- as.matrix(r.riv.length)
   
   # get rid of those outside of domain
   m.riv[m.ibound==0] <- NA
   
+  # set anything with a length < 100 m to NA
+  plot(r.riv.length>100)
+  m.riv[m.riv<100] <- NA
+  
   # put back into raster
-  r.riv[] <- m.riv[]
+  r.riv.length[] <- m.riv[]
   
   # matrix indices
   i.riv <- data.frame(which(is.finite(m.riv), arr.ind=T))
@@ -221,6 +234,9 @@ if (riv){
   # extract elevation, to use as stage
   i.riv$stage <- m.dem.proj[which(is.finite(m.riv))]
   
+  # extract river length, which is part of conductance calculation
+  i.riv$length_m <- m.riv[which(is.finite(m.riv))]
+  
   # because lay/row/col are all 0-based in Python, subtract 1
   i.riv$row <- i.riv$row-1
   i.riv$col <- i.riv$col-1
@@ -230,10 +246,10 @@ if (riv){
   write.table(i.riv, "modflow/input/iriv.txt", sep=" ", row.names=F, col.names=T)
   
   # save as geotiff
-  writeRaster(r.riv, "modflow/input/iriv.tif", datatype="INT2S", overwrite=T)
+  writeRaster(r.riv.length, "modflow/input/iriv.tif", datatype="INT2S", overwrite=T)
   
   # put in data frame
-  df$iriv <- r.riv[]
+  df$iriv <- r.riv.length[]
 }
 
 # Make plots --------------------------------------------------------------
