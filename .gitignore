@@ -3,7 +3,7 @@
 *.dis
 *.nam
 *.lpf
-*.riv
+*.riv*
 *.wel
 *.oc
 *.hds

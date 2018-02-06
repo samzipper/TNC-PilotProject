@@ -21,7 +21,8 @@ riv <- T
 
 ## load common data
 # domain boundary shapefile
-shp.adj <- readOGR(dsn="data/NHD/WBD", layer="WBDHU12_Navarro+Adjacent")
+shp.adj <- readOGR(dsn="data/NHD/WBD", layer="WBDHU12_Navarro+Adjacent", stringsAsFactors=F)
+shp.adj@data$HUC12 <- as.numeric(shp.adj@data$HUC12)
 shp.adj.UTM <- spTransform(shp.adj, crs.MODFLOW)
 
 # river boundary shapefile
@@ -69,30 +70,24 @@ if (ibound){
   
   # there are two little disconnected zones along the coastline (north and south ends) 
   # following trimming which should be eliminated to avoid convergence issues
-  #  their numbers are:
-  #   15 (north end - delete 0-1300 m)
-  #   19 (south end - delete 37300 - end m)
-  i.15 <- 1:round(1300/DELC)
-  i.19 <- round(37300/DELC):dim(m.ibound)[1]
+  #  their HUC12 numbers are:
+  #   180101080803 (north end - delete 0-1300 m)
+  #   180101080905 (south end - delete 37300 - end m)
+  i.top <- 1:round(1300/DELC)
+  i.bot <- round(37300/DELC):dim(m.ibound)[1]
   num.replace <- function(x, to.replace, replace.with){
     x[x %in% to.replace] <- replace.with
     return(x)
   }
   
-  m.ibound[i.15,] <- t(apply(m.ibound[i.15,], 1, num.replace, to.replace=c(n.coast.temp, abs(n.coast.temp), 15), replace.with=NA))
-  m.ibound[i.19,] <- t(apply(m.ibound[i.19,], 1, num.replace, to.replace=c(n.coast.temp, abs(n.coast.temp), 19), replace.with=NA))
-  
-  # set to 1s and 0s
-  m.ibound[is.finite(m.ibound) & m.ibound != n.coast.temp] <- 1
-  m.ibound[is.finite(m.ibound) & m.ibound == n.coast.temp] <- -1
-  m.ibound[is.na(m.ibound)] <- 0
+  m.ibound[i.top,] <- t(apply(m.ibound[i.top,], 1, num.replace, to.replace=c(n.coast.temp, abs(n.coast.temp), 180101080803), replace.with=NA))
+  m.ibound[i.bot,] <- t(apply(m.ibound[i.bot,], 1, num.replace, to.replace=c(n.coast.temp, abs(n.coast.temp), 180101080905), replace.with=NA))
   
   ## search for "trouble areas": active cells surrounded by inactive cells which will
   ## cause instability when recharge is applied because it has nowhere to go
-  
   # pad ibound with 0s to deal with edge effects
-  m.ibound.pad <- rbind(0,cbind(0, m.ibound,0), 0)
-  active <- which(abs(m.ibound.pad)==1, arr.ind=T)
+  m.ibound.pad <- rbind(NA,cbind(NA, m.ibound,NA), NA)
+  active <- which(is.finite(m.ibound.pad), arr.ind=T)
   
   neighbor.sum <- numeric(0)
   for (i in 1:dim(active)[1]){
@@ -105,7 +100,7 @@ if (ibound){
                    m.ibound.pad[r,c-1],
                    m.ibound.pad[r,c+1])
     
-    neighbor.sum <- c(neighbor.sum, sum(abs(neighbors)))
+    neighbor.sum <- c(neighbor.sum, sum(is.finite(neighbors)))
     
     # status update
     if (i %% 100 == 0){
@@ -117,10 +112,10 @@ if (ibound){
   bad.neighbors <- active[neighbor.sum==0, ]
   if (sum(neighbor.sum==0)>1){
     for (j in 1:dim(bad.neighbors)[1]){
-      m.ibound.pad[bad.neighbors[j,'row'], bad.neighbors[j,'col']] <- 0
+      m.ibound.pad[bad.neighbors[j,'row'], bad.neighbors[j,'col']] <- NA
     }
   } else if (length(bad.neighbors==1)){
-    m.ibound.pad[bad.neighbors[1], bad.neighbors[2]] <- 0
+    m.ibound.pad[bad.neighbors[1], bad.neighbors[2]] <- NA
   }
   
   # trim padded row/col
@@ -130,19 +125,33 @@ if (ibound){
   r.ibound[] <- m.ibound[]
   
   # trim white-space
-  r.ibound <- trim(r.ibound, values=0)
-  
-  # re-extract boundary conditions to matrix
+  r.ibound <- trim(r.ibound, values=NA)
   m.ibound <- as.matrix(r.ibound)
   
+  # extract HUC12 boundaries
+  r.ibound.HUC12 <- r.ibound
+  m.ibound.HUC12 <- as.matrix(r.ibound.HUC12)
+  
+  # set to 1s and 0s
+  m.ibound[is.finite(m.ibound) & m.ibound != n.coast.temp] <- 1
+  m.ibound[is.finite(m.ibound) & m.ibound == n.coast.temp] <- -1
+  m.ibound[is.na(m.ibound)] <- 0
+  
+  # put back into raster
+  r.ibound[] <- m.ibound[]
+  
   # number of active cells
-  paste0(sum(is.finite(m.ibound)), " active cells")
+  paste0(sum(abs(m.ibound)), " active cells")
   
-  # save as text file
-  write.table(m.ibound, "modflow/input/ibound.txt", sep=" ", row.names=F, col.names=F)
+  # number of cells in navarro
+  paste0(sum(substr(as.character(r.ibound.in[is.finite(r.ibound.in[])]), 1, 10)==HUC), " cells in Navarro")
   
-  # save as geotiff
+  # save as geotiff and text
   writeRaster(r.ibound, "modflow/input/ibound.tif", datatype="INT2S", overwrite=T)
+  writeRaster(r.ibound.HUC12, "modflow/input/ibound_HUC12.tif", overwrite=T)
+  
+  write.table(m.ibound, "modflow/input/ibound.txt", sep=" ", row.names=F, col.names=F)
+  write.table(m.ibound.HUC12, "modflow/input/ibound_HUC12.txt", sep=" ", row.names=F, col.names=F)
   
   # extract data for ggplot
   df <- data.frame(rasterToPoints(r.ibound))
@@ -202,6 +211,8 @@ if (riv){
   
   # rasterize
   r.riv <- rasterize(shp.riv.adj.streams.UTM, r.ibound, field="StreamOrde", fun='max')
+  m.riv.order <- as.matrix(r.riv)
+  m.riv.order[m.ibound==0] <- NA
   
   # calculate length of river in a cell
   r.riv.length <- r.riv
@@ -225,6 +236,11 @@ if (riv){
   # put back into raster
   r.riv.length[] <- m.riv[]
   
+  # rasterize and extract HUC12 watershed number
+  r.HUC <- rasterize(shp.adj.UTM, r.ibound, field='HUC12', fun='max')
+  m.HUC <- as.matrix(r.HUC)
+  m.HUC[m.ibound==0] <- NA
+  
   # matrix indices
   i.riv <- data.frame(which(is.finite(m.riv), arr.ind=T))
   
@@ -232,10 +248,19 @@ if (riv){
   i.riv$lay <- 1
   
   # extract elevation, to use as stage
-  i.riv$stage <- m.dem.proj[which(is.finite(m.riv))]
+  i.riv$stage_m <- m.dem.proj[which(is.finite(m.riv))]
   
   # extract river length, which is part of conductance calculation
   i.riv$length_m <- m.riv[which(is.finite(m.riv))]
+  
+  # extract stream order
+  i.riv$stream_order <- m.riv.order[which(is.finite(m.riv))]
+  
+  # add a reach number
+  i.riv$reach <- seq(1,dim(i.riv)[1])
+  
+  # extract HUC number
+  i.riv$HUC <- m.HUC[which(is.finite(m.riv))]
   
   # because lay/row/col are all 0-based in Python, subtract 1
   i.riv$row <- i.riv$row-1

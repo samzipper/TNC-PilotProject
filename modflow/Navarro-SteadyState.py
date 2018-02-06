@@ -17,6 +17,9 @@ modelname = 'Navarro-SteadyState'
 mf = flopy.modflow.Modflow(modelname, exe_name=path2mf, 
                            model_ws=os.path.join('modflow', '.'))
 
+# what HUC is Navarro River?
+HUC10 = 1801010804
+
 ## Set up DIS and BAS
 # read in text output from R for ibound
 ibound = np.array(pd.read_csv(os.path.join('modflow', 'input', 'ibound.txt'),
@@ -28,6 +31,8 @@ nrow = ibound.shape[0]
 ncol = ibound.shape[1]
 delr = 250
 delc = 250
+cells_in_navarro = 13037  # this is from R script
+area_navarro = cells_in_navarro*delr*delc # [m2]
 
 # discretization (time)
 nper = 1
@@ -71,7 +76,7 @@ rchrate = 150/(1000*365)  # [mm/yr] --> [m/d]
 rch = flopy.modflow.ModflowRch(mf, rech=rchrate, nrchop=3)
 
 ## output control
-spd = {(0, 0): ['save head', 'save budget', 'save drawdown']}
+spd = {(0, 0): ['save head', 'save budget', 'save drawdown', 'print budget']}
 oc = flopy.modflow.ModflowOc(mf, stress_period_data=spd, compact=True)
 
 ## river boundary condition
@@ -81,11 +86,14 @@ iriv = pd.read_table(os.path.join('modflow', 'input', 'iriv.txt'), delimiter=' '
 depth = 4  # river depth?
 
 # estimate conductance based on: river width, river length, riverbed thickness, riverbed K
-river_width = 5
-river_length = 2*(delr + delc)/2
+river_width = 10
 riverbed_thickness = 1
 riverbed_K = hk/10
-cond = round(riverbed_K*river_width*river_length*riverbed_thickness)   # river bottom conductance? 
+iriv['cond'] = round(riverbed_K*river_width*iriv['length_m']*riverbed_thickness)   # river bottom conductance? 
+
+# figure out which reaches are in the Navarro River HUC10
+iriv['Navarro'] = False
+iriv['Navarro'][(iriv['HUC'] >= HUC10*100) & (iriv['HUC'] < (HUC10+1)*100)] = True
 
 # empty list to hold stress period data
 riv_list = []
@@ -95,11 +103,12 @@ for r in range(0,iriv.shape[0]):
 #    riv_list.append([iriv['lay'][r], iriv['row'][r], iriv['col'][r], 
 #                     0, cond, 0-depth]) 
     riv_list.append([iriv['lay'][r], iriv['row'][r], iriv['col'][r], 
-                     iriv['stage'][r], cond, iriv['stage'][r]-depth])    
+                     iriv['stage_m'][r], iriv['cond'][r], iriv['stage_m'][r]-depth])    
 riv_spd = {0: riv_list}
 
 # make MODFLOW object
-riv = flopy.modflow.ModflowRiv(mf, stress_period_data=riv_spd)
+riv = flopy.modflow.ModflowRiv(mf, stress_period_data=riv_spd, ipakcb=1, 
+                               filenames=[modelname+'.riv', modelname+'.riv.out'])
 
 ## write inputs and run model
 # write input datasets
@@ -144,6 +153,22 @@ plt.imshow(head[0,:,:]); plt.colorbar()
 wtd = ztop - head[0,:,:]
 plt.imshow(wtd); plt.colorbar()
 plt.imshow(wtd<0)
+
+# load RIV output
+rivout = bf.CellBudgetFile(os.path.join('modflow', modelname+'.riv.out'), verbose=True)
+rivout_3D = rivout.get_data(totim=time, text='RIVER LEAKAGE', full3D=True)
+iriv['leakage'] = rivout_3D[0][iriv['lay'],iriv['row'],iriv['col']]
+
+# total leakage
+# units are [m3/d]? convert to [mm/yr]
+# leakage convention: negative value = groundwater discharge to stream
+leakage_mm_yr = 1000*365*sum(iriv['leakage'][iriv['Navarro']])/area_navarro
+
+rivout_dat[0]['node']
+
+nodes = 3282, 3010, 3283
+q = -1254.076, 352.000, 640
+
 
 ## save data to plot in R
 # head and water table depth
