@@ -8,17 +8,27 @@ import os
 import numpy as np
 import flopy
 import pandas as pd
+import matplotlib.pyplot as plt
+import flopy.utils.binaryfile as bf
 
 # where is your MODFLOW-2005 executable?
 path2mf = 'C:/Users/Sam/Dropbox/Work/Models/MODFLOW/MF2005.1_12/bin/mf2005.exe'
 
-# Assign name and create modflow model object
-modelname = 'Navarro-SteadyState'
-mf = flopy.modflow.Modflow(modelname, exe_name=path2mf, 
-                           model_ws=os.path.join('modflow', '.'))
-
 # what HUC is Navarro River?
 HUC10 = 1801010804
+
+# check if model workspace exists; create if not
+modelname = 'Navarro-SteadyState'
+model_ws = os.path.join('modflow', modelname)
+if not os.path.isdir(model_ws):
+    os.makedirs(model_ws)
+
+if not os.path.isdir(os.path.join(model_ws, 'output')):
+    os.makedirs(os.path.join(model_ws, 'output'))
+
+# Assign name and create modflow model object
+mf = flopy.modflow.Modflow(modelname, exe_name=path2mf, 
+                           model_ws=model_ws)
 
 ## Set up DIS and BAS
 # read in text output from R for ibound
@@ -76,7 +86,7 @@ rchrate = 150/(1000*365)  # [mm/yr] --> [m/d]
 rch = flopy.modflow.ModflowRch(mf, rech=rchrate, nrchop=3)
 
 ## output control
-spd = {(0, 0): ['save head', 'save budget', 'save drawdown', 'print budget']}
+spd = {(0, 0): ['save head', 'save budget', 'save drawdown', 'print head', 'print budget', 'print drawdown']}
 oc = flopy.modflow.ModflowOc(mf, stress_period_data=spd, compact=True)
 
 ## river boundary condition
@@ -93,7 +103,7 @@ iriv['cond'] = round(riverbed_K*river_width*iriv['length_m']*riverbed_thickness)
 
 # figure out which reaches are in the Navarro River HUC10
 iriv['Navarro'] = False
-iriv['Navarro'][(iriv['HUC'] >= HUC10*100) & (iriv['HUC'] < (HUC10+1)*100)] = True
+iriv.loc[(iriv['HUC'] >= HUC10*100) & (iriv['HUC'] < (HUC10+1)*100), 'Navarro'] = True
 
 # empty list to hold stress period data
 riv_list = []
@@ -107,7 +117,7 @@ for r in range(0,iriv.shape[0]):
 riv_spd = {0: riv_list}
 
 # make MODFLOW object
-riv = flopy.modflow.ModflowRiv(mf, stress_period_data=riv_spd, ipakcb=1, 
+riv = flopy.modflow.ModflowRiv(mf, stress_period_data=riv_spd, ipakcb=61, 
                                filenames=[modelname+'.riv', modelname+'.riv.out'])
 
 ## write inputs and run model
@@ -120,26 +130,27 @@ if not success:
     raise Exception('MODFLOW did not terminate normally.')
 
 #### plot results ####
-# Imports
-import matplotlib.pyplot as plt
-import flopy.utils.binaryfile as bf
-import flopy.utils.sfroutputfile as sf
-from flopy.utils.postprocessing import get_transmissivities, get_water_table, get_gradients, get_saturated_thickness
-
-## look at input
-# plot the top of the model
-mf.dis.plot()
-
-mf.lpf.hk.plot(colorbar=True)
-mf.rch.rech.plot(colorbar=True)
-mf.riv.plot()
-
-## look at head output
+## look at output
 # figure out timestep
 time = perlen[0]
 
+# open list file
+mfl = flopy.utils.MfListBudget(os.path.join(mf.model_ws,modelname+'.list'))
+df_flux, df_vol = mfl.get_dataframes()
+
+# load RIV output
+rivout = bf.CellBudgetFile(os.path.join(model_ws, modelname+'.riv.out'), verbose=True)
+rivout_3D = rivout.get_data(totim=time, text='RIVER LEAKAGE', full3D=True)
+iriv['leakage'] = rivout_3D[0][iriv['lay'],iriv['row'],iriv['col']]
+rivout.close()
+
+# net leakage, calculated as (Infiltration - Discharge)
+# units are [m3/d]
+# leakage convention: negative value = gaining stream
+leakage_mm_yr = 1000*365*sum(iriv.loc[iriv['Navarro'], 'leakage'])/area_navarro
+
 # Create the headfile object
-h = bf.HeadFile(os.path.join('modflow', modelname+'.hds'), text='head')
+h = bf.HeadFile(os.path.join(mf.model_ws, modelname+'.hds'), text='head')
 
 h.plot(totim=time, colorbar=True, contour=True,
        masked_values=[bas.hnoflo])
@@ -154,26 +165,10 @@ wtd = ztop - head[0,:,:]
 plt.imshow(wtd); plt.colorbar()
 plt.imshow(wtd<0)
 
-# load RIV output
-rivout = bf.CellBudgetFile(os.path.join('modflow', modelname+'.riv.out'), verbose=True)
-rivout_3D = rivout.get_data(totim=time, text='RIVER LEAKAGE', full3D=True)
-iriv['leakage'] = rivout_3D[0][iriv['lay'],iriv['row'],iriv['col']]
-
-# total leakage
-# units are [m3/d]? convert to [mm/yr]
-# leakage convention: negative value = groundwater discharge to stream
-leakage_mm_yr = 1000*365*sum(iriv['leakage'][iriv['Navarro']])/area_navarro
-
-rivout_dat[0]['node']
-
-nodes = 3282, 3010, 3283
-q = -1254.076, 352.000, 640
-
-
 ## save data to plot in R
 # head and water table depth
-np.savetxt(os.path.join('modflow', 'output', 'head.txt'), head[0,:,:])
-np.savetxt(os.path.join('modflow', 'output', 'wtd.txt'), wtd)
+np.savetxt(os.path.join(model_ws, 'output', 'head.txt'), head[0,:,:])
+np.savetxt(os.path.join(model_ws, 'output', 'wtd.txt'), wtd)
 
 ## make some plots in Python if you want
 plt.subplot(1,2,1)
@@ -190,23 +185,13 @@ plt.title('Water Table Depth [m]')
 plt.viridis()
 plt.colorbar()
 
-plt.savefig(os.path.join('modflow', 'output', 'head+WTD'), 
+plt.savefig(os.path.join(model_ws, 'output', 'head+WTD'), 
             bbox_inches='tight', dpi=300)
+            
+## look at input
+# plot the top of the model
+mf.dis.plot()
 
-mf.dis.top.plot(colorbar=True, filename_base=)
-mf.dis.botm.plot(colorbar=True, filename_base=os.path.join('modflow', 'output', 'dis_botm'))
-
-### experimental
-head[head <= -9999] = -100
-plt.imshow(head[0,:,:])
-plt.colorbar()
-
-# water table
-wt = get_water_table(head, mf, nodata=bas.hnoflo)
-plt.imshow(wt)
-plt.colorbar(label='Water Table')
-
-# saturated thickness
-st = get_saturated_thickness(head, mf, nodata=head[0,0,0])
-plt.imshow(st)
-plt.colorbar(label='Saturated Thickness')
+mf.lpf.hk.plot(colorbar=True)
+mf.rch.rech.plot(colorbar=True)
+mf.riv.plot()
