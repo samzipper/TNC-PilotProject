@@ -16,8 +16,9 @@ DELC <- 250  # y spacing - row height
 
 # what variables to process?
 ibound <- T
-ztop <- T
+ztop <- F
 riv <- T
+wel <- T
 
 ## load common data
 # domain boundary shapefile
@@ -184,10 +185,14 @@ if (ztop){
   # save as geotiff
   writeRaster(r.dem.proj, "modflow/input/ztop.tif", overwrite=T)
   
-  # extract data
-  df$dem.m <- r.dem.proj[]
-  
+} else {
+  # load already processed data
+  r.dem.proj <- raster("modflow/input/ztop.tif")
+  m.dem.proj <- as.matrix(r.dem.proj)
 }
+
+# extract data
+df$dem.m <- r.dem.proj[]
 
 # River locations ---------------------------------------------------------
 
@@ -277,6 +282,52 @@ if (riv){
   df$iriv <- r.riv.length[]
 }
 
+# Prep pumping well data --------------------------------------------------
+
+if (wel){
+  # m.riv has locations of river cells
+  # m.HUC has the HUC watershed locations
+  m.navarro <- matrix(as.numeric(substr(as.character(m.HUC), 1, 10)==as.character(HUC)), nrow=dim(m.HUC)[1], ncol=dim(m.HUC)[2])
+  
+  # disable cells with rivers
+  m.navarro[is.finite(m.riv)] <- 0
+  
+  # create grid of wells
+  wel.spacing <- 1000  # [m]
+  wel.spacing.row <- round(wel.spacing/DELC)
+  wel.spacing.col <- round(wel.spacing/DELR)
+  i.wel.row <- seq(1, dim(m.navarro)[1], wel.spacing.row)
+  i.wel.col <- seq(1, dim(m.navarro)[1], wel.spacing.col)
+  i.wel <- expand.grid(i.wel.row, i.wel.col)
+  colnames(i.wel) <- c("row", "col")
+  
+  # figure out which are within Navarro watershed and aren't rivers
+  i.wel$navarro <- m.navarro[cbind(i.wel[,1], i.wel[,2])]
+  i.wel <- subset(i.wel, navarro==1)
+  m.navarro[cbind(i.wel[,1], i.wel[,2])] <- 2
+  #image(m.navarro)
+  
+  # grab elevation
+  i.wel$ztop_m <- m.dem.proj[cbind(i.wel[,1], i.wel[,2])]
+  
+  # because lay/row/col are all 0-based in Python, subtract 1
+  i.wel$row <- i.wel$row-1
+  i.wel$col <- i.wel$col-1
+  i.wel$lay <- 0
+  
+  # get rid of Navarro column
+  i.wel$navarro <- NULL
+
+  # save as text file
+  write.table(i.wel, "modflow/input/iwel.txt", sep=" ", row.names=F, col.names=T)
+  
+  # raster of well locations
+  r.wel <- r.ibound
+  r.wel[] <- m.navarro[]
+  df$wel <- r.wel[]
+  
+}
+
 # Make plots --------------------------------------------------------------
 
 ## prep polygon boundaries
@@ -297,10 +348,11 @@ p.BCs <-
   ggplot() +
   geom_raster(data=df, aes(x=lon, y=lat, fill=BCs)) +
   geom_polygon(data=df.basin, aes(x=long, y=lat, group=group), fill=NA, color="red") +
+  geom_point(data=subset(df, wel==2), aes(x=lon, y=lat), shape=46) +
   scale_x_continuous(name="Easting [m]", expand=c(0,0), breaks=map.breaks.x) +
   scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
   scale_fill_manual(name="B.C.", breaks=c("Active", "Constant\nHead", "River"),
-                    values=c("Inactive"="white", "Active"="gray65", "Constant\nHead"="black", "River"="blue")) +
+                    values=c("Inactive"="white", "Active"="gray65", "Constant\nHead"="cyan", "River"="blue")) +
   coord_equal() +
   theme_scz() +
   theme(axis.text.y=element_text(angle=90, hjust=0.5))

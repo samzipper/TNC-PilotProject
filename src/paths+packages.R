@@ -20,6 +20,7 @@ require(stringr)
 require(gtable)
 require(EcoHydRology)
 require(zoo)
+require(gstat)
 
 ## metadata about watershed
 station.outlet <- "11468000"  # USGS gage station number for outlet gauge
