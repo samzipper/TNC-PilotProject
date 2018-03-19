@@ -1,4 +1,4 @@
-## Navarro_MODFLOW_InputPrepData.R
+## MODFLOW_Navarro_InputPrepData.R
 #' This script is intended to prepare input files for MODFLOW
 #' from various geospatial datasets, and save them as text files.
 #' 
@@ -300,12 +300,18 @@ if (wel){
   i.wel.col <- seq(1, dim(m.navarro)[1], wel.spacing.col)
   i.wel <- expand.grid(i.wel.row, i.wel.col)
   colnames(i.wel) <- c("row", "col")
+  i.wel$lay <- 0  # 0 because FloPy is 0-based
   
   # figure out which are within Navarro watershed and aren't rivers
   i.wel$navarro <- m.navarro[cbind(i.wel[,1], i.wel[,2])]
   i.wel <- subset(i.wel, navarro==1)
-  m.navarro[cbind(i.wel[,1], i.wel[,2])] <- 2
-  #image(m.navarro)
+  
+  # get lon/lat from row/col indices
+  i.wel$lon <- xFromCol(r.ibound, col=i.wel$col)
+  i.wel$lat <- yFromRow(r.ibound, row=i.wel$row)
+  
+  # make a well number column
+  i.wel$WellNum <- seq(1, dim(i.wel)[1], 1)
   
   # grab elevation
   i.wel$ztop_m <- m.dem.proj[cbind(i.wel[,1], i.wel[,2])]
@@ -313,18 +319,12 @@ if (wel){
   # because lay/row/col are all 0-based in Python, subtract 1
   i.wel$row <- i.wel$row-1
   i.wel$col <- i.wel$col-1
-  i.wel$lay <- 0
   
   # get rid of Navarro column
   i.wel$navarro <- NULL
 
   # save as text file
   write.table(i.wel, "modflow/input/iwel.txt", sep=" ", row.names=F, col.names=T)
-  
-  # raster of well locations
-  r.wel <- r.ibound
-  r.wel[] <- m.navarro[]
-  df$wel <- r.wel[]
   
 }
 
@@ -348,7 +348,7 @@ p.BCs <-
   ggplot() +
   geom_raster(data=df, aes(x=lon, y=lat, fill=BCs)) +
   geom_polygon(data=df.basin, aes(x=long, y=lat, group=group), fill=NA, color="red") +
-  geom_point(data=subset(df, wel==2), aes(x=lon, y=lat), shape=46) +
+  geom_point(data=i.wel, aes(x=lon, y=lat), shape=46) +
   scale_x_continuous(name="Easting [m]", expand=c(0,0), breaks=map.breaks.x) +
   scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
   scale_fill_manual(name="B.C.", breaks=c("Active", "Constant\nHead", "River"),
