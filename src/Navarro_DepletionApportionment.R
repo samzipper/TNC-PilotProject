@@ -23,29 +23,11 @@ spdf.wel <- SpatialPointsDataFrame(coords = xy, data = df.wel,
                                    proj4string = CRS(crs.MODFLOW))
 
 
-## load stream locations
-# input files
-shp.riv.adj <- readOGR(dsn="data/NHDPlusV2/HYD", layer="NHDPlusV21_National_Seamless NHDFlowline_Network_WBDHU12_Navarro+Adjacent",
-                       stringsAsFactors=F)
-shp.riv.adj@data$StreamOrde <- as.numeric(shp.riv.adj@data$StreamOrde)
-
-# get rid of coastline (StreamOrde = -9)
-shp.riv.adj.streams <- subset(shp.riv.adj, StreamOrde>0)
-
-# eliminate tiny streams - some useful options might be:
-shp.riv.adj.streams <- subset(shp.riv.adj.streams, StreamOrde >= 2)  # MAKE SURE THIS MATCHES MODFLOW_Navarro_InputPrepData.R !!!
-
-# reproject to UTM
-shp.riv.adj.streams.UTM <- spTransform(shp.riv.adj.streams, crs.MODFLOW)
-
-# make a reach number column
-shp.riv.adj.streams.UTM@data$ReachNum <- seq(1, dim(shp.riv.adj.streams.UTM@data)[1], 1)
-
-# only retain some useful columns
-shp.streams <- subset(shp.riv.adj.streams.UTM, select=c("ReachNum", "OBJECTID", "REACHCODE", "FromNode", "ToNode", "TerminalPa"))
+## load stream data - created in MODFLOW_Navarro_InputPrepData.R
+shp.streams <- readOGR(dsn="modflow/input", layer="iriv")
 
 # data frame for ggplots
-df.streams <- tidy(shp.streams, id=ReachNum)
+df.streams <- tidy(shp.streams, id=SegNum)
 
 # combine into 1 line per stream feature (which is defined by TerminalPa)
 shp.streams.dissolve <- gLineMerge(shp.streams)
@@ -93,7 +75,7 @@ shp.streams.pts <- spsample(shp.streams, n=n.pts, type="regular")
 df.streams.pts <- as.data.frame(shp.streams.pts)
 colnames(df.streams.pts) <- c("lon", "lat")
   
-# figure out what ReachNum each point corresponds to
+# figure out what SegNum each point corresponds to
 shp.streams.buffer <- buffer(shp.streams, 0.1, dissolve=F)
 int <- intersect(shp.streams.pts, shp.streams.buffer)
 df.streams.pts <- cbind(df.streams.pts, int@data)
@@ -107,7 +89,7 @@ for (wel in df.wel$WellNum){
   i.wel <- which(df.wel$WellNum==wel)
   
   # get distance to all stream points
-  df.wel.dist <- data.frame(ReachNum = df.streams.pts$ReachNum,
+  df.wel.dist <- data.frame(SegNum = df.streams.pts$SegNum,
                             distToWell.m = round(sqrt((df.streams.pts$lon-df.wel$lon[i.wel])^2 + (df.streams.pts$lat-df.wel$lat[i.wel])^2), 2))
   
   # grab the lat/lon for these points
@@ -122,23 +104,23 @@ for (wel in df.wel$WellNum){
                                 lat <= (df.wel$lat[i.wel]+local.area.m))
   
   # calculate depletion apportionment fractions for different methods
-  df.id <- apportion.inv.dist(reach=df.wel.dist.local$ReachNum, 
+  df.id <- apportion.inv.dist(reach=df.wel.dist.local$SegNum, 
                               dist=df.wel.dist.local$distToWell.m, 
-                              w=1, col.names=c("ReachNum", "f.InvDist"))
+                              w=1, col.names=c("SegNum", "f.InvDist"))
   
-  df.idsq <- apportion.inv.dist(reach=df.wel.dist.local$ReachNum, 
+  df.idsq <- apportion.inv.dist(reach=df.wel.dist.local$SegNum, 
                                 dist=df.wel.dist.local$distToWell.m, 
-                                w=2, col.names=c("ReachNum", "f.InvDistSq"))
+                                w=2, col.names=c("SegNum", "f.InvDistSq"))
   
-  df.web <- apportion.web.dist(reach=df.wel.dist.local$ReachNum, 
+  df.web <- apportion.web.dist(reach=df.wel.dist.local$SegNum, 
                                dist=df.wel.dist.local$distToWell.m, 
-                               w=1, col.names=c("ReachNum", "f.Web"))
+                               w=1, col.names=c("SegNum", "f.Web"))
   
-  df.websq <- apportion.web.dist(reach=df.wel.dist.local$ReachNum, 
+  df.websq <- apportion.web.dist(reach=df.wel.dist.local$SegNum, 
                                  dist=df.wel.dist.local$distToWell.m, 
-                                 w=2, col.names=c("ReachNum", "f.WebSq"))
+                                 w=2, col.names=c("SegNum", "f.WebSq"))
   
-  df.tpoly <- apportion.tpoly(reach=df.wel.dist.local$ReachNum, 
+  df.tpoly <- apportion.tpoly(reach=df.wel.dist.local$SegNum, 
                               dist=df.wel.dist.local$distToWell.m, 
                               lon=df.wel.dist.local$lon, 
                               lat=df.wel.dist.local$lat, 
@@ -147,21 +129,21 @@ for (wel in df.wel$WellNum){
                               wel.num=wel,
                               local.area.m=local.area.m,
                               coord.ref=CRS(crs.MODFLOW),
-                              col.names=c("ReachNum", "f.TPoly"))
+                              col.names=c("SegNum", "f.TPoly"))
   
   # combine into single data frame
   df.apportion <- 
-    full_join(df.id, df.idsq, by="ReachNum") %>% 
-    full_join(x=., y=df.web, by="ReachNum") %>% 
-    full_join(x=., y=df.websq, by="ReachNum") %>% 
-    full_join(x=., y=df.tpoly, by="ReachNum")
+    full_join(df.id, df.idsq, by="SegNum") %>% 
+    full_join(x=., y=df.web, by="SegNum") %>% 
+    full_join(x=., y=df.websq, by="SegNum") %>% 
+    full_join(x=., y=df.tpoly, by="SegNum")
   df.apportion$WellNum <- wel
   
   # add column for minimum distance to well from anywhere on this reach
   df.apportion <- 
-    group_by(df.wel.dist, ReachNum) %>% 
+    group_by(df.wel.dist, SegNum) %>% 
     summarize(distToWell.min.m = min(distToWell.m)) %>% 
-    left_join(x=df.apportion, y=., by=c("ReachNum"))
+    left_join(x=df.apportion, y=., by=c("SegNum"))
   
   if (start.flag){
     df.apportion.all <- df.apportion
