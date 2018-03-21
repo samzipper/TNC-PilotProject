@@ -194,7 +194,7 @@ if (ztop){
 # extract data
 df$dem.m <- r.dem.proj[]
 
-# River locations ---------------------------------------------------------
+# RIV and SFR2 input data ---------------------------------------------------------
 
 if (riv){
   # python needs a dictionary of boundaries in the format:
@@ -214,18 +214,40 @@ if (riv){
   # reproject to UTM
   shp.riv.adj.streams.UTM <- spTransform(shp.riv.adj.streams, crs.MODFLOW)
   
+  # keep only useful columns
+  #   slope units are [m/m]
+  shp.streams <- subset(shp.riv.adj.streams.UTM, 
+                        select=c("OBJECTID", "REACHCODE", "TerminalPa", 
+                                 "TotDASqKM", "StreamOrde", "TerminalFl",
+                                 "SLOPE", "FromNode", "ToNode"))
+  
+  shp.streams <- shp.streams[which(!duplicated(shp.streams@data$OBJECTID)), ]
+  
+  
+  # make stream segment number column
+  shp.streams@data$SegNum <- seq(1, dim(shp.streams@data)[1], 1)
+  
   # rasterize
-  r.riv <- rasterize(shp.riv.adj.streams.UTM, r.ibound, field="StreamOrde", fun='max')
+  r.riv <- rasterize(shp.streams, r.ibound, field="StreamOrde", fun='max')
   m.riv.order <- as.matrix(r.riv)
   m.riv.order[m.ibound==0] <- NA
   
-  # calculate length of river in a cell
-  r.riv.length <- r.riv
-  r.riv.length[is.finite(r.riv.length[])] <- 1:sum(is.finite(r.riv.length[]))
-  shp.riv.length <- rasterToPolygons(r.riv.length)
-  riv.int <- intersect(shp.riv.adj.streams.UTM, shp.riv.length)
+  ## calculate length of river in a cell
+  r.riv.id <- r.riv
+  r.riv.id[is.finite(r.riv.id[])] <- 1:sum(is.finite(r.riv.id[]))
+  shp.riv.id <- rasterToPolygons(r.riv.id)   # make polygons corresponding to each cell with a river in it
+  riv.int <- intersect(shp.streams, shp.riv.id)  # extract info from SpatialLines for each polygon - the new 'layer' field is the ID corresponding to the number in r.riv.id
   riv.int$length <- gLength(riv.int, byid=TRUE)
+  riv.int@data <- 
+    data.frame(riv.id = r.riv.id[],
+               dem.m = r.dem.proj[],
+               ibound = r.ibound[]) %>% 
+    left_join(x=riv.int@data, y=., by=c("layer"="riv.id"))
+  riv.int <- subset(riv.int, ibound != 0)
+    
+  # sum length for each cell
   x <- tapply(riv.int$length, riv.int$layer, sum)
+  r.riv.length <- r.riv.id
   r.riv.length[is.finite(r.riv.length[])] <- x
   
   # extract as matrix
@@ -278,8 +300,75 @@ if (riv){
   # save as geotiff
   writeRaster(r.riv.length, "modflow/input/iriv.tif", datatype="INT2S", overwrite=T)
   
+  # save as shapefile
+  writeOGR(shp.streams, "modflow/input", "iriv", driver="ESRI Shapefile", overwrite_layer=TRUE)
+  
   # put in data frame
   df$iriv <- r.riv.length[]
+  
+  ### now: SFR2 data
+  # get all unique terminal points
+  term.pts <- unique(riv.int$TerminalPa)
+  
+  # scroll through each outlet to ocean
+  seg.counter <- 0
+  for (term in term.pts){
+    # get all points with this outlet
+    riv.int.term <- as.data.frame(subset(riv.int, TerminalPa==term))
+    
+    # summarize number of reaches per segment
+    riv.int.term.summary <- 
+      group_by(riv.int.term, SegNum, TotDASqKM) %>% 
+      summarize(n.reach = sum(is.finite(dem.m)))
+    
+    # order by drainage area (small-->large = upstream-->downstream)
+    riv.int.term.summary <- riv.int.term.summary[order(riv.int.term.summary$TotDASqKM), ]
+    
+    # make SFR segment number
+    riv.int.term.summary$SFR_NSEG <- seg.counter + seq(1,dim(riv.int.term.summary)[1])
+    
+    # add summary data
+    riv.int.term <- left_join(riv.int.term, riv.int.term.summary[,c("SegNum", "SFR_NSEG")], by=c("SegNum"))
+    
+    # order by SFR_NSEG and dem (high-->low = upstream-->downstream)
+    riv.int.term <- riv.int.term[with(riv.int.term, order(SFR_NSEG, -dem.m)), ]
+    
+    # number by reach within each segment
+    riv.int.term <- 
+      riv.int.term %>% 
+      group_by(SFR_NSEG) %>% 
+      mutate(SFR_IREACH = row_number())
+    
+    # add to overall output data frame
+    if (seg.counter==0){
+      riv.seg.all <- riv.int.term
+    } else {
+      riv.seg.all <- rbind(riv.seg.all, riv.int.term)
+    }
+    
+    # update seg.counter
+    seg.counter <- max(riv.int.term.summary$SFR_NSEG)
+
+  }
+  
+  # for each segment, determine OUTSEG
+  riv.seg.outseg <- unique(riv.seg.all[,c("SegNum", "FromNode", "ToNode", "SFR_NSEG", "TerminalFl", "TerminalPa")])  # get all unique segments
+
+  # use ToNode/FromNode to map segment connections
+  riv.seg.outseg$SFR_OUTSEG <- 
+    riv.seg.outseg$SFR_NSEG[match(riv.seg.outseg$ToNode, riv.seg.outseg$FromNode)]
+  
+  # anything that has TerminalFl==1 (end of flowline, e.g. at ocean) set OUTSEG to 0
+  riv.seg.outseg$SFR_OUTSEG[riv.seg.outseg$TerminalFl==1] <- 0
+  
+  # anything that has SFR_OUTSEG terminates at the edge of our model domain but not at the ocean
+  # (the HUC12 basins surrounding Navarro)
+  riv.seg.outseg$SFR_OUTSEG[is.na(riv.seg.outseg$SFR_OUTSEG)] <- 0
+  
+  # save as text file
+  write.table(riv.seg.all, "modflow/input/isfr_ReachData.txt", sep=" ", row.names=F, col.names=T)
+  write.table(riv.seg.outseg, "modflow/input/isfr_SegmentData.txt", sep=" ", row.names=F, col.names=T)
+  
 }
 
 # Prep pumping well data --------------------------------------------------
