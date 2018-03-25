@@ -237,13 +237,13 @@ if (riv){
   r.riv.id[is.finite(r.riv.id[])] <- 1:sum(is.finite(r.riv.id[]))
   shp.riv.id <- rasterToPolygons(r.riv.id)   # make polygons corresponding to each cell with a river in it
   riv.int <- intersect(shp.streams, shp.riv.id)  # extract info from SpatialLines for each polygon - the new 'layer' field is the ID corresponding to the number in r.riv.id
-  riv.int$length <- gLength(riv.int, byid=TRUE)
+  riv.int$length_m <- gLength(riv.int, byid=TRUE)
   riv.int@data <- 
     data.frame(riv.id = r.riv.id[],
-               dem.m = r.dem.proj[],
+               elev_m = r.dem.proj[],
                ibound = r.ibound[]) %>% 
     left_join(x=riv.int@data, y=., by=c("layer"="riv.id"))
-  riv.int <- subset(riv.int, ibound != 0)
+  riv.int <- subset(riv.int, ibound != 0)  # get rid of inactive cells
     
   # sum length for each cell
   x <- tapply(riv.int$length, riv.int$layer, sum)
@@ -319,7 +319,7 @@ if (riv){
     # summarize number of reaches per segment
     riv.int.term.summary <- 
       group_by(riv.int.term, SegNum, TotDASqKM) %>% 
-      summarize(n.reach = sum(is.finite(dem.m)))
+      summarize(n.reach = sum(is.finite(elev_m)))
     
     # order by drainage area (small-->large = upstream-->downstream)
     riv.int.term.summary <- riv.int.term.summary[order(riv.int.term.summary$TotDASqKM), ]
@@ -331,7 +331,7 @@ if (riv){
     riv.int.term <- left_join(riv.int.term, riv.int.term.summary[,c("SegNum", "SFR_NSEG")], by=c("SegNum"))
     
     # order by SFR_NSEG and dem (high-->low = upstream-->downstream)
-    riv.int.term <- riv.int.term[with(riv.int.term, order(SFR_NSEG, -dem.m)), ]
+    riv.int.term <- riv.int.term[with(riv.int.term, order(SFR_NSEG, -elev_m)), ]
     
     # number by reach within each segment
     riv.int.term <- 
@@ -351,6 +351,21 @@ if (riv){
 
   }
   
+  # get row/col/layer of each cell
+  df.riv.id <- data.frame(ncell = seq(1,length(r.riv.id[])))
+  df.riv.id[,c("row", "col")] <- rowColFromCell(r.riv.id, df.riv.id$ncell)
+  df.riv.id$id <- extract(r.riv.id, df.riv.id$ncell)
+  df.riv.id$ibound <- extract(r.ibound, df.riv.id$ncell)
+  df.riv.id <- df.riv.id[is.finite(df.riv.id$id) & df.riv.id$ibound != 0, ]
+  
+  # join data frame
+  riv.seg.all <- left_join(df.riv.id[,c("id", "row", "col")], riv.seg.all, by=c("id"="layer"))
+  
+  ## testing: only reaches that are terminal
+  riv.seg.all <- subset(riv.seg.all, SFR_NSEG %in% unique(riv.seg.all$SFR_NSEG[riv.seg.all$TerminalFl==1]))
+  riv.seg.all <- riv.seg.all[order(riv.seg.all$SFR_NSEG), ]
+  riv.seg.all$SFR_NSEG <- as.numeric(factor(riv.seg.all$SFR_NSEG))
+  
   # for each segment, determine OUTSEG
   riv.seg.outseg <- unique(riv.seg.all[,c("SegNum", "FromNode", "ToNode", "SFR_NSEG", "TerminalFl", "TerminalPa")])  # get all unique segments
 
@@ -364,6 +379,13 @@ if (riv){
   # anything that has SFR_OUTSEG terminates at the edge of our model domain but not at the ocean
   # (the HUC12 basins surrounding Navarro)
   riv.seg.outseg$SFR_OUTSEG[is.na(riv.seg.outseg$SFR_OUTSEG)] <- 0
+  
+  # make sure all OUTSEG are in NSEG
+  sum(!(riv.seg.outseg$SFR_OUTSEG[riv.seg.outseg$SFR_OUTSEG != 0] %in% riv.seg.outseg$SFR_NSEG))
+  
+  # python indexing is 0-based so subtract 1 from row/col
+  riv.seg.all$row <- riv.seg.all$row-1
+  riv.seg.all$col <- riv.seg.all$col-1
   
   # save as text file
   write.table(riv.seg.all, "modflow/input/isfr_ReachData.txt", sep=" ", row.names=F, col.names=T)

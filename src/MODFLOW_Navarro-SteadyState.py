@@ -10,12 +10,16 @@ import flopy
 import pandas as pd
 import matplotlib.pyplot as plt
 import flopy.utils.binaryfile as bf
+import flopy.utils.sfroutputfile as sf
 
 # where is your MODFLOW-2005 executable?
 path2mf = 'C:/Users/Sam/Dropbox/Work/Models/MODFLOW/MF2005.1_12/bin/mf2005.exe'
 
 # what HUC is Navarro River?
 HUC10 = 1801010804
+
+# do you want to use RIV or SFR2 for surface water BC features?
+surfWatBC = "SFR2"
 
 # check if model workspace exists; create if not
 modelname = 'Navarro-SteadyState'
@@ -89,36 +93,113 @@ rch = flopy.modflow.ModflowRch(mf, rech=rchrate, nrchop=3)
 spd = {(0, 0): ['save head', 'save budget', 'save drawdown', 'print head', 'print budget', 'print drawdown']}
 oc = flopy.modflow.ModflowOc(mf, stress_period_data=spd, compact=True)
 
-## river boundary condition
-iriv = pd.read_table(os.path.join('modflow', 'input', 'iriv.txt'), delimiter=' ')
+if (surfWatBC=="RIV"):
+    ## river boundary condition
+    iriv = pd.read_table(os.path.join('modflow', 'input', 'iriv.txt'), delimiter=' ')
+    
+    # constant domain parameters
+    depth = 4  # river depth?
+    
+    # estimate conductance based on: river width, river length, riverbed thickness, riverbed K
+    river_width = 10
+    riverbed_thickness = 1
+    riverbed_K = hk/10
+    iriv['cond'] = round(riverbed_K*river_width*iriv['length_m']*riverbed_thickness)   # river bottom conductance? 
+    
+    # figure out which reaches are in the Navarro River HUC10
+    iriv['Navarro'] = False
+    iriv.loc[(iriv['HUC'] >= HUC10*100) & (iriv['HUC'] < (HUC10+1)*100), 'Navarro'] = True
+    
+    # empty list to hold stress period data
+    riv_list = []
+    
+    # populate list
+    for r in range(0,iriv.shape[0]):
+    #    riv_list.append([iriv['lay'][r], iriv['row'][r], iriv['col'][r], 
+    #                     0, cond, 0-depth]) 
+        riv_list.append([iriv['lay'][r], iriv['row'][r], iriv['col'][r], 
+                         iriv['stage_m'][r], iriv['cond'][r], iriv['stage_m'][r]-depth])    
+    riv_spd = {0: riv_list}
+    
+    # make MODFLOW object
+    riv = flopy.modflow.ModflowRiv(mf, stress_period_data=riv_spd, ipakcb=61, 
+                                   filenames=[modelname+'.riv', modelname+'.riv.out'])
+            
+elif (surfWatBC=="SFR2"):
+    ## SFR2 boundary condition   
+    # constant domain parameters
+    depth = 4  # river depth?
+    riverbed_K = hk/10
 
-# constant domain parameters
-depth = 4  # river depth?
+    # load R output
+    isfr_ReachData = pd.read_table(os.path.join('modflow', 'input', 'isfr_ReachData.txt'), delimiter=' ')
+    isfr_SegmentData = pd.read_table(os.path.join('modflow', 'input', 'isfr_SegmentData.txt'), delimiter=' ')
 
-# estimate conductance based on: river width, river length, riverbed thickness, riverbed K
-river_width = 10
-riverbed_thickness = 1
-riverbed_K = hk/10
-iriv['cond'] = round(riverbed_K*river_width*iriv['length_m']*riverbed_thickness)   # river bottom conductance? 
+    # set up stream reach data (Dataset 2)
+    reach_data = np.array(
+              [(0, isfr_ReachData['row'][0], isfr_ReachData['col'][0], isfr_ReachData['SFR_NSEG'][0], 
+                isfr_ReachData['SFR_IREACH'][0], isfr_ReachData['length_m'][0], 
+                isfr_ReachData['elev_m'][0]-depth,isfr_ReachData['SLOPE'][0], 
+                1.0, riverbed_K)], 
+    dtype=[('k', '<f8'), ('i', '<f8'), ('j', '<f8'), ('iseg', '<f8'), 
+           ('ireach', '<f8'), ('rchlen', '<f8'),
+           ('strtop', '<f8'), ('slope', '<f8'), ('strthick', '<f8'), ('strhc1', '<f8')])
+    for r in range(1,isfr_ReachData.shape[0]):
+        reach_data=np.vstack([reach_data, 
+                              np.array(
+              [(0, isfr_ReachData['row'][r], isfr_ReachData['col'][r], isfr_ReachData['SFR_NSEG'][r], 
+                isfr_ReachData['SFR_IREACH'][r], isfr_ReachData['length_m'][r], 
+                isfr_ReachData['elev_m'][r]-depth,isfr_ReachData['SLOPE'][r], 
+                1.0, riverbed_K)], 
+                dtype=[('k', '<f8'), ('i', '<f8'), ('j', '<f8'), ('iseg', '<f8'), ('ireach', '<f8'), ('rchlen', '<f8'),
+                       ('strtop', '<f8'), ('slope', '<f8'), ('strthick', '<f8'), ('strhc1', '<f8')])
+                       ])
+    reach_data=reach_data[:,0]
+    
+    # segment data (Dataset 6a-c)
+    seg_data_array = np.array(
+              [(isfr_SegmentData['SFR_NSEG'][0], 1, isfr_SegmentData['SFR_OUTSEG'][0], 
+                0, 0, 0, 0, 0, 0.03, 3, 3)], 
+    dtype=[('nseg', '<f8'), ('icalc', '<f8'), ('outseg', '<f8'), ('iupseg', '<f8'), 
+           ('flow', '<f8'), ('runoff', '<f8'), ('etsw', '<f8'), ('pptsw', '<f8'), ('roughch', '<f8'),
+           ('width1', '<f8'), ('width2', '<f8')])
+    for s in range(1,isfr_SegmentData.shape[0]):
+        seg_data_array=np.vstack([seg_data_array, 
+                              np.array(
+              [(isfr_SegmentData['SFR_NSEG'][s], 1, isfr_SegmentData['SFR_OUTSEG'][s], 
+                0, 0, 0, 0, 0, 0.03, 3, 3)], 
+                dtype=[('nseg', '<f8'), ('icalc', '<f8'), ('outseg', '<f8'), ('iupseg', '<f8'), 
+                       ('flow', '<f8'), ('runoff', '<f8'), ('etsw', '<f8'), ('pptsw', '<f8'), 
+                       ('roughch', '<f8'), ('width1', '<f8'), ('width2', '<f8')])
+             ])
+    segment_data = {0: seg_data_array[:,0]}
+    
+    # constants (dataset 1c)
+    nstrm = -len(reach_data) # number of reaches  # negative value so no stream parameters are needed
+    nss = len(seg_data_array) # number of segments
+    nsfrpar = 0 # number of parameters (not supported)
+    nparseg = 0
+    const = 86400    # constant for manning's equation, units of m3/d
+    dleak = 0.01 # closure tolerance for stream stage computation
+    ipakcb = 53 # ISTCB1= flag for writing SFR output to cell-by-cell budget (on unit 53)
+    istcb2 = 81 # flag for writing SFR output to text file
+    isfropt = 1  # no vertical unsat flow beneath streams
+    irtflg = 0
+    
+    # dataset 5
+    dataset_5 = {0: [nss, 0, 0]} # [itmp, irdflag, iptflag]
+    
+    sfr = flopy.modflow.ModflowSfr2(mf, nstrm=nstrm, nss=nss, const=const, 
+                                    dleak=dleak, ipakcb=ipakcb, istcb2=istcb2, 
+                                    reach_data=reach_data,
+                                    segment_data=segment_data,
+                                    isfropt=isfropt,
+                                    irtflg=irtflg,
+                                    dataset_5=dataset_5,
+                                    unit_number=16)
+             
 
-# figure out which reaches are in the Navarro River HUC10
-iriv['Navarro'] = False
-iriv.loc[(iriv['HUC'] >= HUC10*100) & (iriv['HUC'] < (HUC10+1)*100), 'Navarro'] = True
-
-# empty list to hold stress period data
-riv_list = []
-
-# populate list
-for r in range(0,iriv.shape[0]):
-#    riv_list.append([iriv['lay'][r], iriv['row'][r], iriv['col'][r], 
-#                     0, cond, 0-depth]) 
-    riv_list.append([iriv['lay'][r], iriv['row'][r], iriv['col'][r], 
-                     iriv['stage_m'][r], iriv['cond'][r], iriv['stage_m'][r]-depth])    
-riv_spd = {0: riv_list}
-
-# make MODFLOW object
-riv = flopy.modflow.ModflowRiv(mf, stress_period_data=riv_spd, ipakcb=61, 
-                               filenames=[modelname+'.riv', modelname+'.riv.out'])
+print('Using ', surfWatBC, ' for stream features')
 
 ## write inputs and run model
 # write input datasets

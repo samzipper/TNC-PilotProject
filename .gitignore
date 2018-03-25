@@ -12,7 +12,8 @@
 *.lst
 *.pcg
 *.rch
-*.sfr
+*.sfr*
+*.cbc
 *.spyderworkspace
 modflow/input/*.tif
 modflow/output/*
