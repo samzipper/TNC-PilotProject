@@ -118,7 +118,7 @@ if (surfWatBC=="RIV"):
     #    riv_list.append([iriv['lay'][r], iriv['row'][r], iriv['col'][r], 
     #                     0, cond, 0-depth]) 
         riv_list.append([iriv['lay'][r], iriv['row'][r], iriv['col'][r], 
-                         iriv['stage_m'][r], iriv['cond'][r], iriv['stage_m'][r]-depth])    
+                         iriv['elev_min_m'][r], iriv['cond'][r], iriv['elev_min_m'][r]-depth])    
     riv_spd = {0: riv_list}
     
     # make MODFLOW object
@@ -219,7 +219,50 @@ time = perlen[0]
 mfl = flopy.utils.MfListBudget(os.path.join(mf.model_ws,modelname+'.list'))
 df_flux, df_vol = mfl.get_dataframes()
 
-# load RIV output
+## look at sfr output
+# example: https://github.com/modflowpy/flopy/blob/develop/examples/Notebooks/flopy3_sfrpackage_example.ipynb
+sfr.plot(key='iseg', vmin=1, vmax=max(isfr_SegmentData.SFR_NSEG))
+sfr.plot(key='ireach', vmin=1, vmax=max(isfr_ReachData.SFR_IREACH))
+
+# data frame of water balace
+sfrout = sf.SfrFile(os.path.join(model_ws, modelname+'.sfr.out'))
+sfr_df = sfrout.get_dataframe()
+sfr_df.head()
+
+# plot streamflow and stream/aquifer interactions for a segment
+inds = sfr_df.segment == 9
+ax = sfr_df.ix[inds, ['Qin', 'Qaquifer', 'Qout']].plot(x=sfr_df.reach[inds])
+ax.set_ylabel('Flow, in cubic meters per day')
+ax.set_xlabel('SFR reach')
+
+# look at stage, model top, and streambed top
+streambed_top = mf.sfr.segment_data[0][mf.sfr.segment_data[0].nseg == 9][['elevup', 'elevdn']][0]
+sfr_df['model_top'] = mf.dis.top.array[sfr_df.row.values - 1, sfr_df.column.values -1]
+fig, ax = plt.subplots()
+plt.plot([1, 6], list(streambed_top), label='streambed top')
+ax = sfr_df.ix[inds, ['stage', 'model_top']].plot(ax=ax, x=sfr_df.reach[inds])
+ax.set_ylabel('Elevation, in feet')
+plt.legend()
+
+# get SFR leakage results from cell budget file
+bpth = os.path.join(model_ws, modelname+'.cbc')
+cbbobj = bf.CellBudgetFile(bpth)
+cbbobj.list_records()
+sfrleak = cbbobj.get_data(text='  STREAM LEAKAGE')[0]
+sfrleak.q[sfrleak.q == 0] = np.nan # remove zero values
+
+# plot of leakage, plan view
+im = plt.imshow(sfrleak.q, interpolation='none', cmap='coolwarm')
+cb = plt.colorbar(im, label='SFR Leakage, in cubic meters per day');
+
+# plot total streamflow
+sfrQ = sfrleak[0].copy()
+sfrQ[sfrQ == 0] = np.nan
+sfrQ[sfr_df.row.values-1, sfr_df.column.values-1] = sfr_df[['Qin', 'Qout']].mean(axis=1).values
+im = plt.imshow(sfrQ, interpolation='none')
+plt.colorbar(im, label='Streamflow, in cubic meters per day');
+
+## load RIV output
 rivout = bf.CellBudgetFile(os.path.join(model_ws, modelname+'.riv.out'), verbose=True)
 rivout_3D = rivout.get_data(totim=time, text='RIVER LEAKAGE', full3D=True)
 iriv['leakage'] = rivout_3D[0][iriv['lay'],iriv['row'],iriv['col']]
