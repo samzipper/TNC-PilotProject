@@ -43,9 +43,9 @@ ibound = np.array(pd.read_csv(os.path.join('modflow', 'input', 'ibound.txt'),
 nlay = 1
 nrow = ibound.shape[0]
 ncol = ibound.shape[1]
-delr = 250
-delc = 250
-cells_in_navarro = 13037  # this is from R script
+delr = 100
+delc = 100
+cells_in_navarro = 81533  # this is from R script
 area_navarro = cells_in_navarro*delr*delc # [m2]
 
 # discretization (time)
@@ -139,7 +139,7 @@ elif (surfWatBC=="SFR2"):
     reach_data = np.array(
               [(0, isfr_ReachData['row'][0], isfr_ReachData['col'][0], isfr_ReachData['SFR_NSEG'][0], 
                 isfr_ReachData['SFR_IREACH'][0], isfr_ReachData['length_m'][0], 
-                isfr_ReachData['elev_m'][0]-depth,isfr_ReachData['SLOPE'][0], 
+                isfr_ReachData['elev_m_min'][0]-depth,isfr_ReachData['SLOPE'][0], 
                 1.0, riverbed_K)], 
     dtype=[('k', '<f8'), ('i', '<f8'), ('j', '<f8'), ('iseg', '<f8'), 
            ('ireach', '<f8'), ('rchlen', '<f8'),
@@ -149,7 +149,7 @@ elif (surfWatBC=="SFR2"):
                               np.array(
               [(0, isfr_ReachData['row'][r], isfr_ReachData['col'][r], isfr_ReachData['SFR_NSEG'][r], 
                 isfr_ReachData['SFR_IREACH'][r], isfr_ReachData['length_m'][r], 
-                isfr_ReachData['elev_m'][r]-depth,isfr_ReachData['SLOPE'][r], 
+                isfr_ReachData['elev_m_min'][r]-depth,isfr_ReachData['SLOPE'][r], 
                 1.0, riverbed_K)], 
                 dtype=[('k', '<f8'), ('i', '<f8'), ('j', '<f8'), ('iseg', '<f8'), ('ireach', '<f8'), ('rchlen', '<f8'),
                        ('strtop', '<f8'), ('slope', '<f8'), ('strthick', '<f8'), ('strhc1', '<f8')])
@@ -222,7 +222,7 @@ df_flux, df_vol = mfl.get_dataframes()
 ## look at sfr output
 # example: https://github.com/modflowpy/flopy/blob/develop/examples/Notebooks/flopy3_sfrpackage_example.ipynb
 sfr.plot(key='iseg', vmin=1, vmax=max(isfr_SegmentData.SFR_NSEG))
-sfr.plot(key='ireach', vmin=1, vmax=max(isfr_ReachData.SFR_IREACH))
+sfr.plot(key='strtop', vmin=0, vmax=max(isfr_ReachData.elev_m_min))
 
 # data frame of water balace
 sfrout = sf.SfrFile(os.path.join(model_ws, modelname+'.sfr.out'))
@@ -230,13 +230,13 @@ sfr_df = sfrout.get_dataframe()
 sfr_df.head()
 
 # plot streamflow and stream/aquifer interactions for a segment
-inds = sfr_df.segment == 9
+inds = sfr_df.segment == 479
 ax = sfr_df.ix[inds, ['Qin', 'Qaquifer', 'Qout']].plot(x=sfr_df.reach[inds])
 ax.set_ylabel('Flow, in cubic meters per day')
 ax.set_xlabel('SFR reach')
 
 # look at stage, model top, and streambed top
-streambed_top = mf.sfr.segment_data[0][mf.sfr.segment_data[0].nseg == 9][['elevup', 'elevdn']][0]
+streambed_top = mf.sfr.segment_data[0][mf.sfr.segment_data[0].nseg == 479][['elevup', 'elevdn']][0]
 sfr_df['model_top'] = mf.dis.top.array[sfr_df.row.values - 1, sfr_df.column.values -1]
 fig, ax = plt.subplots()
 plt.plot([1, 6], list(streambed_top), label='streambed top')
@@ -275,9 +275,6 @@ leakage_mm_yr = 1000*365*sum(iriv.loc[iriv['Navarro'], 'leakage'])/area_navarro
 
 # Create the headfile object
 h = bf.HeadFile(os.path.join(mf.model_ws, modelname+'.hds'), text='head')
-
-h.plot(totim=time, colorbar=True, contour=True,
-       masked_values=[bas.hnoflo])
 
 # extract data matrix
 head = h.get_data(totim=time)

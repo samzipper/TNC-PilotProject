@@ -251,9 +251,11 @@ if (riv){
   ## calculate length of river in a cell
   r.riv.id <- r.riv
   r.riv.id[is.finite(r.riv.id[])] <- 1:sum(is.finite(r.riv.id[]))
+  # ## this code block is VERY SLOW (hours to run)
+  # ## only run it if you changed your grid resolution
   # shp.riv.id <- rasterToPolygons(r.riv.id)   # make polygons corresponding to each cell with a river in it
   # shp.riv.id.latlon <- spTransform(shp.riv.id, crs(r.dem))
-  # df.riv.id.dem <- extract(r.dem, shp.riv.id.latlon, na.rm=T, df=T)   # VERY SLOW STEP - HOURS
+  # df.riv.id.dem <- extract(r.dem, shp.riv.id.latlon, na.rm=T, df=T)
   # df.riv.id.dem.summary <-
   #   df.riv.id.dem %>% 
   #   group_by(ID) %>% 
@@ -319,10 +321,6 @@ if (riv){
   r.elev.med[] <- m.elev.med[]
   r.elev.max[] <- m.elev.max[]
   r.SegNum[] <- m.SegNum[]
-  
-  # set anything with a length < 100 m to NA
-  #plot(r.riv.length>20)
-  #m.riv[m.riv<100] <- NA
   
   # rasterize and extract HUC12 watershed number
   r.HUC <- rasterize(shp.adj.UTM, r.ibound, field='HUC12', fun='max')
@@ -409,7 +407,7 @@ if (riv){
     # update seg.counter
     seg.counter <- max(riv.int.term.summary$SFR_NSEG)
     
-  }
+  }  # end of terminal paths loop
   
   # get row/col/layer of each cell
   df.riv.id <- data.frame(ncell = seq(1,length(r.riv.id[])))
@@ -422,17 +420,16 @@ if (riv){
   riv.seg.all <- left_join(df.riv.id[,c("id", "row", "col")], riv.seg.all, by=c("id"="layer"))
   
   ## for each river segment, figure out OUTSEG
-  riv.seg.info <- unique(riv.seg.all[,c("SegNum", "FromNode", "ToNode", "SFR_NSEG", "TerminalFl", "TerminalPa")])  # get all unique segments
+  # get all unique segments
+  riv.seg.info <- unique(riv.seg.all[,c("SegNum", "FromNode", "ToNode", "SFR_NSEG", "TerminalFl", "TerminalPa")])
   
   # use ToNode/FromNode to map segment connections
   riv.seg.info$SFR_OUTSEG <- 
     riv.seg.info$SFR_NSEG[match(riv.seg.info$ToNode, riv.seg.info$FromNode)]
   
-  # anything that has TerminalFl==1 (end of flowline, e.g. at ocean) set OUTSEG to 0
+  # anything that has TerminalFl==1 (end of flowline, e.g. at ocean) or 
+  # ends at the edge of our model domain, set OUTSEG to 0
   riv.seg.info$SFR_OUTSEG[riv.seg.info$TerminalFl==1] <- 0
-  
-  # anything that has SFR_OUTSEG terminates at the edge of our model domain but not at the ocean
-  # (the HUC12 basins surrounding Navarro)
   riv.seg.info$SFR_OUTSEG[is.na(riv.seg.info$SFR_OUTSEG)] <- 0
   
   ## now, figure out reach numbers...
@@ -661,15 +658,6 @@ if (riv){
       # retain only reaches that are connected via the stream network
       riv.seg <- subset(riv.seg, is.finite(SFR_IREACH))
       
-      # # test plot for visualizing path
-      # ggplot(riv.seg[order(riv.seg$SFR_IREACH), ], aes(x=col, y=row, color=elev_m_min, shape=factor(OBJECTID))) +
-      #   geom_point() +
-      #   scale_y_reverse() +
-      #   coord_equal() +
-      #   geom_path(aes(group=is.finite(SFR_IREACH))) +
-      #   geom_point(data=riv.seg[riv.seg$id==inseg,], aes(x=col, y=row), color="red") +
-      #   geom_point(data=riv.seg[riv.seg$id==outseg,], aes(x=col, y=row), color="green")
-      
     } else {
       # if there's only 1 reach in the segment, just set it to 1
       riv.seg$SFR_IREACH <- 1
@@ -804,40 +792,9 @@ if (riv){
   riv.seg.out$row <- riv.seg.out$row-1
   riv.seg.out$col <- riv.seg.out$col-1
   
-  ##### testing: only make some cells SFR
-  # save actual files
-  #i.riv.hold <- i.riv
-  #riv.seg.out.hold <- riv.seg.out
-  #riv.seg.info.hold <- riv.seg.info
-  
-  # single terminal path
-  riv.seg.out <- subset(riv.seg.out.hold, TerminalPa %in% unique(TerminalPa)[1:5])
-  riv.seg.info <- subset(riv.seg.info.hold, SegNum %in% riv.seg.out$SegNum)
-  
   # put in order
-  riv.seg.info <- riv.seg.info[order(-riv.seg.info$SFR_NSEG), ]
-  
-  # remove SFR cells from i.riv
-  i.riv <- i.riv.hold[!(i.riv.hold$SegNum %in% riv.seg.info$SegNum), ]
-  
-  # update nseg
-  df.nseg <- data.frame(NSEG.old = c(0, unique(riv.seg.info$SFR_NSEG)),
-                        NSEG.new = c(0, seq(1, length(unique(riv.seg.info$SFR_NSEG)))))
-  
-  riv.seg.out$SFR_NSEG <- df.nseg$NSEG.new[match(riv.seg.out$SFR_NSEG, df.nseg$NSEG.old)]
-  riv.seg.info$SFR_NSEG <- df.nseg$NSEG.new[match(riv.seg.info$SFR_NSEG, df.nseg$NSEG.old)]
-  riv.seg.info$SFR_OUTSEG <- df.nseg$NSEG.new[match(riv.seg.info$SFR_OUTSEG, df.nseg$NSEG.old)]
-  
-  #### end of testing
-  
-  # put in order
+  riv.seg.info <- riv.seg.info[order(riv.seg.info$SFR_NSEG), ]
   riv.seg.out <- riv.seg.out[with(riv.seg.out, order(SFR_NSEG, SFR_IREACH)), ]
-  
-  ggplot() + 
-   # geom_point(aes(color=SFR_IREACH, shape=factor(OBJECTID))) +
-    geom_path(data=riv.seg.out, aes(x=col, y=row, group=SFR_NSEG)) +
-    geom_point(data=i.riv, aes(x=col, y=row), color="red") +
-    scale_y_reverse()
   
   ## save output data
   # RIV
