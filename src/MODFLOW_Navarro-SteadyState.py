@@ -18,9 +18,6 @@ path2mf = 'C:/Users/Sam/Dropbox/Work/Models/MODFLOW/MF2005.1_12/bin/mf2005.exe'
 # what HUC is Navarro River?
 HUC10 = 1801010804
 
-# do you want to use RIV or SFR2 for surface water BC features?
-surfWatBC = "SFR2"
-
 # check if model workspace exists; create if not
 modelname = 'Navarro-SteadyState'
 model_ws = os.path.join('modflow', modelname)
@@ -162,11 +159,8 @@ sfr = flopy.modflow.ModflowSfr2(mf, nstrm=nstrm, nss=nss, const=const,
                                 segment_data=segment_data,
                                 isfropt=isfropt,
                                 irtflg=irtflg,
-                                dataset_5=dataset_5,
+                                #dataset_5=dataset_5,
                                 unit_number=16)
-             
-
-print('Using ', surfWatBC, ' for stream features')
 
 ## write inputs and run model
 # write input datasets
@@ -195,6 +189,12 @@ sfr.plot(key='strtop', vmin=0, vmax=max(isfr_ReachData.elev_m_min))
 sfrout = sf.SfrFile(os.path.join(model_ws, modelname+'.sfr.out'))
 sfr_df = sfrout.get_dataframe()
 sfr_df.head()
+sfr_df.to_csv(os.path.join(model_ws, 'output', 'sfr.csv'), index=False)
+
+# put data frame into 
+Qaquifer = np.zeros((nrow, ncol))
+Qaquifer[sfr_df.i, sfr_df.j] = sfr_df.Qout
+plt.imshow(np.log10(Qaquifer)); plt.colorbar();
 
 # plot streamflow and stream/aquifer interactions for a segment
 inds = sfr_df.segment == 479
@@ -215,11 +215,11 @@ plt.legend()
 bpth = os.path.join(model_ws, modelname+'.cbc')
 cbbobj = bf.CellBudgetFile(bpth)
 cbbobj.list_records()
-sfrleak = cbbobj.get_data(text='  STREAM LEAKAGE')[0]
+sfrleak = cbbobj.get_data(text='  STREAM LEAKAGE', full3D=True)[0]
 sfrleak.q[sfrleak.q == 0] = np.nan # remove zero values
 
 # plot of leakage, plan view
-im = plt.imshow(sfrleak.q, interpolation='none', cmap='coolwarm')
+im = plt.imshow(sfrleak[0,:,:], interpolation='none', cmap='coolwarm')
 cb = plt.colorbar(im, label='SFR Leakage, in cubic meters per day');
 
 # plot total streamflow
@@ -247,24 +247,6 @@ plt.imshow(wtd<0)
 # head and water table depth
 np.savetxt(os.path.join(model_ws, 'output', 'head.txt'), head[0,:,:])
 np.savetxt(os.path.join(model_ws, 'output', 'wtd.txt'), wtd)
-
-## make some plots in Python if you want
-plt.subplot(1,2,1)
-plt.imshow(head[0,:,:])
-plt.title('Head [m]')
-plt.viridis()
-divider = make_axes_locatable(ax)
-cax = divider.append_axes("right", size="5%", pad=0.05)
-plt.colorbar()
-
-plt.subplot(1,2,2)
-plt.imshow(wtd)
-plt.title('Water Table Depth [m]')
-plt.viridis()
-plt.colorbar()
-
-plt.savefig(os.path.join(model_ws, 'output', 'head+WTD'), 
-            bbox_inches='tight', dpi=300)
             
 ## look at input
 # plot the top of the model

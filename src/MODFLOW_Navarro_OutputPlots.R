@@ -9,10 +9,6 @@
 
 source("src/paths+packages.R")
 
-# X and Y resolution
-DELR <- 250  # x spacing - column width
-DELC <- 250  # y spacing - row height
-
 ## load common data
 # domain boundary shapefile
 shp <- readOGR(dsn="data/NHD/WBD", layer="WBDHU10_Navarro")
@@ -21,20 +17,18 @@ shp.UTM <- spTransform(shp, crs.MODFLOW)
 shp.adj <- readOGR(dsn="data/NHD/WBD", layer="WBDHU12_Navarro+Adjacent")
 shp.adj.UTM <- spTransform(shp.adj, crs.MODFLOW)
 
-# river boundary shapefile
-shp.riv.adj <- readOGR(dsn="data/NHDPlusV2/HYD", layer="NHDPlusV21_National_Seamless NHDFlowline_Network_WBDHU12_Navarro+Adjacent",
-                       stringsAsFactors=F)
-shp.riv.adj@data$StreamOrde <- as.numeric(shp.riv.adj@data$StreamOrde)
-shp.riv.adj.streams <- subset(shp.riv.adj, StreamOrde >= 2)
-shp.riv.adj.streams.UTM <- spTransform(shp.riv.adj.streams, crs.MODFLOW)
+# streamlines
+shp.streams <- readOGR(dsn="modflow/input", layer="iriv", stringsAsFactors=F)
 
 ## prep polygon boundaries for plots
 df.basin <- tidy(shp.UTM)
 df.basin.adj <- tidy(shp.adj.UTM)
-df.riv <- tidy(shp.riv.adj.streams.UTM)
+df.riv <- tidy(shp.streams)
 
 ## load ibound raster
 r.ibound <- raster("modflow/input/ibound.tif")
+DELR <- res(r.ibound)[1]
+DELC <- res(r.ibound)[2]
 
 # make data frame
 df <- data.frame(rasterToPoints(r.ibound))
@@ -60,7 +54,6 @@ p.head <-
   scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
   scale_fill_viridis(name="Head [m]", na.value="white") +
   coord_equal() +
-  theme_scz() +
   theme(axis.text.y=element_text(angle=90, hjust=0.5))
 
 p.wtd <- 
@@ -71,7 +64,6 @@ p.wtd <-
   scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
   scale_fill_viridis(name="Water Table\nDepth [m]", na.value="white") +
   coord_equal() +
-  theme_scz() +
   theme(axis.text.y=element_text(angle=90, hjust=0.5))
 
 ## save plots
@@ -83,6 +75,102 @@ p$heights <- unit.pmax(p1$heights, p2$heights)
 
 # save
 ggsave("modflow/Navarro-SteadyState/output/head+wtd.png",
+       p, width=190, height=100, units="mm")
+
+# SFR output --------------------------------------------------------------
+
+## load SFR data
+df.sfr <- read.csv("modflow/Navarro-SteadyState/output/sfr.csv", stringsAsFactors=F)
+
+# get coordinates
+df.sfr$cellNum <- cellFromRowCol(r.ibound, rownr=df.sfr$row, colnr=df.sfr$column)
+df.sfr[,c("lon", "lat")] <- xyFromCell(r.ibound, df.sfr$cellNum)
+
+# for plotting, set a lower threshold for color scaling
+Q.min <- 1
+df.sfr$Qout[df.sfr$Qout<Q.min] <- Q.min
+
+# aquifer exchange
+df.sfr$StreamType <- "No Exchange"
+df.sfr$StreamType[df.sfr$Qaquifer<0] <- "Gaining"
+df.sfr$StreamType[df.sfr$Qaquifer>0] <- "Losing"
+df.sfr$StreamType <- factor(df.sfr$StreamType, levels=c("Losing", "No Exchange", "Gaining"))
+
+df.sfr <- left_join(df.sfr, df)
+
+## going down a segment
+seg.plot <- 325
+df.seg.melt <-
+  df.sfr[,c("segment", "reach", "Qin", "Qaquifer", "Qout", "stage", "head")] %>% 
+  subset(segment==seg.plot) %>% 
+  melt(., id=c("segment", "reach", "Qin"))
+
+p.reach.stage <-
+  ggplot(subset(df.seg.melt, variable %in% c("stage", "head")), 
+         aes(x=reach, y=value, color=variable)) +
+  geom_line() +
+  scale_x_continuous(name="Reach", expand=c(0,0)) +
+  scale_y_continuous(name="Elevation [m]", expand=c(0,0)) +
+  labs(title=paste0("Segment ", seg.plot)) +
+  scale_color_manual(name=NULL, labels=c("stage"="Stream\nStage", "head"="Head"),
+                     values=c("stage"=col.cat.red, "head"=col.cat.blu))
+
+p.reach.Qaquifer <-
+  ggplot(subset(df.seg.melt, variable %in% c("Qaquifer")), 
+         aes(x=reach, y=value*1000/(DELR*DELC))) +
+  geom_line(color=col.cat.blu) +
+  scale_x_continuous(name="Reach", expand=c(0,0)) +
+  scale_y_continuous(name="Flux into Aquifer [mm/d]", expand=c(0,0))
+
+p.reach.Qout <-
+  ggplot(subset(df.seg.melt, variable %in% c("Qout")), 
+         aes(x=reach, y=value)) +
+  geom_line(color=col.cat.blu) +
+  scale_x_continuous(name="Reach", expand=c(0,0)) +
+  scale_y_continuous(name="Stream Discharge [m3/d]", expand=c(0,0))
+
+# save plots
+# align
+p1 <- ggplotGrob(p.reach.stage+theme(legend.position=c(0.01,0.01), legend.justification=c(0,0)))
+p2 <- ggplotGrob(p.reach.Qaquifer)
+p3 <- ggplotGrob(p.reach.Qout)
+p <- rbind(p1, p2, p3, size="first")
+p$widths <- unit.pmax(p1$widths, p2$widths, p3$widths)
+
+# save
+ggsave("modflow/Navarro-SteadyState/output/SFR_transects.png",
+       p, width=100, height=190, units="mm")
+
+## maps
+p.sfr.Qout <-
+  ggplot() + 
+  geom_raster(data=df.sfr, aes(x=lon, y=lat, fill=Qout)) +
+  geom_polygon(data=df.basin, aes(x=long, y=lat, group=group), fill=NA, color="red") +
+  scale_x_continuous(name="Easting [m]", expand=c(0,0), breaks=map.breaks.x) +
+  scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
+  scale_fill_viridis(name="Discharge [m3/d]", na.value="white", trans="log10", direction=-1) +
+  coord_equal() +
+  theme(axis.text.y=element_text(angle=90, hjust=0.5))
+
+p.sfr.StreamType <-
+  ggplot(df.sfr, aes(x=lon, y=lat, fill=StreamType)) +
+  geom_raster() +
+  geom_polygon(data=df.basin, aes(x=long, y=lat, group=group), fill=NA, color="red") +
+  scale_x_continuous(name="Easting [m]", expand=c(0,0), breaks=map.breaks.x) +
+  scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
+  scale_fill_manual(values=c("Losing"=col.cat.red, "No Exchange"=col.cat.yel, "Gaining"=col.cat.blu)) +
+  coord_equal() +
+  theme(axis.text.y=element_text(angle=90, hjust=0.5))
+
+## save plots
+# align
+p1 <- ggplotGrob(p.sfr.Qout+theme(legend.position="bottom"))
+p2 <- ggplotGrob(p.sfr.StreamType+theme(legend.position="bottom"))
+p <- cbind(p1, p2, size="first")
+p$heights <- unit.pmax(p1$heights, p2$heights)
+
+# save
+ggsave("modflow/Navarro-SteadyState/output/SFR_maps.png",
        p, width=190, height=100, units="mm")
 
 # Pumping results ---------------------------------------------------------
@@ -126,7 +214,6 @@ p.wel.depletion <-
   scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
   scale_fill_viridis(name="Depletion [%]", na.value="white", limits=c(0,100), breaks=seq(0,100,25)) +
   coord_equal() +
-  theme_scz() +
   theme(axis.text.y=element_text(angle=90, hjust=0.5))
 ggsave("modflow/Navarro-SteadyState-WithPumping/output/p.wel.depletion.png",
        p.wel.depletion, width=130, height=100, units="mm")

@@ -225,8 +225,7 @@ if (riv){
   #   slope units are [m/m]
   shp.streams <- subset(shp.riv.adj.streams.UTM, 
                         select=c("OBJECTID", "REACHCODE", "TerminalPa", "lineLength_m",
-                                 "TotDASqKM", "StreamOrde", "TerminalFl", "SLOPE", 
-                                 "MAXELEVSMO", "MINELEVSMO", "FromNode", "ToNode"))
+                                 "TotDASqKM", "StreamOrde", "TerminalFl", "SLOPE", "FromNode", "ToNode"))
   
   # extract duplicates
   dups <- data.frame(i = c(which(duplicated(shp.streams@data$OBJECTID)), 
@@ -628,9 +627,9 @@ if (riv){
           df.path$elev_m <- seq(from=riv.seg$elev_m[i.term], to=riv.seg$elev_m[i.closest],
                                 length.out=dim(df.path)[1]+2)[-c(1, (dim(df.path)[1]+2))]
           df.path[,c("REACHCODE", "TerminalPa", "lineLength_m", "TotDASqKM", "StreamOrde", "TerminalFl", "SLOPE",
-                     "MAXELEVSMO", "MINELEVSMO", "FromNode", "ToNode", "SegNum", "ibound", "SFR_NSEG")] <-
+                     "FromNode", "ToNode", "SegNum", "ibound", "SFR_NSEG")] <-
             riv.seg[i.term, c("REACHCODE", "TerminalPa", "lineLength_m", "TotDASqKM", "StreamOrde", "TerminalFl", "SLOPE",
-                              "MAXELEVSMO", "MINELEVSMO", "FromNode", "ToNode", "SegNum", "ibound", "SFR_NSEG")]
+                              "FromNode", "ToNode", "SegNum", "ibound", "SFR_NSEG")]
           
           # update IREACH for i.closest
           riv.seg$SFR_IREACH[i.closest] <- max(df.path$SFR_IREACH)+1
@@ -768,9 +767,9 @@ if (riv){
                             to=riv.seg.starts$elev_m[riv.seg.starts$SFR_NSEG==outseg.this],
                             length.out=dim(df.conn)[1]+2)[-c(1, (dim(df.conn)[1]+2))]
       df.conn[,c("REACHCODE", "TerminalPa", "lineLength_m", "TotDASqKM", "StreamOrde", "TerminalFl", "SLOPE",
-                 "MAXELEVSMO", "MINELEVSMO", "FromNode", "ToNode", "SegNum", "ibound")] <-
+                 "FromNode", "ToNode", "SegNum", "ibound")] <-
         riv.seg.starts[riv.seg.ends$SFR_NSEG==nseg, c("REACHCODE", "TerminalPa", "lineLength_m", "TotDASqKM", "StreamOrde", "TerminalFl", "SLOPE",
-                                                      "MAXELEVSMO", "MINELEVSMO", "FromNode", "ToNode", "SegNum", "ibound")]
+                                                      "FromNode", "ToNode", "SegNum", "ibound")]
       
       # status update
       print(paste0("Connecting ", nseg, " to ", outseg.this, ": ", dim(df.conn)[1], " reach(es) created"))
