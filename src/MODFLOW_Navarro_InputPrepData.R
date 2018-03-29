@@ -445,8 +445,8 @@ if (riv){
     if (dim(riv.seg.outseg)[1]>0){
       # figure out difference in row/col units (OK because delr=delc)
       tot.diff.outseg <- 
-        abs(outer(riv.seg$row, riv.seg.outseg$row, FUN="-")) +
-        abs(outer(riv.seg$col, riv.seg.outseg$col, FUN="-"))
+        sqrt(abs(outer(riv.seg$row, riv.seg.outseg$row, FUN="-"))^2 +
+               abs(outer(riv.seg$col, riv.seg.outseg$col, FUN="-"))^2)
       
       # determine index in the segment of interest which is closest to the outseg
       outseg <- riv.seg$id[unique(which(tot.diff.outseg == min(tot.diff.outseg), arr.ind = TRUE)[,1])]
@@ -480,8 +480,8 @@ if (riv){
     riv.seg.inseg <- riv.seg.inseg[which.min(riv.seg.inseg$elev_m_min),]
     if (dim(riv.seg.inseg)[1]>0){
       tot.diff.inseg <- 
-        abs(outer(riv.seg$row, riv.seg.inseg$row, FUN="-")) +
-        abs(outer(riv.seg$col, riv.seg.inseg$col, FUN="-"))
+        sqrt(abs(outer(riv.seg$row, riv.seg.inseg$row, FUN="-"))^2 +
+               abs(outer(riv.seg$col, riv.seg.inseg$col, FUN="-"))^2)
       
       inseg <- riv.seg$id[unique(which(tot.diff.inseg == min(tot.diff.inseg), arr.ind = TRUE)[,1])]
     } else {
@@ -787,6 +787,14 @@ if (riv){
   slope.min <- 0.001
   riv.seg.out$SLOPE[riv.seg.out$SLOPE<slope.min] <- slope.min
   
+  ## extract coordinates and add to data frame
+  riv.seg.out <- 
+    cellFromRowCol(r.riv.id, rownr=riv.seg.out$row, colnr=riv.seg.out$col) %>% 
+    xyFromCell(r.riv.id, cell=.) %>% 
+    data.frame(.) %>% 
+    set_colnames(c("lon", "lat")) %>% 
+    cbind(riv.seg.out, .)
+    
   # python indexing is 0-based so subtract 1 from row/col
   riv.seg.out$row <- riv.seg.out$row-1
   riv.seg.out$col <- riv.seg.out$col-1
@@ -794,6 +802,37 @@ if (riv){
   # put in order
   riv.seg.info <- riv.seg.info[order(riv.seg.info$SFR_NSEG), ]
   riv.seg.out <- riv.seg.out[with(riv.seg.out, order(SFR_NSEG, SFR_IREACH)), ]
+  
+  ## set up gaging stations
+  # define gages by USGS gage numbers
+  gage.stations <- station.outlet
+  n.gage.stations <- length(gage.stations)
+  
+  # get coordinates
+  df.gages <- 
+    siteInfo(gage.stations)[,c("lng", "lat")] %>% 
+    SpatialPointsDataFrame(coords=., 
+                           data=data.frame(GageNum = seq(1,n.gage.stations)),
+                           proj4string=crs(shp.riv.adj)) %>% 
+    spTransform(., crs(crs.MODFLOW))
+  
+  # add coordinates to data frame
+  df.gages@data <- 
+    cbind(df.gages@data, 
+          data.frame(lon=df.gages@coords[,"lng"], 
+                     lat=df.gages@coords[,"lat"]))
+  
+  # find closest stream reach to gage (coordinates will not be exactly the same
+  # because stream reach coordinates are the center of each MODFLOW grid cell)
+  tot.diff.gages <- 
+    sqrt(abs(outer(df.gages$lon, riv.seg.out$lon, FUN="-"))^2 +
+           abs(outer(df.gages$lat, riv.seg.out$lat, FUN="-"))^2)
+  
+  df.gages@data <- 
+    which(tot.diff.gages == min(tot.diff.gages), arr.ind = TRUE)[,"col"] %>% 
+    riv.seg.out[., c("row", "col", "REACHCODE", "TotDASqKM", "StreamOrde", "SegNum", "SFR_NSEG", "SFR_IREACH")] %>% 
+    cbind(df.gages@data, .)
+
   
   ## save output data
   # RIV
@@ -805,6 +844,8 @@ if (riv){
   write.table(riv.seg.out, "modflow/input/isfr_ReachData.txt", sep=" ", row.names=F, col.names=T)
   write.table(riv.seg.info, "modflow/input/isfr_SegmentData.txt", sep=" ", row.names=F, col.names=T)
   
+  # GAGE
+  write.table(df.gages, "modflow/input/gage_data.txt", sep=" ", row.names=F, col.names=T)
 }
 
 # Prep pumping well data --------------------------------------------------

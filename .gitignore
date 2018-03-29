@@ -15,6 +15,7 @@
 *.sfr*
 *.cbc
 *.spyderworkspace
+*.go
 modflow/input/*.tif
 modflow/output/*
 

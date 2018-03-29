@@ -150,18 +150,27 @@ istcb2 = 81 # flag for writing SFR output to text file
 isfropt = 1  # no vertical unsat flow beneath streams
 irtflg = 0
 
-# dataset 5
-dataset_5 = {0: [nss, 0, 0]} # [itmp, irdflag, iptflag]
-
 sfr = flopy.modflow.ModflowSfr2(mf, nstrm=nstrm, nss=nss, const=const, 
                                 dleak=dleak, ipakcb=ipakcb, istcb2=istcb2, 
                                 reach_data=reach_data,
                                 segment_data=segment_data,
                                 isfropt=isfropt,
                                 irtflg=irtflg,
-                                #dataset_5=dataset_5,
                                 unit_number=16)
 
+## stream gaging station
+# read in output from R
+gage_data_in = pd.read_table(os.path.join('modflow', 'input', 'gage_data.txt'), delimiter=' ')
+
+# total number of gages
+numgage = gage_data_in.shape[0]
+
+# set up gage data
+gage_data=[[gage_data_in.SFR_NSEG[0], gage_data_in.SFR_IREACH[0], 
+            90+gage_data_in.GageNum[0], 2]]
+
+gage = flopy.modflow.ModflowGage(mf, numgage=numgage,
+                                 gage_data=gage_data, unitnumber=90)
 ## write inputs and run model
 # write input datasets
 mf.write_input()
