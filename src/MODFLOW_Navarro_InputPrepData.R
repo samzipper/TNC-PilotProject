@@ -795,6 +795,10 @@ if (riv){
     set_colnames(c("lon", "lat")) %>% 
     cbind(riv.seg.out, .)
     
+  ## make a matrix showing where SFR features exist
+  m.sfr <- matrix(data=NA, nrow=nrow(m.riv), ncol=ncol(m.riv))
+  m.sfr[as.matrix(unique(riv.seg.out[,c("row", "col")]))] <- 1
+  
   # python indexing is 0-based so subtract 1 from row/col
   riv.seg.out$row <- riv.seg.out$row-1
   riv.seg.out$col <- riv.seg.out$col-1
@@ -855,8 +859,8 @@ if (wel){
   # m.HUC has the HUC watershed locations
   m.navarro <- matrix(as.numeric(substr(as.character(m.HUC), 1, 10)==as.character(HUC)), nrow=dim(m.HUC)[1], ncol=dim(m.HUC)[2])
   
-  # disable cells with rivers
-  m.navarro[is.finite(m.riv)] <- 0
+  # disable cells with either RIV or SFR
+  m.navarro[is.finite(m.riv) | is.finite(m.sfr)] <- 0
   
   # create grid of wells
   wel.spacing <- 1000  # [m]

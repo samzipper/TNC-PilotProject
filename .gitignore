@@ -17,7 +17,9 @@
 *.spyderworkspace
 *.go
 modflow/input/*.tif
-modflow/output/*
+modflow/*/head.txt
+modflow/*/sfr.csv
+modflow/*/wtd.txt
 
 # Image files
 *.png
