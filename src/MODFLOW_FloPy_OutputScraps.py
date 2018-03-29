@@ -66,6 +66,17 @@ sfrQ[sfr_df.row.values-1, sfr_df.column.values-1] = sfr_df[['Qin', 'Qout']].mean
 im = plt.imshow(sfrQ, interpolation='none')
 plt.colorbar(im, label='Streamflow, in cubic meters per day');
 
+## load RIV output
+rivout = bf.CellBudgetFile(os.path.join(model_ws, modelname+'.riv.out'), verbose=True)
+rivout_3D = rivout.get_data(totim=time, text='RIVER LEAKAGE', full3D=True)
+iriv['leakage'] = rivout_3D[0][iriv['lay'],iriv['row'],iriv['col']]
+rivout.close()
+
+# net leakage, calculated as (Infiltration - Discharge)
+# units are [m3/d]
+# leakage convention: negative value = gaining stream
+leakage_mm_yr = 1000*365*sum(iriv.loc[iriv['Navarro'], 'leakage'])/area_navarro
+
 ## look at head output
 # Create the headfile object
 h = bf.HeadFile(os.path.join(mf.model_ws, modelname+'.hds'), text='head')

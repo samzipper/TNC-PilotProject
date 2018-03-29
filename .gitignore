@@ -16,6 +16,7 @@
 *.cbc
 *.spyderworkspace
 *.go
+*.gage
 modflow/input/*.tif
 modflow/*/head.txt
 modflow/*/sfr.csv
