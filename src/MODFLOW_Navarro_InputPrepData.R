@@ -203,44 +203,51 @@ df$dem.m <- r.dem.proj[]
 # RIV and SFR2 input data ---------------------------------------------------------
 
 if (riv){
-  # python needs a dictionary of boundaries in the format:
-  #  [lay, row, col, stage, cond, rbot]
+  # # python needs a dictionary of boundaries in the format:
+  # #  [lay, row, col, stage, cond, rbot]
+  # 
+  # ### only need to run this section after making changes to stream network (e.g. including different stream orders)
+  # # get rid of coastline (StreamOrde = -9)
+  # shp.riv.adj.streams <- subset(shp.riv.adj, StreamOrde>0)
+  # 
+  # # eliminate tiny streams - some useful options might be:
+  # #   StreamOrde = stream order
+  # #   TotDASqKM = total upstream drainage area [km2]
+  # # plot(shp.riv.adj.streams)
+  # # plot(subset(shp.riv.adj.streams, StreamOrde >= 2))
+  # # plot(subset(shp.riv.adj.streams, TotDASqKM >= 5))
+  # shp.riv.adj.streams <- subset(shp.riv.adj.streams, StreamOrde >= 2)
+  # shp.riv.adj.streams@data$lineLength_m <- lengthLine(shp.riv.adj.streams)
+  # 
+  # # reproject to UTM
+  # shp.riv.adj.streams.UTM <- spTransform(shp.riv.adj.streams, crs.MODFLOW)
+  # 
+  # # keep only useful columns
+  # #   slope units are [m/m]
+  # shp.streams <- subset(shp.riv.adj.streams.UTM, 
+  #                       select=c("OBJECTID", "REACHCODE", "TerminalPa", "lineLength_m",
+  #                                "TotDASqKM", "StreamOrde", "TerminalFl", "SLOPE", "FromNode", "ToNode"))
+  # 
+  # # extract duplicates
+  # dups <- data.frame(i = c(which(duplicated(shp.streams@data$OBJECTID)), 
+  #                          which(duplicated(shp.streams@data$OBJECTID, fromLast=T)))) %>%
+  #   cbind(., shp.streams@data[c(which(duplicated(shp.streams@data$OBJECTID)), 
+  #                               which(duplicated(shp.streams@data$OBJECTID, fromLast=T))),])
+  # dups.keep <- 
+  #   dups %>% 
+  #   group_by(., OBJECTID) %>% 
+  #   summarize(lineLength_m = max(lineLength_m))
+  # dups.null <- dups[!(paste0(dups$OBJECTID, "_", dups$lineLength_m) %in% paste0(dups.keep$OBJECTID, "_", dups.keep$lineLength_m)), ]
+  # shp.streams <- shp.streams[-dups.null$i, ]
+  # 
+  # # make stream segment number column
+  # shp.streams@data$SegNum <- seq(1, dim(shp.streams@data)[1], 1)
+  # writeOGR(shp.streams, file.path("modflow", "input"), "iriv", driver="ESRI Shapefile", overwrite_layer=TRUE)
+  shp.streams <- readOGR(dsn=file.path("modflow", "input"), layer="iriv")
   
-  # get rid of coastline (StreamOrde = -9)
-  shp.riv.adj.streams <- subset(shp.riv.adj, StreamOrde>0)
-  
-  # eliminate tiny streams - some useful options might be:
-  #   StreamOrde = stream order
-  #   TotDASqKM = total upstream drainage area [km2]
-  # plot(shp.riv.adj.streams)
-  # plot(subset(shp.riv.adj.streams, StreamOrde >= 2))
-  # plot(subset(shp.riv.adj.streams, TotDASqKM >= 5))
-  shp.riv.adj.streams <- subset(shp.riv.adj.streams, StreamOrde >= 2)
-  shp.riv.adj.streams@data$lineLength_m <- lengthLine(shp.riv.adj.streams)
-  
-  # reproject to UTM
-  shp.riv.adj.streams.UTM <- spTransform(shp.riv.adj.streams, crs.MODFLOW)
-  
-  # keep only useful columns
-  #   slope units are [m/m]
-  shp.streams <- subset(shp.riv.adj.streams.UTM, 
-                        select=c("OBJECTID", "REACHCODE", "TerminalPa", "lineLength_m",
-                                 "TotDASqKM", "StreamOrde", "TerminalFl", "SLOPE", "FromNode", "ToNode"))
-  
-  # extract duplicates
-  dups <- data.frame(i = c(which(duplicated(shp.streams@data$OBJECTID)), 
-                           which(duplicated(shp.streams@data$OBJECTID, fromLast=T)))) %>%
-    cbind(., shp.streams@data[c(which(duplicated(shp.streams@data$OBJECTID)), 
-                                which(duplicated(shp.streams@data$OBJECTID, fromLast=T))),])
-  dups.keep <- 
-    dups %>% 
-    group_by(., OBJECTID) %>% 
-    summarize(lineLength_m = max(lineLength_m))
-  dups.null <- dups[!(paste0(dups$OBJECTID, "_", dups$lineLength_m) %in% paste0(dups.keep$OBJECTID, "_", dups.keep$lineLength_m)), ]
-  shp.streams <- shp.streams[-dups.null$i, ]
-  
-  # make stream segment number column
-  shp.streams@data$SegNum <- seq(1, dim(shp.streams@data)[1], 1)
+  # shapefile shortens names; rename them
+  names(shp.streams) <- c("OBJECTID", "REACHCODE", "TerminalPa", "lineLength_m", "TotDASqKM", "StreamOrde", 
+                          "TerminalFl", "SLOPE", "FromNode", "ToNode", "SegNum")
   
   # rasterize
   r.riv <- rasterize(shp.streams, r.ibound, field="StreamOrde", fun='max')
@@ -262,9 +269,10 @@ if (riv){
   #             elev_m_med = median(Navarro_NED10m),
   #             elev_m_mean = mean(Navarro_NED10m),
   #             elev_m_max = max(Navarro_NED10m))
+  # df.riv.id.dem.summary$elev_m_min[df.riv.id.dem.summary$elev_m_min<0] <- 0
   # shp.riv.id@data <- left_join(shp.riv.id@data, df.riv.id.dem.summary, by=c("layer"="ID"))
   # writeOGR(shp.riv.id, "results/GIS", "MODFLOW_Navarro_InputPrepData_rivIDelev", driver="ESRI Shapefile", overwrite_layer=TRUE)
-  shp.riv.id <- readOGR("results/GIS", "MODFLOW_Navarro_InputPrepData_rivIDelev")
+  shp.riv.id <- readOGR(file.path("results", "GIS"), "MODFLOW_Navarro_InputPrepData_rivIDelev")
   names(shp.riv.id) <- c("layer", "elev_m_min", "elev_m_med", "elev_m_mean", "elev_m_max")
   
   # get intersecting rivers
@@ -840,16 +848,15 @@ if (riv){
   
   ## save output data
   # RIV
-  write.table(i.riv, "modflow/input/iriv.txt", sep=" ", row.names=F, col.names=T)
-  writeRaster(r.riv.length, "modflow/input/iriv.tif", datatype="INT2S", overwrite=T)
-  writeOGR(shp.streams, "modflow/input", "iriv", driver="ESRI Shapefile", overwrite_layer=TRUE)
+  write.table(i.riv, file.path("modflow", "input", "iriv.txt"), sep=" ", row.names=F, col.names=T)
+  writeRaster(r.riv.length, file.path("modflow", "input", "iriv.tif"), datatype="INT2S", overwrite=T)
   
   # SFR
-  write.table(riv.seg.out, "modflow/input/isfr_ReachData.txt", sep=" ", row.names=F, col.names=T)
-  write.table(riv.seg.info, "modflow/input/isfr_SegmentData.txt", sep=" ", row.names=F, col.names=T)
+  write.table(riv.seg.out, file.path("modflow", "input", "isfr_ReachData.txt"), sep=" ", row.names=F, col.names=T)
+  write.table(riv.seg.info, file.path("modflow", "input", "isfr_SegmentData.txt"), sep=" ", row.names=F, col.names=T)
   
   # GAGE
-  write.table(df.gages, "modflow/input/gage_data.txt", sep=" ", row.names=F, col.names=T)
+  write.table(df.gages, file.path("modflow", "input", "gage_data.txt"), sep=" ", row.names=F, col.names=T)
 }
 
 # Prep pumping well data --------------------------------------------------
