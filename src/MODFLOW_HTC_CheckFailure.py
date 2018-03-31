@@ -7,7 +7,7 @@ import os, glob, re
 import numpy as np
 
 # define the folder and the prefix
-dir_runs = os.path.join('modflow', 'HTC', 'Navarro', 'SteadyState', 'SFR')
+dir_runs = os.path.join('modflow', 'HTC', 'Navarro', 'SteadyState', 'RIV')
 prefix_runs = 'mf'
 
 # get filenames
