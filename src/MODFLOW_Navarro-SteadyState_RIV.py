@@ -99,7 +99,7 @@ depth = 4  # river depth?
 river_width = 10
 riverbed_thickness = 1
 riverbed_K = hk/10
-iriv['cond'] = round(riverbed_K*river_width*iriv['length_m']*riverbed_thickness)   # river bottom conductance? 
+iriv['cond'] = round(riverbed_K*river_width*iriv['totalLength_m']*riverbed_thickness)   # river bottom conductance? 
 
 # figure out which reaches are in the Navarro River HUC10
 iriv['Navarro'] = False

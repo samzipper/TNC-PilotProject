@@ -13,6 +13,8 @@ source("src/paths+packages.R")
 # X and Y resolution
 DELR <- 100  # x spacing - column width
 DELC <- 100  # y spacing - row height
+DELV <- 25   # z spacing - layer height
+nlay <- 3    # number of layers
 
 # what variables to process?
 ibound <- T
@@ -185,15 +187,26 @@ if (ztop){
   # put back into raster
   r.dem.proj[] <- m.dem.proj[]
   
+  # make additional layers
+  m.zbot.proj <- array(data=NA, dim=c(nrow(m.dem.proj), ncol(m.dem.proj), nlay))
+  for (l in 1:nlay){
+    if (l==1){
+      m.zbot.proj[,,l] <- m.dem.proj - DELV
+    } else {
+      m.zbot.proj[,,l] <- m.zbot.proj[,,(l-1)] - DELV
+    }
+    write.table(m.zbot.proj[,,l], file.path("modflow", "input", paste0("zbot_", l, ".txt")), sep=" ", row.names=F, col.names=F)
+  }
+  
   # save as text file
-  write.table(m.dem.proj, "modflow/input/ztop.txt", sep=" ", row.names=F, col.names=F)
+  write.table(m.dem.proj, file.path("modflow", "input", "ztop.txt"), sep=" ", row.names=F, col.names=F)
   
   # save as geotiff
-  writeRaster(r.dem.proj, "modflow/input/ztop.tif", overwrite=T)
+  writeRaster(r.dem.proj, file.path("modflow", "input", "ztop.tif"), overwrite=T)
   
 } else {
   # load already processed data
-  r.dem.proj <- raster("modflow/input/ztop.tif")
+  r.dem.proj <- raster(file.path("modflow", "input", "ztop.tif"))
   m.dem.proj <- as.matrix(r.dem.proj)
 }
 
@@ -257,6 +270,10 @@ if (riv){
   ## calculate length of river in a cell
   r.riv.id <- r.riv
   r.riv.id[is.finite(r.riv.id[])] <- 1:sum(is.finite(r.riv.id[]))
+  df.riv.pts <- data.frame(rasterToPoints(r.riv.id)) %>% set_colnames(c("lon", "lat", "layer"))
+  df.riv.pts$ncell <- cellFromXY(r.riv.id, xy=as.matrix(df.riv.pts[,c("lon", "lat")]))
+  df.riv.pts[,c("row", "col")] <- rowColFromCell(r.riv.id, df.riv.pts$ncell)
+  
   # ## this code block is VERY SLOW (hours to run)
   # ## only run it if you changed your grid resolution
   # shp.riv.id <- rasterToPolygons(r.riv.id)   # make polygons corresponding to each cell with a river in it
@@ -282,80 +299,28 @@ if (riv){
     data.frame(riv.id = r.riv.id[],
                elev_m = r.dem.proj[],
                ibound = r.ibound[]) %>% 
-    left_join(x=riv.int@data, y=., by=c("layer"="riv.id"))
+    left_join(x=riv.int@data, y=., by=c("layer"="riv.id")) %>% 
+    left_join(x=., y=df.riv.pts, by=c("layer"))
+  colnames(riv.int@data)[colnames(riv.int@data)=="layer"] <- "id"
   
-  # sum length for each cell
-  x <- tapply(riv.int$length_m, riv.int$layer, sum)
-  r.riv.length <- r.riv.id
-  r.riv.length[is.finite(r.riv.length[])] <- x
-  
-  # extract as matrix
-  m.riv <- as.matrix(r.riv.length)
-  
-  # get rid of those outside of domain
-  m.riv[m.ibound==0] <- NA
-  
-  # put back into raster
-  r.riv.length[] <- m.riv[]
-  
-  ## summarize elevation metrics for each cell
-  r.elev.min <- r.riv.id
-  r.elev.mean <- r.riv.id
-  r.elev.med <- r.riv.id
-  r.elev.max <- r.riv.id
-  r.SegNum <- r.riv.id
-  
-  r.elev.min[is.finite(r.elev.min[])] <- tapply(riv.int$elev_m_min, riv.int$layer, min)
-  r.elev.mean[is.finite(r.elev.mean[])] <- tapply(riv.int$elev_m_mean, riv.int$layer, mean)
-  r.elev.med[is.finite(r.elev.med[])] <- tapply(riv.int$elev_m_med, riv.int$layer, median)
-  r.elev.max[is.finite(r.elev.max[])] <- tapply(riv.int$elev_m_max, riv.int$layer, max)
-  r.SegNum[is.finite(r.SegNum[])] <- tapply(riv.int$SegNum, riv.int$layer, min)
-  
-  m.elev.min <- as.matrix(r.elev.min)
-  m.elev.mean <- as.matrix(r.elev.mean)
-  m.elev.med <- as.matrix(r.elev.med)
-  m.elev.max <- as.matrix(r.elev.max)
-  m.SegNum <- as.matrix(r.SegNum)
-  
-  m.elev.min[m.ibound==0] <- NA
-  m.elev.mean[m.ibound==0] <- NA
-  m.elev.med[m.ibound==0] <- NA
-  m.elev.max[m.ibound==0] <- NA
-  m.SegNum[m.ibound==0] <- NA
-  
-  r.elev.min[] <- m.elev.min[]
-  r.elev.mean[] <- m.elev.mean[]
-  r.elev.med[] <- m.elev.med[]
-  r.elev.max[] <- m.elev.max[]
-  r.SegNum[] <- m.SegNum[]
-  
+  # summarize some metrics for each cell
+  riv.int.cell <- 
+    riv.int@data[,c("ncell", "id", "row", "col", "ibound", "elev_m_min", "elev_m_med", "elev_m_mean", "elev_m_max", "elev_m", "length_m", "SegNum")] %>% 
+    group_by(ncell, id, row, col, ibound, elev_m_min, elev_m_med, elev_m_mean, elev_m_max, elev_m) %>% 
+    summarize(totalLength_m = sum(length_m),
+              n.segments = length(unique(SegNum))) %>% 
+    subset(ibound != 0)
+
   # rasterize and extract HUC12 watershed number
   r.HUC <- rasterize(shp.adj.UTM, r.ibound, field='HUC12', fun='max')
-  m.HUC <- as.matrix(r.HUC)
-  m.HUC[m.ibound==0] <- NA
+  riv.int.cell$HUC <- raster::extract(r.HUC, riv.int.cell$ncell)
   
   # matrix indices
-  i.riv <- data.frame(which(is.finite(m.riv), arr.ind=T))
+  i.riv <- riv.int.cell[,c("row", "col", "elev_m_min", "elev_m_med", "elev_m_mean", "elev_m_max", "elev_m", "totalLength_m")]
   
   # add layer
   i.riv$lay <- 1
-  
-  # extract elevation metrics
-  i.riv$elev_dem_m <- m.dem.proj[which(is.finite(m.riv))]
-  i.riv$elev_min_m <- m.elev.min[which(is.finite(m.riv))]
-  i.riv$elev_mean_m <- m.elev.mean[which(is.finite(m.riv))]
-  i.riv$elev_med_m <- m.elev.med[which(is.finite(m.riv))]
-  i.riv$elev_max_m <- m.elev.max[which(is.finite(m.riv))]
-  
-  # extract river length, which is part of conductance calculation
-  i.riv$length_m <- m.riv[which(is.finite(m.riv))]
-  
-  # extract stream order
-  i.riv$stream_order <- m.riv.order[which(is.finite(m.riv))]
-  
-  # extract segment number
-  i.riv$SegNum <- m.SegNum[which(is.finite(m.riv))]
-  
+
   # add a reach number
   i.riv$reach <- seq(1,dim(i.riv)[1])
   
@@ -367,17 +332,7 @@ if (riv){
   i.riv$col <- i.riv$col-1
   i.riv$lay <- i.riv$lay-1
   
-  # put in data frame
-  df$iriv <- r.riv.length[]
-  df$elev_min_m <- r.elev.min[]
-  df$elev_mean_m <- r.elev.mean[]
-  df$elev_med_m <- r.elev.med[]
-  df$elev_max_m <- r.elev.max[]
-  
   ### now: SFR2 data
-  # get rid of inactive cells
-  riv.int <- subset(riv.int, ibound != 0)
-  
   # get all unique terminal points
   term.pts <- unique(riv.int$TerminalPa)
   
@@ -416,16 +371,6 @@ if (riv){
     
   }  # end of terminal paths loop
   
-  # get row/col/layer of each cell
-  df.riv.id <- data.frame(ncell = seq(1,length(r.riv.id[])))
-  df.riv.id[,c("row", "col")] <- rowColFromCell(r.riv.id, df.riv.id$ncell)
-  df.riv.id$id <- extract(r.riv.id, df.riv.id$ncell)
-  df.riv.id$ibound <- extract(r.ibound, df.riv.id$ncell)
-  df.riv.id <- df.riv.id[is.finite(df.riv.id$id) & df.riv.id$ibound != 0, ]
-  
-  # join data frame
-  riv.seg.all <- left_join(df.riv.id[,c("id", "row", "col")], riv.seg.all, by=c("id"="layer"))
-  
   ## for each river segment, figure out OUTSEG
   # get all unique segments
   riv.seg.info <- unique(riv.seg.all[,c("SegNum", "FromNode", "ToNode", "SFR_NSEG", "TerminalFl", "TerminalPa")])
@@ -445,6 +390,7 @@ if (riv){
   for (nseg in nseg.all){
     # subset data to only this segment
     riv.seg <- subset(riv.seg.all, SFR_NSEG==nseg)
+    riv.seg[,c("lon", "lat", "ncell")] <- NULL
     
     # figure out which reach has water flowing out of it
     NSEG.outseg <- riv.seg.info$SFR_OUTSEG[riv.seg.info$SFR_NSEG==nseg]
@@ -796,16 +742,12 @@ if (riv){
   riv.seg.out$SLOPE[riv.seg.out$SLOPE<slope.min] <- slope.min
   
   ## extract coordinates and add to data frame
-  riv.seg.out <- 
+  riv.seg.out <-
     cellFromRowCol(r.riv.id, rownr=riv.seg.out$row, colnr=riv.seg.out$col) %>% 
     xyFromCell(r.riv.id, cell=.) %>% 
     data.frame(.) %>% 
     set_colnames(c("lon", "lat")) %>% 
     cbind(riv.seg.out, .)
-    
-  ## make a matrix showing where SFR features exist
-  m.sfr <- matrix(data=NA, nrow=nrow(m.riv), ncol=ncol(m.riv))
-  m.sfr[as.matrix(unique(riv.seg.out[,c("row", "col")]))] <- 1
   
   # python indexing is 0-based so subtract 1 from row/col
   riv.seg.out$row <- riv.seg.out$row-1
@@ -814,6 +756,10 @@ if (riv){
   # put in order
   riv.seg.info <- riv.seg.info[order(riv.seg.info$SFR_NSEG), ]
   riv.seg.out <- riv.seg.out[with(riv.seg.out, order(SFR_NSEG, SFR_IREACH)), ]
+  
+  ## subtract 1 from row/col numbers in riv.int@data to match other data frames
+  riv.int@data$row <- riv.int@data$row-1
+  riv.int@data$col <- riv.int@data$col-1
   
   ## set up gaging stations
   # define gages by USGS gage numbers
@@ -844,11 +790,11 @@ if (riv){
     which(tot.diff.gages == min(tot.diff.gages), arr.ind = TRUE)[,"col"] %>% 
     riv.seg.out[., c("row", "col", "REACHCODE", "TotDASqKM", "StreamOrde", "SegNum", "SFR_NSEG", "SFR_IREACH")] %>% 
     cbind(df.gages@data, .)
-
   
   ## save output data
   # RIV
   write.table(i.riv, file.path("modflow", "input", "iriv.txt"), sep=" ", row.names=F, col.names=T)
+  write.table(riv.int@data, file.path("modflow", "input", "iriv_ReachData.txt"), sep=" ", row.names=F, col.names=T)
   writeRaster(r.riv.length, file.path("modflow", "input", "iriv.tif"), datatype="INT2S", overwrite=T)
   
   # SFR
