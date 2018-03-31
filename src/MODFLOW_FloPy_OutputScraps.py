@@ -1,6 +1,9 @@
 ## MODFLOW_FloPyOutputScraps.py
 # Random commands for processing, plotting FloPy output
 
+import flopy.utils.binaryfile as bf
+import flopy.utils.sfroutputfile as sf
+
 #### plot results ####
 ## look at output
 # figure out timestep
@@ -68,6 +71,7 @@ plt.colorbar(im, label='Streamflow, in cubic meters per day');
 
 ## load RIV output
 rivout = bf.CellBudgetFile(os.path.join(model_ws, modelname+'.riv.out'), verbose=True)
+rivout_df = rivout.get_data(totim=time, text='RIVER LEAKAGE')
 rivout_3D = rivout.get_data(totim=time, text='RIVER LEAKAGE', full3D=True)
 iriv['leakage'] = rivout_3D[0][iriv['lay'],iriv['row'],iriv['col']]
 rivout.close()

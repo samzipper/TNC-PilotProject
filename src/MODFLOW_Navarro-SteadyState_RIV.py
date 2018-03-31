@@ -8,8 +8,6 @@ import os
 import numpy as np
 import flopy
 import pandas as pd
-import flopy.utils.binaryfile as bf
-import flopy.utils.sfroutputfile as sf
 
 # where is your MODFLOW-2005 executable?
 path2mf = 'C:/Users/Sam/Dropbox/Work/Models/MODFLOW/MF2005.1_12/bin/mf2005.exe'
@@ -113,7 +111,7 @@ for r in range(0,iriv.shape[0]):
 #    riv_list.append([iriv['lay'][r], iriv['row'][r], iriv['col'][r], 
 #                     0, cond, 0-depth]) 
     riv_list.append([iriv['lay'][r], iriv['row'][r], iriv['col'][r], 
-                     iriv['elev_min_m'][r], iriv['cond'][r], iriv['elev_min_m'][r]-depth])    
+                     iriv['elev_m_min'][r], iriv['cond'][r], iriv['elev_m_min'][r]-depth])    
 riv_spd = {0: riv_list}
 
 # make MODFLOW object
