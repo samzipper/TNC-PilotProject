@@ -311,6 +311,12 @@ if (riv){
               n.segments = length(unique(SegNum))) %>% 
     subset(ibound != 0)
 
+  # add n.segments and totalLength to riv.int
+  riv.int@data <- left_join(riv.int@data, riv.int.cell)
+  
+  # calculate proportion of total length for a given cell that each segment has
+  riv.int@data$seg_proportion <- riv.int@data$length_m/riv.int@data$totalLength_m
+  
   # rasterize and extract HUC12 watershed number
   r.HUC <- rasterize(shp.adj.UTM, r.ibound, field='HUC12', fun='max')
   riv.int.cell$HUC <- raster::extract(r.HUC, riv.int.cell$ncell)
