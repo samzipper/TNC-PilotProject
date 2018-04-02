@@ -3,7 +3,7 @@
 # and figure out which ones failed.
 
 # imports
-import os, glob, re
+import os, glob
 import numpy as np
 
 # define the folder and the prefix

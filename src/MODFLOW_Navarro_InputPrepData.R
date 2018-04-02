@@ -324,9 +324,6 @@ if (riv){
   # add a reach number
   i.riv$reach <- seq(1,dim(i.riv)[1])
   
-  # extract HUC number
-  i.riv$HUC <- m.HUC[which(is.finite(m.riv))]
-  
   # because lay/row/col are all 0-based in Python, subtract 1
   i.riv$row <- i.riv$row-1
   i.riv$col <- i.riv$col-1
