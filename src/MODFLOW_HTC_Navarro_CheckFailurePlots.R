@@ -9,8 +9,11 @@
 
 source("src/paths+packages.R")
 
+## which stream BC are you using?
+stream_BC = "SFR"  # RIV or SFR
+
 ## define which directory you are interested in
-dir.runs <- file.path("modflow", "HTC", "Navarro", "SteadyState", "SFR")
+dir.runs <- file.path("modflow", "HTC", "Navarro", "SteadyState", stream_BC)
 
 ## load common data
 # domain boundary shapefile
@@ -55,9 +58,14 @@ p.wel.succ <-
   geom_polygon(data=df.basin, aes(x=long, y=lat, group=group), fill=NA, color="red") +
   geom_path(data=df.riv, aes(x=long, y=lat, group=group), color="blue") +
   geom_point(data=df.wel, aes(x=lon, y=lat, color=Success)) +
+  labs(title=dir.runs) +
   scale_x_continuous(name="Easting [m]", expand=c(0,0), breaks=map.breaks.x) +
   scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
   scale_fill_viridis(name="Head [m]", na.value="white") +
   scale_color_manual(name="Converged?", values=c("False"=col.cat.org, "True"=col.cat.grn)) +
   coord_equal() +
-  theme(axis.text.y=element_text(angle=90, hjust=0.5))
+  theme(axis.text.y=element_text(angle=90, hjust=0.5),
+        legend.position=c(0.01, 0.01),
+        legend.justification=c(0,0))
+ggsave(file.path(dir.runs, "CheckFailure.png"), p.wel.succ,
+       width=150, height=150, units="mm")
