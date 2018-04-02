@@ -37,10 +37,11 @@ for w in succ.WellNum:
         rivout.close()
 
         ## join leakage to reach_data
-        iriv_merge = pd.merge(iriv_ReachData[['SegNum', 'row', 'col']], iriv_copy[['row', 'col', 'leakage']],
+        iriv_merge = pd.merge(iriv_ReachData[['SegNum', 'row', 'col','seg_proportion']], iriv_copy[['row', 'col', 'leakage']],
                               how='left', on=['row','col'])
                               
         ## summarize by segment number
+        iriv_merge['leakage'] = iriv_merge['leakage']*iriv_merge['seg_proportion']
         iriv_out = iriv_merge.groupby('SegNum', as_index=False).agg({'leakage': 'sum'})
         iriv_out['WellNum'] = w
 
