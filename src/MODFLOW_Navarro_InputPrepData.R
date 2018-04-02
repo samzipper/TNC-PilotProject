@@ -757,6 +757,7 @@ if (riv){
   ## subtract 1 from row/col numbers in riv.int@data to match other data frames
   riv.int@data$row <- riv.int@data$row-1
   riv.int@data$col <- riv.int@data$col-1
+  riv.int@data <- subset(riv.int@data, ibound != 0)
   
   ## set up gaging stations
   # define gages by USGS gage numbers
