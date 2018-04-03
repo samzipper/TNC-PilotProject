@@ -24,11 +24,13 @@ require(gstat)
 require(geosphere)
 require(magrittr)
 require(dismo)
+require(hydroGOF)
 
 ## metadata about watershed
 station.outlet <- "11468000"  # USGS gage station number for outlet gauge
 station.outlet.name <- "NAVARRO R NR NAVARRO CA"
 HUC <- "1801010804"  # navarro
+outlet.TerminalPa <- 10013609
 area.mi2 <- 303  # gage contributing area (from https://waterdata.usgs.gov/nwis/inventory/?site_no=11468000)
 area.km2 <- area.mi2*1.609344*1.609344
 baseflow.cfs <- 8.4  # baseflow requirement from Table 7 in final cannabis policy https://www.waterboards.ca.gov/board_decisions/adopted_orders/resolutions/2017/final_cannabis_policy_with_att_a.pdf
@@ -111,12 +113,14 @@ map.breaks.x <- seq(440000, 480000, 20000)
 map.breaks.y <- seq(4300000, 4340000, 20000)
 
 ## color palettes
-# categorical color palette
+# categorical color palette from https://sashat.me/2017/01/11/list-of-20-simple-distinct-colors/
 col.cat.grn <- "#3cb44b"   # green
 col.cat.yel <- "#ffe119"   # yellow
 col.cat.org <- "#f58231"   # orange
 col.cat.red <- "#e6194b"   # red
 col.cat.blu <- "#0082c8"   # blue
+pal.method <- c("f.TPoly"=col.cat.grn, "f.InvDist"=col.cat.yel, "f.InvDistSq"=col.cat.org, "f.Web"=col.cat.red, "f.WebSq"=col.cat.blu)
+labels.method <- c("f.TPoly"="Thiessen", "f.InvDist"="Inverse", "f.InvDistSq"="Inverse\nSquared", "f.Web"="Web", "f.WebSq"="Web\nSquared")
 
 # NLCD color palette
 pal.NLCD <- c("11"="#5475A8", 
@@ -182,6 +186,43 @@ g_legend<-function(a.gplot){
   leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
   legend <- tmp$grobs[[leg]]
   return(legend)}
+
+## fit functions
+## functions from Gudmundsson et al. (2012) for modified version of KGE
+# eq. 5 - units of output from these will be same as input units of sim and obs
+#         the ideal value for each of these is 0.0
+sd.p <- function(x){sqrt((length(x)-1)/length(x))*sd(x)}  # from https://stackoverflow.com/questions/44339070/calculating-population-standard-deviation-in-r
+MSE.bias <- function(sim,obs){(mean(sim)-mean(obs))^2}
+MSE.var <- function(sim,obs){(sd.p(sim)-sd.p(obs))^2}
+MSE.cor <- function(sim,obs){
+  if (sd(obs)==0 | sd(sim)==0){
+    0 
+  } else {
+    2*sd.p(sim)*sd.p(obs)*(1-cor(sim,obs))
+  }
+}
+MSE <- function(sim,obs){MSE.bias(sim,obs)+MSE.var(sim,obs)+MSE.cor(sim,obs)}   # this outputs slightly different results than mse() in the hydroGOF package
+
+# eq. 6 - the ideal value for each is 0.0,but these are normalized and will always sum to 1.0
+MSE.bias.norm <- function(sim,obs){
+  MSE.bias(sim,obs)/MSE(sim,obs)
+}
+
+MSE.var.norm <- function(sim,obs){
+  MSE.var(sim,obs)/MSE(sim,obs)
+}
+
+MSE.cor.norm <- function(sim,obs){
+  MSE.cor(sim,obs)/MSE(sim,obs)
+}
+
+# R2
+R2 <- function(sim, obs) {
+  if (length(sim) != length(obs)) stop("vectors not the same size")
+  return((sum((obs-mean(obs))*(sim-mean(sim)))/
+            ((sum((obs-mean(obs))^2)^0.5)*(sum((sim-mean(sim))^2)^0.5)))^2)
+}
+
 
 # apportionment functions: inverse distance
 apportion.inv.dist <- function(reach, dist, w, col.names=c("reach", "frac.depletion")){

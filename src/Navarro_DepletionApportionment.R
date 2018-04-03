@@ -26,6 +26,10 @@ spdf.wel <- SpatialPointsDataFrame(coords = xy, data = df.wel,
 ## load stream data - created in MODFLOW_Navarro_InputPrepData.R
 shp.streams <- readOGR(dsn="modflow/input", layer="iriv")
 
+# shapefile shortens names; rename them
+names(shp.streams) <- c("OBJECTID", "REACHCODE", "TerminalPa", "lineLength_m", "TotDASqKM", "StreamOrde", 
+                        "TerminalFl", "SLOPE", "FromNode", "ToNode", "SegNum")
+
 # data frame for ggplots
 df.streams <- tidy(shp.streams, id=SegNum)
 
@@ -52,11 +56,11 @@ spdf.ibound$distToStream <- gDistance(spdf.ibound, shp.streams.dissolve, byid=T)
 # calculate local area (95th percentile) [m]
 local.area.m <- quantile(spdf.ibound$distToStream, 0.95)
 
-# double the local area because it seems too small...
-local.area.m <- local.area.m*2
+# increase local area by 5x to include streams several catchments distant
+local.area.m <- local.area.m*5
 
 # # diagnostic plots to make sure things worked...
-# ggplot() + 
+# ggplot() +
 #   geom_point(data=as.data.frame(spdf.ibound), aes(x=lon, y=lat, color=distToStream)) +
 #   geom_path(data=df.streams, aes(x=long, y=lat, group=group))
 # 
@@ -163,5 +167,5 @@ df.apportion.all[is.na(df.apportion.all)] <- 0
 # Save output -------------------------------------------------------------
 
 write.csv(df.apportion.all, 
-          "results/Navarro_DepletionApportionment_AllMethods+Wells+Reaches.csv", 
+          file.path("results","Navarro_DepletionApportionment_AllMethods+Wells+Reaches.csv"), 
           row.names=F)
