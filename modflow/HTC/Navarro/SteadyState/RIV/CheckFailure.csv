@@ -256,6 +256,7 @@ WellNum,Success
 327,True
 328,True
 329,True
+33,True
 330,True
 331,True
 332,True
@@ -266,6 +267,7 @@ WellNum,Success
 337,True
 338,True
 339,False
+34,True
 340,False
 341,True
 342,True
@@ -276,6 +278,7 @@ WellNum,Success
 347,True
 348,True
 349,True
+35,True
 350,False
 351,False
 352,True
@@ -286,6 +289,7 @@ WellNum,Success
 357,False
 358,True
 359,True
+36,True
 360,False
 361,True
 362,True
@@ -296,6 +300,7 @@ WellNum,Success
 367,True
 368,True
 369,True
+37,True
 370,True
 371,True
 372,True
@@ -306,6 +311,7 @@ WellNum,Success
 377,True
 378,True
 379,True
+38,False
 380,True
 381,True
 382,True
@@ -316,6 +322,7 @@ WellNum,Success
 387,True
 388,True
 389,False
+39,True
 390,True
 391,True
 392,True
@@ -425,9 +432,22 @@ WellNum,Success
 486,True
 487,True
 488,True
+489,True
 49,True
+490,False
+491,True
+492,True
+493,False
+494,True
+495,False
+496,True
+497,True
+498,True
+499,True
 5,True
 50,True
+500,True
+501,True
 502,True
 503,True
 504,True
