@@ -14,7 +14,7 @@ import shutil
 path2mf = 'mf2005'   # this was compiled with pymake and added to path so should be accessible everywhere
 
 # do you want to use RIV or SFR for stream features?
-stream_BC = 'RIV'  # options: 'RIV' 'SFR'
+stream_BC = 'SFR'  # options: 'RIV' 'SFR'
 
 # check if model workspace exists; create if not
 model_prefix = 'mf'
@@ -209,7 +209,7 @@ shutil.copy2(os.path.join('modflow', 'HTC', 'Navarro', 'SteadyState', stream_BC,
 iwel = pd.read_table(os.path.join('modflow', 'input', 'iwel.txt'), delimiter=' ')
 
 # define pumping rate
-Qw = -5000  # [m3/d]
+Qw = -6*100*0.00378541  # [m3/d]  6 gal/plant/day*100 plants*0.00378541 m3/gal
 
 for w in range(0,iwel.shape[0]):
     WellNum = iwel['WellNum'][w]

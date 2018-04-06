@@ -1,5 +1,4 @@
 #!/bin/bash -l
-#SBATCH --account=def-tgleeson
 #SBATCH --time=0-0:02:00
 #SBATCH --nodes=1
 #SBATCH --array=0-787

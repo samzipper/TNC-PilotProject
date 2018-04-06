@@ -62,3 +62,7 @@ for w in succ.WellNum:
 ## save all output
 np.savetxt(os.path.join(dir_runs, 'RIV-SummarizeLeakage.csv'), iriv_all,
         delimiter=",", header="SegNum,leakage,WellNum", comments='')
+
+## print total leakage across all segments
+iriv_summary = iriv_all.groupby('WellNum', as_index=False).agg({'leakage': 'sum'})
+print(iriv_summary.head())

@@ -7,7 +7,7 @@ import os, glob
 import numpy as np
 
 # define the folder and the prefix
-dir_runs = os.path.join('modflow', 'HTC', 'Navarro', 'SteadyState', 'RIV')
+dir_runs = os.path.join('modflow', 'HTC', 'Navarro', 'SteadyState', 'SFR')
 prefix_runs = 'mf'
 
 # get filenames
@@ -36,7 +36,8 @@ for f in np.arange(0, len(files)):
 
 # combine and save output
 output = np.column_stack((num_all,succ_all))
-np.savetxt(os.path.join(dir_runs, 'CheckFailure.csv'), output,
+output_sort = output[output[:,0].argsort()]
+np.savetxt(os.path.join(dir_runs, 'CheckFailure.csv'), output_sort,
         delimiter=",", fmt='%s', header="WellNum,Success", comments='')
 
 print('successes: ', sum(succ_all))
