@@ -6,7 +6,7 @@
 source("src/paths+packages.R")
 
 ## what is the pumping rate?
-Qw <- -5000  # [m3/d]
+Qw <- -6*100*0.00378541  # [m3/d]
 
 ## choose stream boundary condition
 stream_BC <- "RIV"  # RIV or SFR (have not processed SFR data yet)

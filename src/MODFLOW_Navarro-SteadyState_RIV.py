@@ -68,9 +68,9 @@ bas = flopy.modflow.ModflowBas(mf, ibound=ibound, strt=0)
 
 ## flow properties
 # properties
-hk = (1e-5)*86400     # horizontal K, convert [m/s] to [m/d]
+hk = 0.0007534602     # horizontal K, convert [m/d] (using domain mean for now)
 vka = 1.    # anisotropy
-sy = 0.2    # specific yield
+sy = 0.09    # specific yield (using 50% of domain mean porosity for now)
 ss = 1e-5  # specific storage
 laytyp = 1  # layer type
 
@@ -98,10 +98,6 @@ river_width = 10
 riverbed_thickness = 1
 riverbed_K = hk/10
 iriv['cond'] = round(riverbed_K*river_width*iriv['totalLength_m']*riverbed_thickness)   # river bottom conductance? 
-
-# figure out which reaches are in the Navarro River HUC10
-iriv['Navarro'] = False
-iriv.loc[(iriv['HUC'] >= HUC10*100) & (iriv['HUC'] < (HUC10+1)*100), 'Navarro'] = True
 
 # empty list to hold stress period data
 riv_list = []

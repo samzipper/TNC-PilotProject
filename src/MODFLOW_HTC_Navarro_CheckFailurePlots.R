@@ -10,7 +10,7 @@
 source("src/paths+packages.R")
 
 ## which stream BC are you using?
-stream_BC = "SFR"  # RIV or SFR
+stream_BC = "RIV"  # RIV or SFR
 
 ## define which directory you are interested in
 dir.runs <- file.path("modflow", "HTC", "Navarro", "SteadyState", stream_BC)
@@ -51,6 +51,7 @@ df.wel[,c("row", "col", "lay")] <- df.wel[,c("row", "col", "lay")]+1
 # load model failure report and add to data frame
 df.wel <- read.csv(file.path(dir.runs, "CheckFailure.csv"), stringsAsFactors=F) %>% 
   left_join(df.wel, ., by="WellNum")
+df.wel$Success <- as.logical(df.wel$Success)
 
 # well success
 p.wel.succ <- 
@@ -58,11 +59,11 @@ p.wel.succ <-
   geom_polygon(data=df.basin, aes(x=long, y=lat, group=group), fill=NA, color="red") +
   geom_path(data=df.riv, aes(x=long, y=lat, group=group), color="blue") +
   geom_point(data=df.wel, aes(x=lon, y=lat, color=Success)) +
-  labs(title=dir.runs) +
+  labs(title=paste0(dir.runs, "; Success=", sum(df.wel$Success), ", Failure=", sum(df.wel$Success==F))) +
   scale_x_continuous(name="Easting [m]", expand=c(0,0), breaks=map.breaks.x) +
   scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
   scale_fill_viridis(name="Head [m]", na.value="white") +
-  scale_color_manual(name="Converged?", values=c("False"=col.cat.org, "True"=col.cat.grn)) +
+  scale_color_manual(name="Converged?", values=c("FALSE"=col.cat.org, "TRUE"=col.cat.grn)) +
   coord_equal() +
   theme(axis.text.y=element_text(angle=90, hjust=0.5),
         legend.position=c(0.01, 0.01),

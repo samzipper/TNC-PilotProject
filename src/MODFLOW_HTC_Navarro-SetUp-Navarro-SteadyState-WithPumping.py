@@ -78,6 +78,7 @@ pcg = flopy.modflow.ModflowPcg(mf, hclose=1e-2, rclose=1e-2)
 ## recharge
 # long-term average baseflow is 150 mm/yr
 rchrate = 150/(1000*365)  # [mm/yr] --> [m/d]
+# total recharge = rchrate*np.sum(ibound == 1)*delr*delc = 914428.767 m3/d over domain
 rch = flopy.modflow.ModflowRch(mf, rech=rchrate, nrchop=3)
 
 ## output control

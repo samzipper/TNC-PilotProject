@@ -18,6 +18,7 @@ nlay <- 3    # number of layers
 
 # what variables to process?
 ibound <- T
+GLHYMPS <- T
 ztop <- F
 riv <- T
 wel <- T
@@ -167,6 +168,25 @@ if (ibound){
   colnames(df) <- c("lon", "lat", "ibound")
 }
 
+# GLHYMPS data (k, n) -----------------------------------------------------
+
+if (GLHYMPS){
+  # read in rasters
+  r.logk <- raster(file.path("results", "GIS", "Navarro_logK_GLHYMPS.tif"))
+  r.porosity <- raster(file.path("results", "GIS", "Navarro_porosity_GLHYMPS.tif"))
+  
+  # first: just get some reasonable mean values to use for initial steady-state model
+  logk.mean <- mean(r.logk[], na.rm=T)
+  porosity.mean <- mean(r.porosity[], na.rm=T)
+  
+  # for Ksat, convert to m/day
+  Ksat <- (10^logk.mean)*1e7*86400
+  
+  # for Sy, use 50% of porosity
+  Sy <- porosity.mean*0.5
+}
+
+
 # Elevation (ZTOP) --------------------------------------------------------
 
 if (ztop){
@@ -210,9 +230,6 @@ if (ztop){
   m.dem.proj <- as.matrix(r.dem.proj)
 }
 
-# extract data
-df$dem.m <- r.dem.proj[]
-
 # RIV and SFR2 input data ---------------------------------------------------------
 
 if (riv){
@@ -237,18 +254,18 @@ if (riv){
   # 
   # # keep only useful columns
   # #   slope units are [m/m]
-  # shp.streams <- subset(shp.riv.adj.streams.UTM, 
+  # shp.streams <- subset(shp.riv.adj.streams.UTM,
   #                       select=c("OBJECTID", "REACHCODE", "TerminalPa", "lineLength_m",
   #                                "TotDASqKM", "StreamOrde", "TerminalFl", "SLOPE", "FromNode", "ToNode"))
   # 
   # # extract duplicates
-  # dups <- data.frame(i = c(which(duplicated(shp.streams@data$OBJECTID)), 
+  # dups <- data.frame(i = c(which(duplicated(shp.streams@data$OBJECTID)),
   #                          which(duplicated(shp.streams@data$OBJECTID, fromLast=T)))) %>%
-  #   cbind(., shp.streams@data[c(which(duplicated(shp.streams@data$OBJECTID)), 
+  #   cbind(., shp.streams@data[c(which(duplicated(shp.streams@data$OBJECTID)),
   #                               which(duplicated(shp.streams@data$OBJECTID, fromLast=T))),])
-  # dups.keep <- 
-  #   dups %>% 
-  #   group_by(., OBJECTID) %>% 
+  # dups.keep <-
+  #   dups %>%
+  #   group_by(., OBJECTID) %>%
   #   summarize(lineLength_m = max(lineLength_m))
   # dups.null <- dups[!(paste0(dups$OBJECTID, "_", dups$lineLength_m) %in% paste0(dups.keep$OBJECTID, "_", dups.keep$lineLength_m)), ]
   # shp.streams <- shp.streams[-dups.null$i, ]
@@ -319,7 +336,8 @@ if (riv){
   
   # rasterize and extract HUC12 watershed number
   r.HUC <- rasterize(shp.adj.UTM, r.ibound, field='HUC12', fun='max')
-  riv.int.cell$HUC <- raster::extract(r.HUC, riv.int.cell$ncell)
+  m.HUC <- as.matrix(r.HUC)  # need this for placing wells
+  riv.int.cell$HUC <- raster::extract(r.HUC, riv.int.cell$ncell) 
   
   # matrix indices
   i.riv <- riv.int.cell[,c("row", "col", "elev_m_min", "elev_m_med", "elev_m_mean", "elev_m_max", "elev_m", "totalLength_m")]
@@ -392,7 +410,7 @@ if (riv){
   nseg.all <- unique(riv.seg.all$SFR_NSEG)
   for (nseg in nseg.all){
     # subset data to only this segment
-    riv.seg <- subset(riv.seg.all, SFR_NSEG==nseg)
+    riv.seg <- subset(riv.seg.all, SFR_NSEG==nseg)[,!(names(riv.seg.all) %in% c("totalLength_m", "n.segments", "seg_proportion"))]
     riv.seg[,c("lon", "lat", "ncell")] <- NULL
     
     # figure out which reach has water flowing out of it
@@ -795,18 +813,28 @@ if (riv){
     riv.seg.out[., c("row", "col", "REACHCODE", "TotDASqKM", "StreamOrde", "SegNum", "SFR_NSEG", "SFR_IREACH")] %>% 
     cbind(df.gages@data, .)
   
+  ## update elevation output
+  m.dem.proj[as.matrix(riv.seg.out[,c("row", "col")]+1)] <- 
+    riv.seg.out$elev_m_min
+  r.dem.proj[] <- m.dem.proj[]
+  
+  write.table(m.dem.proj, file.path("modflow", "input", "ztop.txt"), sep=" ", row.names=F, col.names=F)
+  writeRaster(r.dem.proj, file.path("modflow", "input", "ztop.tif"), overwrite=T)
+  
   ## save output data
   # RIV
   write.table(i.riv, file.path("modflow", "input", "iriv.txt"), sep=" ", row.names=F, col.names=T)
   write.table(riv.int@data, file.path("modflow", "input", "iriv_ReachData.txt"), sep=" ", row.names=F, col.names=T)
-  writeRaster(r.riv.length, file.path("modflow", "input", "iriv.tif"), datatype="INT2S", overwrite=T)
-  
+
   # SFR
   write.table(riv.seg.out, file.path("modflow", "input", "isfr_ReachData.txt"), sep=" ", row.names=F, col.names=T)
   write.table(riv.seg.info, file.path("modflow", "input", "isfr_SegmentData.txt"), sep=" ", row.names=F, col.names=T)
   
   # GAGE
   write.table(df.gages, file.path("modflow", "input", "gage_data.txt"), sep=" ", row.names=F, col.names=T)
+  
+  # add SFR data to output
+  df <- left_join(df, riv.seg.out[,c("lon", "lat", "SFR_NSEG", "SFR_IREACH", "elev_m_min", "elev_m_mean")], by=c("lon", "lat"))
 }
 
 # Prep pumping well data --------------------------------------------------
@@ -853,9 +881,13 @@ if (wel){
   # save as text file
   write.table(i.wel, "modflow/input/iwel.txt", sep=" ", row.names=F, col.names=T)
   
+  df <- left_join(df, i.wel[,c("lon", "lat", "WellNum")], by=c("lon", "lat"))
 }
 
 # Make plots --------------------------------------------------------------
+
+# extract elevation data
+df$dem.m <- r.dem.proj[]
 
 ## prep polygon boundaries
 df.basin <- tidy(spTransform(readOGR(dsn="data/NHD/WBD", layer="WBDHU10_Navarro"), crs.MODFLOW))
@@ -866,9 +898,9 @@ df.riv <- tidy(shp.riv.adj.streams.UTM)
 df$BCs <- "Inactive"
 df$BCs[df$ibound==1] <- "Active"
 df$BCs[df$ibound==-1] <- "Constant Head"
-df$BCs[is.finite(df$iriv)] <- "River"
-df$BCs <- factor(df$BCs, levels=c("Active", "Constant Head", "River", "Inactive"), 
-                 labels=c("Active", "Constant\nHead", "River", "Inactive"))
+df$BCs[is.finite(df$SFR_NSEG)] <- "SFR"
+df$BCs <- factor(df$BCs, levels=c("Active", "Constant Head", "SFR", "Inactive"), 
+                 labels=c("Active", "Constant\nHead", "SFR", "Inactive"))
 
 # plot
 p.BCs <- 
@@ -878,8 +910,8 @@ p.BCs <-
   geom_point(data=i.wel, aes(x=lon, y=lat), shape=46) +
   scale_x_continuous(name="Easting [m]", expand=c(0,0), breaks=map.breaks.x) +
   scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
-  scale_fill_manual(name="B.C.", breaks=c("Active", "Constant\nHead", "River"),
-                    values=c("Inactive"="white", "Active"="gray65", "Constant\nHead"="cyan", "River"="blue")) +
+  scale_fill_manual(name="B.C.", breaks=c("Active", "Constant\nHead", "SFR"),
+                    values=c("Inactive"="white", "Active"="gray65", "Constant\nHead"="cyan", "SFR"="blue")) +
   coord_equal() +
   theme_scz() +
   theme(axis.text.y=element_text(angle=90, hjust=0.5))

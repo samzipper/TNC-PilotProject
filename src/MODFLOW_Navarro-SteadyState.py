@@ -14,9 +14,6 @@ import flopy.utils.sfroutputfile as sf
 # where is your MODFLOW-2005 executable?
 path2mf = 'C:/Users/Sam/Dropbox/Work/Models/MODFLOW/MF2005.1_12/bin/mf2005.exe'
 
-# what HUC is Navarro River?
-HUC10 = 1801010804
-
 # check if model workspace exists; create if not
 modelname = 'Navarro-SteadyState'
 model_ws = os.path.join('modflow', modelname)
@@ -41,8 +38,6 @@ nrow = ibound.shape[0]
 ncol = ibound.shape[1]
 delr = 100
 delc = 100
-cells_in_navarro = 81533  # this is from R script
-area_navarro = cells_in_navarro*delr*delc # [m2]
 
 # discretization (time)
 nper = 1
@@ -70,9 +65,9 @@ bas = flopy.modflow.ModflowBas(mf, ibound=ibound, strt=0)
 
 ## flow properties
 # properties
-hk = (1e-5)*86400     # horizontal K, convert [m/s] to [m/d]
+hk = 0.0007534602     # horizontal K, convert [m/d] (using domain mean for now)
 vka = 1.    # anisotropy
-sy = 0.2    # specific yield
+sy = 0.09    # specific yield (using 50% of domain mean porosity for now)
 ss = 1e-5  # specific storage
 laytyp = 1  # layer type
 
@@ -83,6 +78,7 @@ pcg = flopy.modflow.ModflowPcg(mf, hclose=1e-2, rclose=1e-2)
 ## recharge
 # long-term average baseflow is 150 mm/yr
 rchrate = 150/(1000*365)  # [mm/yr] --> [m/d]
+# total recharge = rchrate*np.sum(ibound == 1)*delr*delc = 914428.767 m3/d over domain
 rch = flopy.modflow.ModflowRch(mf, rech=rchrate, nrchop=3)
 
 ## output control
@@ -93,6 +89,8 @@ oc = flopy.modflow.ModflowOc(mf, stress_period_data=spd, compact=True)
 # constant domain parameters
 depth = 4  # river depth?
 riverbed_K = hk/10
+river_width = 10
+riverbed_thickness = 1
 
 # load R output
 isfr_ReachData = pd.read_table(os.path.join('modflow', 'input', 'isfr_ReachData.txt'), delimiter=' ')
@@ -119,7 +117,8 @@ for r in range(1,isfr_ReachData.shape[0]):
                    ])
 reach_data=reach_data[:,0]
 
-# segment data (Dataset 6a-c)
+## segment data (Dataset 6a-c)
+# width1, width2 only used if icalc=3
 seg_data_array = np.array(
           [(isfr_SegmentData['SFR_NSEG'][0], 1, isfr_SegmentData['SFR_OUTSEG'][0], 
             0, 0, 0, 0, 0, 0.03, 3, 3)], 
@@ -138,15 +137,15 @@ for s in range(1,isfr_SegmentData.shape[0]):
 segment_data = {0: seg_data_array[:,0]}
 
 # constants (dataset 1c)
-nstrm = -len(reach_data) # number of reaches  # negative value so no stream parameters are needed
+nstrm = -len(reach_data)  # number of reaches  # negative value so no stream parameters are needed
 nss = len(seg_data_array) # number of segments
-nsfrpar = 0 # number of parameters (not supported)
+nsfrpar = 0      # number of parameters (not supported)
 nparseg = 0
 const = 86400    # constant for manning's equation, units of m3/d
-dleak = 0.01 # closure tolerance for stream stage computation
-ipakcb = 53 # ISTCB1= flag for writing SFR output to cell-by-cell budget (on unit 53)
-istcb2 = 81 # flag for writing SFR output to text file
-isfropt = 1  # no vertical unsat flow beneath streams
+dleak = 0.0001   # closure tolerance for stream stage computation
+ipakcb = 53      # ISTCB1= flag for writing SFR output to cell-by-cell budget (on unit 53)
+istcb2 = 81      # flag for writing SFR output to text file
+isfropt = 1      # no vertical unsat flow beneath streams
 irtflg = 0
 
 sfr = flopy.modflow.ModflowSfr2(mf, nstrm=nstrm, nss=nss, const=const, 
@@ -170,6 +169,11 @@ gage_data=[[gage_data_in.SFR_NSEG[0], gage_data_in.SFR_IREACH[0],
 
 gage = flopy.modflow.ModflowGage(mf, numgage=numgage,
                                  gage_data=gage_data, unitnumber=90)
+
+## create WEL package, but don't pump anything
+wel = flopy.modflow.mfwel.ModflowWel(mf, stress_period_data={0: [0,50,50,0]},
+                                     ipakcb=71, filenames=[modelname+'.wel', modelname+'.wel.out'])
+
 ## write inputs and run model
 # write input datasets
 mf.write_input()
