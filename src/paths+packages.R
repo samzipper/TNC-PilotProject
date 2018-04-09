@@ -76,7 +76,7 @@ dir.div <- "Z:/2.active_projects/Zipper/1.Spatial_data/regional/SouthForkEel/use
 dir.dem.NED <- "Z:/2.active_projects/Zipper/1.Spatial_data/regional/NavarroRiver/dem_topography/1original/NED10mDEM/"
 
 # NLCD: impervious, canopy, land cover
-dir.nlcd <- "Z:/2.active_projects/Zipper/1.Spatial_data/regional/NavarroRiver/lulc/1original/"
+dir.nlcd <- "Z:/2.active_projects/Zipper/1.Spatial_data/regional/NavarroRiver/lulc_imagery/1original/"
 
 # dem, slope, river network from HydroSHEDS
 path.dem.hysheds <- "Z:/2.active_projects/Zipper/1.Spatial_data/global/dem_topography/1original/HydroSHEDS/DEM_15s/na_dem_15s.tif"
