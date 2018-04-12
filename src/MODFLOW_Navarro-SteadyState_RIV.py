@@ -9,14 +9,17 @@ import numpy as np
 import flopy
 import pandas as pd
 
-# where is your MODFLOW-2005 executable?
-path2mf = 'C:/Users/Sam/Dropbox/Work/Models/MODFLOW/MF2005.1_12/bin/mf2005.exe'
+# set up your model
+modelname = 'Navarro-SteadyState'
+modflow_v = 'mfnwt'  # 'mfnwt' or 'mf2005'
 
-# what HUC is Navarro River?
-HUC10 = 1801010804
+# where is your MODFLOW-2005 executable?
+if (modflow_v=='mf2005'):
+    path2mf = 'C:/Users/Sam/Dropbox/Work/Models/MODFLOW/MF2005.1_12/bin/mf2005.exe'
+elif (modflow_v=='mfnwt'):
+    path2mf = 'C:/Users/Sam/Dropbox/Work/Models/MODFLOW/MODFLOW-NWT_1.1.3/bin/MODFLOW-NWT.exe'
 
 # check if model workspace exists; create if not
-modelname = 'Navarro-SteadyState'
 model_ws = os.path.join('modflow', modelname)
 if not os.path.isdir(model_ws):
     os.makedirs(model_ws)
@@ -26,7 +29,7 @@ if not os.path.isdir(os.path.join(model_ws, 'output')):
 
 # Assign name and create modflow model object
 mf = flopy.modflow.Modflow(modelname, exe_name=path2mf, 
-                           model_ws=model_ws)
+                           model_ws=model_ws, version=modflow_v)
 
 ## Set up DIS and BAS
 # read in text output from R for ibound
@@ -39,8 +42,6 @@ nrow = ibound.shape[0]
 ncol = ibound.shape[1]
 delr = 100
 delc = 100
-cells_in_navarro = 81533  # this is from R script
-area_navarro = cells_in_navarro*delr*delc # [m2]
 
 # discretization (time)
 nper = 1
@@ -68,15 +69,22 @@ bas = flopy.modflow.ModflowBas(mf, ibound=ibound, strt=0)
 
 ## flow properties
 # properties
-hk = 0.0007534602     # horizontal K, convert [m/d] (using domain mean for now)
+hk = 1e-12*1e7*86400     # horizontal K [m/d], convert k [m-2] to K [m/s] to K [m/d]
 vka = 1.    # anisotropy
-sy = 0.09    # specific yield (using 50% of domain mean porosity for now)
+sy = 0.10    # specific yield (using 50% of domain mean porosity for now)
 ss = 1e-5  # specific storage
 laytyp = 1  # layer type
 
 # make MODFLOW objects
 lpf = flopy.modflow.ModflowLpf(mf, hk=hk, vka=vka, sy=sy, ss=ss, laytyp=laytyp)
-pcg = flopy.modflow.ModflowPcg(mf, hclose=1e-2, rclose=1e-2)
+
+# set up solver depending on version of MODFLOW
+tol_head = 1e-2
+if (modflow_v=='MF2005'):
+    pcg = flopy.modflow.ModflowPcg(mf, hclose=tol_head, rclose=tol_head)
+elif (modflow_v=='MFNWT'):
+    # linmeth has two matrix solver options (1 or 2)
+    nwt = flopy.modflow.ModflowNwt(mf, headtol=tol_head, linmeth=2, options='COMPLEX')
 
 ## recharge
 # long-term average baseflow is 150 mm/yr
@@ -92,11 +100,11 @@ iriv = pd.read_table(os.path.join('modflow', 'input', 'iriv.txt'), delimiter=' '
 
 # constant domain parameters
 depth = 4  # river depth?
-
-# estimate conductance based on: river width, river length, riverbed thickness, riverbed K
+riverbed_K = hk/10
 river_width = 10
 riverbed_thickness = 1
-riverbed_K = hk/10
+
+# estimate conductance based on: river width, river length, riverbed thickness, riverbed K
 iriv['cond'] = round(riverbed_K*river_width*iriv['totalLength_m']*riverbed_thickness)   # river bottom conductance? 
 
 # empty list to hold stress period data
@@ -104,8 +112,6 @@ riv_list = []
 
 # populate list
 for r in range(0,iriv.shape[0]):
-#    riv_list.append([iriv['lay'][r], iriv['row'][r], iriv['col'][r], 
-#                     0, cond, 0-depth]) 
     riv_list.append([iriv['lay'][r], iriv['row'][r], iriv['col'][r], 
                      iriv['elev_m_min'][r], iriv['cond'][r], iriv['elev_m_min'][r]-depth])    
 riv_spd = {0: riv_list}
