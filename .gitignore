@@ -24,6 +24,7 @@ modflow/*/wtd.txt
 
 # Image files
 *.png
+*.tif
 
 # History files
 .Rhistory
