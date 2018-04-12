@@ -19,7 +19,7 @@ nlay <- 3    # number of layers
 # what variables to process?
 ibound <- T
 GLHYMPS <- T
-ztop <- F
+ztop <- T
 riv <- T
 wel <- T
 
