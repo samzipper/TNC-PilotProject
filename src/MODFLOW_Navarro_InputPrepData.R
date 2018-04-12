@@ -13,12 +13,12 @@ source("src/paths+packages.R")
 # X and Y resolution
 DELR <- 100  # x spacing - column width
 DELC <- 100  # y spacing - row height
-DELV <- 25   # z spacing - layer height
-nlay <- 3    # number of layers
+DELV <- 25   # z spacing - layer height - only matters if nlay>1
+nlay <- 1    # number of layers
 
 # what variables to process?
-ibound <- T
-GLHYMPS <- T
+ibound <- F
+GLHYMPS <- F
 ztop <- T
 riv <- T
 wel <- T
@@ -157,16 +157,24 @@ if (ibound){
   writeOGR(shp.ibound, "modflow/input", "ibound", driver="ESRI Shapefile", overwrite_layer=TRUE)
   
   # save as geotiff and text
-  writeRaster(r.ibound, "modflow/input/ibound.tif", datatype="INT2S", overwrite=T)
-  writeRaster(r.ibound.HUC12, "modflow/input/ibound_HUC12.tif", overwrite=T)
+  writeRaster(r.ibound, file.path("modflow", "input", "ibound.tif"), datatype="INT2S", overwrite=T)
+  writeRaster(r.ibound.HUC12, file.path("modflow", "input", "ibound_HUC12.tif"), overwrite=T)
   
-  write.table(m.ibound, "modflow/input/ibound.txt", sep=" ", row.names=F, col.names=F)
-  write.table(m.ibound.HUC12, "modflow/input/ibound_HUC12.txt", sep=" ", row.names=F, col.names=F)
+  write.table(m.ibound, file.path("modflow", "input", "ibound.txt"), sep=" ", row.names=F, col.names=F)
+  write.table(m.ibound.HUC12, file.path("modflow", "input", "ibound_HUC12.txt"), sep=" ", row.names=F, col.names=F)
   
-  # extract data for ggplot
-  df <- data.frame(rasterToPoints(r.ibound))
-  colnames(df) <- c("lon", "lat", "ibound")
+} else {
+  # load already processed data
+  r.ibound <- raster(file.path("modflow", "input", "ibound.tif"))
+  r.ibound.HUC12 <- raster(file.path("modflow", "input", "ibound_HUC12.tif"))
+  
+  m.ibound <- as.matrix(r.ibound)
+  m.ibound.HUC12 <- as.matrix(r.ibound.HUC12)
 }
+
+# extract data for ggplot
+df <- data.frame(rasterToPoints(r.ibound))
+colnames(df) <- c("lon", "lat", "ibound")
 
 # GLHYMPS data (k, n) -----------------------------------------------------
 
@@ -191,7 +199,7 @@ if (GLHYMPS){
 
 if (ztop){
   # load elevation raster
-  r.dem <- raster(paste0(dir.dem.NED, "Navarro_NED10m.vrt"))
+  r.dem <- raster(file.path(dir.dem.NED, "Navarro_NED10m.vrt"))
   
   # reproject
   r.dem.proj <- projectRaster(r.dem, r.ibound)
@@ -208,14 +216,16 @@ if (ztop){
   r.dem.proj[] <- m.dem.proj[]
   
   # make additional layers
-  m.zbot.proj <- array(data=NA, dim=c(nrow(m.dem.proj), ncol(m.dem.proj), nlay))
-  for (l in 1:nlay){
-    if (l==1){
-      m.zbot.proj[,,l] <- m.dem.proj - DELV
-    } else {
-      m.zbot.proj[,,l] <- m.zbot.proj[,,(l-1)] - DELV
+  if (nlay > 1){
+    m.zbot.proj <- array(data=NA, dim=c(nrow(m.dem.proj), ncol(m.dem.proj), nlay))
+    for (l in 1:nlay){
+      if (l==1){
+        m.zbot.proj[,,l] <- m.dem.proj - DELV
+      } else {
+        m.zbot.proj[,,l] <- m.zbot.proj[,,(l-1)] - DELV
+      }
+      write.table(m.zbot.proj[,,l], file.path("modflow", "input", paste0("zbot_", l, ".txt")), sep=" ", row.names=F, col.names=F)
     }
-    write.table(m.zbot.proj[,,l], file.path("modflow", "input", paste0("zbot_", l, ".txt")), sep=" ", row.names=F, col.names=F)
   }
   
   # save as text file
@@ -299,10 +309,10 @@ if (riv){
   # df.riv.id.dem.summary <-
   #   df.riv.id.dem %>% 
   #   group_by(ID) %>% 
-  #   summarize(elev_m_min = min(Navarro_NED10m),
-  #             elev_m_med = median(Navarro_NED10m),
-  #             elev_m_mean = mean(Navarro_NED10m),
-  #             elev_m_max = max(Navarro_NED10m))
+  #   summarize(elev_m_min = min(Navarro_NED10m, na.rm=T),
+  #             elev_m_med = median(Navarro_NED10m, na.rm=T),
+  #             elev_m_mean = mean(Navarro_NED10m, na.rm=T),
+  #             elev_m_max = max(Navarro_NED10m, na.rm=T))
   # df.riv.id.dem.summary$elev_m_min[df.riv.id.dem.summary$elev_m_min<0] <- 0
   # shp.riv.id@data <- left_join(shp.riv.id@data, df.riv.id.dem.summary, by=c("layer"="ID"))
   # writeOGR(shp.riv.id, "results/GIS", "MODFLOW_Navarro_InputPrepData_rivIDelev", driver="ESRI Shapefile", overwrite_layer=TRUE)
@@ -726,19 +736,19 @@ if (riv){
       df.conn$id <- -9998
       df.conn$OBJECTID <- -9998
       df.conn$SFR_IREACH <- seq(from=ireach.max.this+1, by=1, length.out=dim(df.conn)[1])
-      df.conn$elev_m_min <- seq(from=elev.this <- riv.seg.ends$elev_m_min[riv.seg.ends$SFR_NSEG==nseg], 
+      df.conn$elev_m_min <- seq(from=riv.seg.ends$elev_m_min[riv.seg.ends$SFR_NSEG==nseg], 
                                 to=riv.seg.starts$elev_m_min[riv.seg.starts$SFR_NSEG==outseg.this],
                                 length.out=dim(df.conn)[1]+2)[-c(1, (dim(df.conn)[1]+2))]
-      df.conn$elev_m_mean <- seq(from=elev.this <- riv.seg.ends$elev_m_mean[riv.seg.ends$SFR_NSEG==nseg], 
+      df.conn$elev_m_mean <- seq(from=riv.seg.ends$elev_m_mean[riv.seg.ends$SFR_NSEG==nseg], 
                                  to=riv.seg.starts$elev_m_mean[riv.seg.starts$SFR_NSEG==outseg.this],
                                  length.out=dim(df.conn)[1]+2)[-c(1, (dim(df.conn)[1]+2))]
-      df.conn$elev_m_med <- seq(from=elev.this <- riv.seg.ends$elev_m_med[riv.seg.ends$SFR_NSEG==nseg], 
+      df.conn$elev_m_med <- seq(from=riv.seg.ends$elev_m_med[riv.seg.ends$SFR_NSEG==nseg], 
                                 to=riv.seg.starts$elev_m_med[riv.seg.starts$SFR_NSEG==outseg.this],
                                 length.out=dim(df.conn)[1]+2)[-c(1, (dim(df.conn)[1]+2))]
-      df.conn$elev_m_max <- seq(from=elev.this <- riv.seg.ends$elev_m_max[riv.seg.ends$SFR_NSEG==nseg], 
+      df.conn$elev_m_max <- seq(from=riv.seg.ends$elev_m_max[riv.seg.ends$SFR_NSEG==nseg], 
                                 to=riv.seg.starts$elev_m_max[riv.seg.starts$SFR_NSEG==outseg.this],
                                 length.out=dim(df.conn)[1]+2)[-c(1, (dim(df.conn)[1]+2))]
-      df.conn$elev_m <- seq(from=elev.this <- riv.seg.ends$elev_m[riv.seg.ends$SFR_NSEG==nseg], 
+      df.conn$elev_m <- seq(from=riv.seg.ends$elev_m[riv.seg.ends$SFR_NSEG==nseg], 
                             to=riv.seg.starts$elev_m[riv.seg.starts$SFR_NSEG==outseg.this],
                             length.out=dim(df.conn)[1]+2)[-c(1, (dim(df.conn)[1]+2))]
       df.conn[,c("REACHCODE", "TerminalPa", "lineLength_m", "TotDASqKM", "StreamOrde", "TerminalFl", "SLOPE",
