@@ -14,7 +14,7 @@ import platform
 
 # set up your model
 modelname = 'Navarro-SteadyState'
-modflow_v = 'mf2005'  # 'mfnwt' or 'mf2005'
+modflow_v = 'mfnwt'  # 'mfnwt' or 'mf2005'
 stream_BC = 'RIV'     # 'RIV' or 'SFR'
 
 # where is your MODFLOW-2005 executable?
@@ -208,7 +208,7 @@ wel = flopy.modflow.mfwel.ModflowWel(mf, stress_period_data={0: [0,50,50,0]},
                                      ipakcb=71, filenames=[modelname+'.wel', modelname+'.wel.out'])
 
 # set up solver depending on version of MODFLOW
-tol_head = 5e-1
+tol_head = 1e-1
 if (modflow_v=='mf2005'):
     pcg = flopy.modflow.ModflowPcg(mf, hclose=tol_head, rclose=tol_head)
 elif (modflow_v=='mfnwt'):
@@ -223,6 +223,11 @@ mf.write_input()
 success, mfoutput = mf.run_model()
 if not success:
     raise Exception('MODFLOW did not terminate normally.')
+
+## look at budget outputs
+mfl = flopy.utils.MfListBudget(os.path.join(model_ws, modelname+".list"))
+df_flux, df_vol = mfl.get_dataframes()
+print(df_flux)
 
 #### plot results ####
 ## look at output
