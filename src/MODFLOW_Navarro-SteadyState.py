@@ -13,7 +13,7 @@ import flopy.utils.sfroutputfile as sf
 
 # set up your model
 modelname = 'Navarro-SteadyState'
-modflow_v = 'mfnwt'  # 'mfnwt' or 'mf2005'
+modflow_v = 'mf2005'  # 'mfnwt' or 'mf2005'
 
 # where is your MODFLOW-2005 executable?
 if (modflow_v=='mf2005'):

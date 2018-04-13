@@ -656,116 +656,139 @@ if (riv){
     
   }
   
-  ## now: make sure each segment ends at or next to the start of the OUTSEG it drains into
-  riv.seg.starts <- subset(riv.seg.out, SFR_IREACH==1)
-  riv.seg.ends <- 
-    riv.seg.out[,c("SFR_NSEG", "SFR_IREACH")] %>% 
-    group_by(SFR_NSEG) %>% 
-    summarize(SFR_IREACH = max(SFR_IREACH),
-              end.of.seg = T) %>% 
-    left_join(riv.seg.out, ., by=c("SFR_NSEG", "SFR_IREACH")) %>% 
-    subset(end.of.seg)
-  riv.seg.ends$end.of.seg <- NULL
+  # get rid of any elev < 0
+  riv.seg.out$elev_m_min[riv.seg.out$elev_m_min<0] <- 0
   
-  # scroll through all nseg that are not terminal segments
-  nseg.check <- subset(riv.seg.info, SFR_OUTSEG != 0)$SFR_NSEG
-  for (nseg in nseg.check){
-    # get the row/col of the end of this segment
-    row.this <- riv.seg.ends$row[riv.seg.ends$SFR_NSEG==nseg]
-    col.this <- riv.seg.ends$col[riv.seg.ends$SFR_NSEG==nseg]
+  ## now: make sure each segment ends at or next to the start of the OUTSEG it drains into;
+  ##      repeat this until no more elevation adjustment necessary
+  n.toolow <- 1
+  while (n.toolow > 0){
+    # initialize n.toolow
+    n.toolow <- 0
     
-    # get OUTSEG for this segment
-    outseg.this <- riv.seg.info$SFR_OUTSEG[riv.seg.info$SFR_NSEG==nseg]
+    # get start and end of each segment
+    riv.seg.starts <- subset(riv.seg.out, SFR_IREACH==1)
+    riv.seg.ends <- 
+      riv.seg.out[,c("SFR_NSEG", "SFR_IREACH")] %>% 
+      group_by(SFR_NSEG) %>% 
+      summarize(SFR_IREACH = max(SFR_IREACH),
+                end.of.seg = T) %>% 
+      left_join(riv.seg.out, ., by=c("SFR_NSEG", "SFR_IREACH")) %>% 
+      subset(end.of.seg)
+    riv.seg.ends$end.of.seg <- NULL
     
-    # get max reach # for this segment
-    ireach.max.this <- riv.seg.ends$SFR_IREACH[riv.seg.ends$SFR_NSEG==nseg]
-    
-    # get the row/col for the start of the next segment
-    row.next <- riv.seg.starts$row[riv.seg.starts$SFR_NSEG==outseg.this]
-    col.next <- riv.seg.starts$col[riv.seg.starts$SFR_NSEG==outseg.this]
-    
-    # check if they are in neighboring cells (diagonal OK)
-    if (abs(row.this-row.next)>1 | abs(col.this-col.next)>1){
-      if (abs(row.this-row.next)>1 & abs(col.this-col.next)>1){
+    # scroll through all nseg that are not terminal segments
+    nseg.check <- subset(riv.seg.info, SFR_OUTSEG != 0)$SFR_NSEG
+    for (nseg in nseg.check){
+      # get the row/col of the end of this segment
+      row.this <- riv.seg.ends$row[riv.seg.ends$SFR_NSEG==nseg]
+      col.this <- riv.seg.ends$col[riv.seg.ends$SFR_NSEG==nseg]
+      elev.this <- riv.seg.ends$elev_m_min[riv.seg.ends$SFR_NSEG==nseg]
+      
+      # get OUTSEG for this segment
+      outseg.this <- riv.seg.info$SFR_OUTSEG[riv.seg.info$SFR_NSEG==nseg]
+      
+      # get max reach # for this segment
+      ireach.max.this <- riv.seg.ends$SFR_IREACH[riv.seg.ends$SFR_NSEG==nseg]
+      
+      # get the row/col for the start of the next segment
+      row.next <- riv.seg.starts$row[riv.seg.starts$SFR_NSEG==outseg.this]
+      col.next <- riv.seg.starts$col[riv.seg.starts$SFR_NSEG==outseg.this]
+      elev.next <- riv.seg.starts$elev_m_min[riv.seg.starts$SFR_NSEG==outseg.this]
+      
+      # fix any cells that are too low
+      if (elev.this < elev.next){
+        i.toolow <- which(riv.seg.out$elev_m_min < elev.next & riv.seg.out$SFR_NSEG==nseg)
+        riv.seg.out$elev_m_min[i.toolow] <- elev.next
+        riv.seg.ends$elev_m_min[riv.seg.ends$SFR_NSEG==nseg] <- elev.next
         
-        # get indices of row/col in between
-        path.row <- seq(row.this, row.next)[-c(1, (length(seq(row.this, row.next))))]
-        path.col <- seq(col.this, col.next)[-c(1, (length(seq(col.this, col.next))))]
-        
-        # find number of diagonals
-        n.diag <- min(c(length(path.row), length(path.col)))
-        
-        df.conn <- data.frame(row=path.row[1:n.diag],
-                              col=path.col[1:n.diag],
-                              length_m = sqrt(DELR^2+DELC^2),
-                              SFR_NSEG = nseg)
-        
-        # if there are still rows/col left
-        if (length(path.row)>n.diag){
-          df.conn.strt <- data.frame(row = path.row[(n.diag+1):length(path.row)],
-                                     col = col.next,
-                                     length_m = DELC,
-                                     SFR_NSEG = nseg)
-          df.conn <- rbind(df.conn, df.conn.strt)
-          
-        } else if (length(path.col)>n.diag){
-          df.conn.strt <- data.frame(row = row.next,
-                                     col = path.col[(n.diag+1):length(path.col)],
-                                     length_m = DELR,
-                                     SFR_NSEG = nseg)
-          df.conn <- rbind(df.conn, df.conn.strt)
-        }
-        
-      } else if (abs(row.next - row.this)>1){
-        path.row <- seq(row.this, row.next)
-        path.row <- path.row[!(path.row %in% c(row.this, row.next))]
-        df.conn <- data.frame(row = path.row,
-                              col = col.this,
-                              length_m = DELC,
-                              SFR_NSEG = nseg)
-      } else if (abs(col.next - col.this)>1){
-        path.col <- seq(col.this, col.next)
-        path.col <- path.col[!(path.col %in% c(col.this, col.next))]
-        df.conn <- data.frame(row = row.this,
-                              col = path.col,
-                              length_m = DELR,
-                              SFR_NSEG = nseg)
+        n.toolow <- n.toolow + length(i.toolow)
+        print(paste0("Too low: ", length(i.toolow), " of ", sum(riv.seg.out$SFR_NSEG==nseg), " reaches on ", nseg))
       }
       
-      # fill in other necessary columns
-      df.conn$id <- -9998
-      df.conn$OBJECTID <- -9998
-      df.conn$SFR_IREACH <- seq(from=ireach.max.this+1, by=1, length.out=dim(df.conn)[1])
-      df.conn$elev_m_min <- seq(from=riv.seg.ends$elev_m_min[riv.seg.ends$SFR_NSEG==nseg], 
-                                to=riv.seg.starts$elev_m_min[riv.seg.starts$SFR_NSEG==outseg.this],
-                                length.out=dim(df.conn)[1]+2)[-c(1, (dim(df.conn)[1]+2))]
-      df.conn$elev_m_mean <- seq(from=riv.seg.ends$elev_m_mean[riv.seg.ends$SFR_NSEG==nseg], 
-                                 to=riv.seg.starts$elev_m_mean[riv.seg.starts$SFR_NSEG==outseg.this],
-                                 length.out=dim(df.conn)[1]+2)[-c(1, (dim(df.conn)[1]+2))]
-      df.conn$elev_m_med <- seq(from=riv.seg.ends$elev_m_med[riv.seg.ends$SFR_NSEG==nseg], 
-                                to=riv.seg.starts$elev_m_med[riv.seg.starts$SFR_NSEG==outseg.this],
-                                length.out=dim(df.conn)[1]+2)[-c(1, (dim(df.conn)[1]+2))]
-      df.conn$elev_m_max <- seq(from=riv.seg.ends$elev_m_max[riv.seg.ends$SFR_NSEG==nseg], 
-                                to=riv.seg.starts$elev_m_max[riv.seg.starts$SFR_NSEG==outseg.this],
-                                length.out=dim(df.conn)[1]+2)[-c(1, (dim(df.conn)[1]+2))]
-      df.conn$elev_m <- seq(from=riv.seg.ends$elev_m[riv.seg.ends$SFR_NSEG==nseg], 
-                            to=riv.seg.starts$elev_m[riv.seg.starts$SFR_NSEG==outseg.this],
-                            length.out=dim(df.conn)[1]+2)[-c(1, (dim(df.conn)[1]+2))]
-      df.conn[,c("REACHCODE", "TerminalPa", "lineLength_m", "TotDASqKM", "StreamOrde", "TerminalFl", "SLOPE",
-                 "FromNode", "ToNode", "SegNum", "ibound")] <-
-        riv.seg.starts[riv.seg.ends$SFR_NSEG==nseg, c("REACHCODE", "TerminalPa", "lineLength_m", "TotDASqKM", "StreamOrde", "TerminalFl", "SLOPE",
-                                                      "FromNode", "ToNode", "SegNum", "ibound")]
-      
-      # status update
-      print(paste0("Connecting ", nseg, " to ", outseg.this, ": ", dim(df.conn)[1], " reach(es) created"))
-      
-      # add to overall data frame
-      riv.seg.out <- rbind(riv.seg.out, df.conn)
-      rm(df.conn)
-      
+      # check if they are in neighboring cells (diagonal OK)
+      if (abs(row.this-row.next)>1 | abs(col.this-col.next)>1){
+        if (abs(row.this-row.next)>1 & abs(col.this-col.next)>1){
+          
+          # get indices of row/col in between
+          path.row <- seq(row.this, row.next)[-c(1, (length(seq(row.this, row.next))))]
+          path.col <- seq(col.this, col.next)[-c(1, (length(seq(col.this, col.next))))]
+          
+          # find number of diagonals
+          n.diag <- min(c(length(path.row), length(path.col)))
+          
+          df.conn <- data.frame(row=path.row[1:n.diag],
+                                col=path.col[1:n.diag],
+                                length_m = sqrt(DELR^2+DELC^2),
+                                SFR_NSEG = nseg)
+          
+          # if there are still rows/col left
+          if (length(path.row)>n.diag){
+            df.conn.strt <- data.frame(row = path.row[(n.diag+1):length(path.row)],
+                                       col = col.next,
+                                       length_m = DELC,
+                                       SFR_NSEG = nseg)
+            df.conn <- rbind(df.conn, df.conn.strt)
+            
+          } else if (length(path.col)>n.diag){
+            df.conn.strt <- data.frame(row = row.next,
+                                       col = path.col[(n.diag+1):length(path.col)],
+                                       length_m = DELR,
+                                       SFR_NSEG = nseg)
+            df.conn <- rbind(df.conn, df.conn.strt)
+          }
+          
+        } else if (abs(row.next - row.this)>1){
+          path.row <- seq(row.this, row.next)
+          path.row <- path.row[!(path.row %in% c(row.this, row.next))]
+          df.conn <- data.frame(row = path.row,
+                                col = col.this,
+                                length_m = DELC,
+                                SFR_NSEG = nseg)
+        } else if (abs(col.next - col.this)>1){
+          path.col <- seq(col.this, col.next)
+          path.col <- path.col[!(path.col %in% c(col.this, col.next))]
+          df.conn <- data.frame(row = row.this,
+                                col = path.col,
+                                length_m = DELR,
+                                SFR_NSEG = nseg)
+        }
+        
+        # fill in other necessary columns
+        df.conn$id <- -9998
+        df.conn$OBJECTID <- -9998
+        df.conn$SFR_IREACH <- seq(from=ireach.max.this+1, by=1, length.out=dim(df.conn)[1])
+        df.conn$elev_m_min <- seq(from=riv.seg.ends$elev_m_min[riv.seg.ends$SFR_NSEG==nseg], 
+                                  to=riv.seg.starts$elev_m_min[riv.seg.starts$SFR_NSEG==outseg.this],
+                                  length.out=dim(df.conn)[1]+2)[-c(1, (dim(df.conn)[1]+2))]
+        df.conn$elev_m_mean <- seq(from=riv.seg.ends$elev_m_mean[riv.seg.ends$SFR_NSEG==nseg], 
+                                   to=riv.seg.starts$elev_m_mean[riv.seg.starts$SFR_NSEG==outseg.this],
+                                   length.out=dim(df.conn)[1]+2)[-c(1, (dim(df.conn)[1]+2))]
+        df.conn$elev_m_med <- seq(from=riv.seg.ends$elev_m_med[riv.seg.ends$SFR_NSEG==nseg], 
+                                  to=riv.seg.starts$elev_m_med[riv.seg.starts$SFR_NSEG==outseg.this],
+                                  length.out=dim(df.conn)[1]+2)[-c(1, (dim(df.conn)[1]+2))]
+        df.conn$elev_m_max <- seq(from=riv.seg.ends$elev_m_max[riv.seg.ends$SFR_NSEG==nseg], 
+                                  to=riv.seg.starts$elev_m_max[riv.seg.starts$SFR_NSEG==outseg.this],
+                                  length.out=dim(df.conn)[1]+2)[-c(1, (dim(df.conn)[1]+2))]
+        df.conn$elev_m <- seq(from=riv.seg.ends$elev_m[riv.seg.ends$SFR_NSEG==nseg], 
+                              to=riv.seg.starts$elev_m[riv.seg.starts$SFR_NSEG==outseg.this],
+                              length.out=dim(df.conn)[1]+2)[-c(1, (dim(df.conn)[1]+2))]
+        df.conn[,c("REACHCODE", "TerminalPa", "lineLength_m", "TotDASqKM", "StreamOrde", "TerminalFl", "SLOPE",
+                   "FromNode", "ToNode", "SegNum", "ibound")] <-
+          riv.seg.starts[riv.seg.ends$SFR_NSEG==nseg, c("REACHCODE", "TerminalPa", "lineLength_m", "TotDASqKM", "StreamOrde", "TerminalFl", "SLOPE",
+                                                        "FromNode", "ToNode", "SegNum", "ibound")]
+        
+        # status update
+        print(paste0("Connecting ", nseg, " to ", outseg.this, ": ", dim(df.conn)[1], " reach(es) created"))
+        
+        # add to overall data frame
+        riv.seg.out <- rbind(riv.seg.out, df.conn)
+        rm(df.conn)
+        
+      }
     }
     
-  }
+  }  # end of while loop
   
   ## check slope
   # define minimum allowed slope [m/m]
@@ -824,9 +847,30 @@ if (riv){
     cbind(df.gages@data, .)
   
   ## update elevation output
-  m.dem.proj[as.matrix(riv.seg.out[,c("row", "col")]+1)] <- 
-    riv.seg.out$elev_m_min
+  # there can be multiple reaches with different min elevations per cell; set DEM equal to the highest one
+  df.rowcol.elev <- 
+    riv.seg.out %>% 
+    group_by(row, col) %>% 
+    summarize(elev_m_min_max = max(elev_m_min),
+              lon = mean(lon),
+              lat = mean(lat),
+              SFR_NSEG = max(SFR_NSEG),
+              SFR_IREACH = max(SFR_IREACH))
+  m.dem.proj[as.matrix(df.rowcol.elev[,c("row", "col")])+1] <- 
+    df.rowcol.elev$elev_m_min_max
   r.dem.proj[] <- m.dem.proj[]
+  
+  if (nlay > 1){
+    m.zbot.proj <- array(data=NA, dim=c(nrow(m.dem.proj), ncol(m.dem.proj), nlay))
+    for (l in 1:nlay){
+      if (l==1){
+        m.zbot.proj[,,l] <- m.dem.proj - DELV
+      } else {
+        m.zbot.proj[,,l] <- m.zbot.proj[,,(l-1)] - DELV
+      }
+      write.table(m.zbot.proj[,,l], file.path("modflow", "input", paste0("zbot_", l, ".txt")), sep=" ", row.names=F, col.names=F)
+    }
+  }
   
   write.table(m.dem.proj, file.path("modflow", "input", "ztop.txt"), sep=" ", row.names=F, col.names=F)
   writeRaster(r.dem.proj, file.path("modflow", "input", "ztop.tif"), overwrite=T)
@@ -844,7 +888,7 @@ if (riv){
   write.table(df.gages, file.path("modflow", "input", "gage_data.txt"), sep=" ", row.names=F, col.names=T)
   
   # add SFR data to output
-  df <- left_join(df, riv.seg.out[,c("lon", "lat", "SFR_NSEG", "SFR_IREACH", "elev_m_min", "elev_m_mean")], by=c("lon", "lat"))
+  df <- left_join(df, df.rowcol.elev[,c("lon", "lat", "SFR_NSEG", "SFR_IREACH")], by=c("lon", "lat"))
 }
 
 # Prep pumping well data --------------------------------------------------
@@ -855,7 +899,8 @@ if (wel){
   m.navarro <- matrix(as.numeric(substr(as.character(m.HUC), 1, 10)==as.character(HUC)), nrow=dim(m.HUC)[1], ncol=dim(m.HUC)[2])
   
   # disable cells with either RIV or SFR
-  m.navarro[is.finite(m.riv) | is.finite(m.sfr)] <- 0
+  m.navarro[as.matrix(df.rowcol.elev[,c("row", "col")])+1] <- 0
+  m.navarro[as.matrix(riv.int@data[,c("row", "col")])+1] <- 0
   
   # create grid of wells
   wel.spacing <- 1000  # [m]
@@ -900,8 +945,11 @@ if (wel){
 df$dem.m <- r.dem.proj[]
 
 ## prep polygon boundaries
-df.basin <- tidy(spTransform(readOGR(dsn="data/NHD/WBD", layer="WBDHU10_Navarro"), crs.MODFLOW))
-df.riv <- tidy(shp.riv.adj.streams.UTM)
+df.basin <- 
+  readOGR(dsn=file.path("data", "NHD", "WBD"), layer="WBDHU10_Navarro") %>% 
+  spTransform(., crs.MODFLOW) %>% 
+  tidy(.)
+df.riv <- tidy(shp.streams)
 
 ## boundary conditions: IBOUND and RIV
 # prep data

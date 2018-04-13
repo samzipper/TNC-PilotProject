@@ -11,14 +11,14 @@ source("src/paths+packages.R")
 
 ## load common data
 # domain boundary shapefile
-shp <- readOGR(dsn="data/NHD/WBD", layer="WBDHU10_Navarro")
+shp <- readOGR(dsn=file.path("data", "NHD", "WBD"), layer="WBDHU10_Navarro")
 shp.UTM <- spTransform(shp, crs.MODFLOW)
 
-shp.adj <- readOGR(dsn="data/NHD/WBD", layer="WBDHU12_Navarro+Adjacent")
+shp.adj <- readOGR(dsn=file.path("data", "NHD", "WBD"), layer="WBDHU12_Navarro+Adjacent")
 shp.adj.UTM <- spTransform(shp.adj, crs.MODFLOW)
 
 # streamlines
-shp.streams <- readOGR(dsn="modflow/input", layer="iriv", stringsAsFactors=F)
+shp.streams <- readOGR(dsn=file.path("modflow", "input"), layer="iriv", stringsAsFactors=F)
 
 ## prep polygon boundaries for plots
 df.basin <- tidy(shp.UTM)
@@ -26,7 +26,7 @@ df.basin.adj <- tidy(shp.adj.UTM)
 df.riv <- tidy(shp.streams)
 
 ## load ibound raster
-r.ibound <- raster("modflow/input/ibound.tif")
+r.ibound <- raster(file.path("modflow", "input", "ibound.tif"))
 DELR <- res(r.ibound)[1]
 DELC <- res(r.ibound)[2]
 
@@ -37,8 +37,8 @@ colnames(df) <- c("lon", "lat", "ibound")
 # Head and WTD ---------------------------------------
 
 # load matrices
-m.head <- as.matrix(read.table("modflow/Navarro-SteadyState/output/head.txt"))
-m.wtd <- as.matrix(read.table("modflow/Navarro-SteadyState/output/wtd.txt"))
+m.head <- as.matrix(read.table(file.path("modflow", "Navarro-SteadyState", "output", "head.txt")))
+m.wtd <- as.matrix(read.table(file.path("modflow", "Navarro-SteadyState", "output", "wtd.txt")))
 
 # add to data frame
 df$head <- as.vector(t(m.head))
@@ -74,13 +74,18 @@ p <- cbind(p1, p2, size="first")
 p$heights <- unit.pmax(p1$heights, p2$heights)
 
 # save
-ggsave("modflow/Navarro-SteadyState/output/head+wtd.png",
+ggsave(file.path("modflow", "Navarro-SteadyState", "output", "head+wtd.png"),
        p, width=190, height=100, units="mm")
 
 # SFR output --------------------------------------------------------------
 
 ## load SFR data
-df.sfr <- read.csv("modflow/Navarro-SteadyState/output/sfr.csv", stringsAsFactors=F)
+df.sfr.ReachData <- read.table(file.path("modflow", "input", "isfr_ReachData.txt"), stringsAsFactors=F, header=T)
+df.sfr <- read.csv(file.path("modflow", "Navarro-SteadyState", "output", "sfr.csv"), stringsAsFactors=F)
+
+# combine output with selected ReachData
+df.sfr <- left_join(df.sfr, df.sfr.ReachData[,c("OBJECTID", "SegNum", "StreamOrde", "SFR_NSEG", "SFR_IREACH")],
+                    by=c("segment"="SFR_NSEG", "reach"="SFR_IREACH"))
 
 # get coordinates
 df.sfr$cellNum <- cellFromRowCol(r.ibound, rownr=df.sfr$row, colnr=df.sfr$column)
@@ -99,11 +104,11 @@ df.sfr$StreamType <- factor(df.sfr$StreamType, levels=c("Losing", "No Exchange",
 df.sfr <- left_join(df.sfr, df)
 
 ## going down a segment
-seg.plot <- 325
+seg.plot <- 336
 df.seg.melt <-
-  df.sfr[,c("segment", "reach", "Qin", "Qaquifer", "Qout", "stage", "head")] %>% 
-  subset(segment==seg.plot) %>% 
-  melt(., id=c("segment", "reach", "Qin"))
+  df.sfr[,c("SegNum", "reach", "Qin", "Qaquifer", "Qout", "stage", "head")] %>% 
+  subset(SegNum==seg.plot) %>% 
+  melt(., id=c("SegNum", "reach", "Qin"))
 
 p.reach.stage <-
   ggplot(subset(df.seg.melt, variable %in% c("stage", "head")), 
@@ -138,7 +143,7 @@ p <- rbind(p1, p2, p3, size="first")
 p$widths <- unit.pmax(p1$widths, p2$widths, p3$widths)
 
 # save
-ggsave("modflow/Navarro-SteadyState/output/SFR_transects.png",
+ggsave(file.path("modflow", "Navarro-SteadyState", "output", "SFR_transects.png"),
        p, width=100, height=190, units="mm")
 
 ## maps
@@ -170,7 +175,7 @@ p <- cbind(p1, p2, size="first")
 p$heights <- unit.pmax(p1$heights, p2$heights)
 
 # save
-ggsave("modflow/Navarro-SteadyState/output/SFR_maps.png",
+ggsave(file.path("modflow", "Navarro-SteadyState", "output", "SFR_maps.png"),
        p, width=190, height=100, units="mm")
 
 # Pumping results ---------------------------------------------------------
