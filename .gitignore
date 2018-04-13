@@ -11,6 +11,7 @@
 *.list
 *.lst
 *.pcg
+*.nwt
 *.rch
 *.sfr*
 *.cbc
@@ -18,9 +19,9 @@
 *.go
 *.gage
 modflow/input/*.tif
-modflow/*/head.txt
-modflow/*/sfr.csv
-modflow/*/wtd.txt
+*head.txt
+*sfr.csv
+*wtd.txt
 
 # Image files
 *.png

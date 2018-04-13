@@ -68,5 +68,5 @@ p.wel.succ <-
   theme(axis.text.y=element_text(angle=90, hjust=0.5),
         legend.position=c(0.01, 0.01),
         legend.justification=c(0,0))
-ggsave(file.path(dir.runs, "CheckFailure.png"), p.wel.succ,
+ggsave(file.path(dir.runs, paste0(stream_BC, "_CheckFailure.png")), p.wel.succ,
        width=150, height=150, units="mm")
