@@ -8,16 +8,23 @@ import os
 import numpy as np
 import flopy
 import pandas as pd
+import platform
 
 # set up your model
 modelname = 'Navarro-SteadyState'
-modflow_v = 'mf2005'  # 'mfnwt' or 'mf2005'
+modflow_v = 'mfnwt'  # 'mfnwt' or 'mf2005'
 
 # where is your MODFLOW-2005 executable?
 if (modflow_v=='mf2005'):
-    path2mf = 'C:/Users/Sam/Dropbox/Work/Models/MODFLOW/MF2005.1_12/bin/mf2005.exe'
+    if platform.system() == 'Windows':
+        path2mf = 'C:/Users/Sam/Dropbox/Work/Models/MODFLOW/MF2005.1_12/bin/mf2005.exe'
+    else: 
+        path2mf = modflow_v
 elif (modflow_v=='mfnwt'):
-    path2mf = 'C:/Users/Sam/Dropbox/Work/Models/MODFLOW/MODFLOW-NWT_1.1.3/bin/MODFLOW-NWT.exe'
+    if platform.system() == 'Windows':
+        path2mf = 'C:/Users/Sam/Dropbox/Work/Models/MODFLOW/MODFLOW-NWT_1.1.3/bin/MODFLOW-NWT.exe'
+    else:
+        path2mf = modflow_v
 
 # check if model workspace exists; create if not
 model_ws = os.path.join('modflow', modelname)

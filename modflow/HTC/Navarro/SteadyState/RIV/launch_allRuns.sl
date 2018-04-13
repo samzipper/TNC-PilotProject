@@ -5,7 +5,7 @@
 #SBATCH --job-name=mf
 #SBATCH --tasks-per-node=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=100M
+#SBATCH --mem=50M
 #SBATCH --mail-user=samuelczipper@gmail.com
 #SBATCH --mail-type=END
 #SBATCH --output=mf%a-%j.out
