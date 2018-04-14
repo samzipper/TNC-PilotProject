@@ -14,8 +14,8 @@ import platform
 
 # set up your model
 modelname = 'Navarro-SteadyState'
-modflow_v = 'mfnwt'  # 'mfnwt' or 'mf2005'
-stream_BC = 'RIV'     # 'RIV' or 'SFR'
+modflow_v = 'mf2005'  # 'mfnwt' or 'mf2005'
+stream_BC = 'SFR'     # 'RIV' or 'SFR'
 
 # where is your MODFLOW-2005 executable?
 if (modflow_v=='mf2005'):
@@ -25,7 +25,7 @@ if (modflow_v=='mf2005'):
         path2mf = modflow_v
 elif (modflow_v=='mfnwt'):
     if platform.system() == 'Windows':
-        path2mf = 'C:/Users/Sam/Dropbox/Work/Models/MODFLOW/MODFLOW-NWT_1.1.3/bin/MODFLOW-NWT.exe'
+        path2mf = 'C:/Users/Sam/Dropbox/Work/Models/MODFLOW/MODFLOW-NWT_1.1.4/bin/MODFLOW-NWT.exe'
     else:
         path2mf = modflow_v
 
@@ -74,16 +74,20 @@ dis = flopy.modflow.ModflowDis(mf, nlay, nrow, ncol,
                                nstp=nstp, steady=steady)
 bas = flopy.modflow.ModflowBas(mf, ibound=ibound, strt=0)
 
-## flow properties
-# properties
+## set up flow properties and solver depending on version of MODFLOW
 hk = 1e-11*1e7*86400     # horizontal K [m/d], convert k [m-2] to K [m/s] to K [m/d]
 layvka = 1  # if layvka != 0, vka = ratio of Kh/Kv
 vka = 1.    # anisotropy
 sy = 0.10    # specific yield (using 50% of domain mean porosity for now)
 ss = 1e-5  # specific storage
 laytyp = 1  # layer type
-
-lpf = flopy.modflow.ModflowLpf(mf, hk=hk, vka=vka, sy=sy, ss=ss, layvka=layvka, laytyp=laytyp)
+tol_head = 1e-1
+if (modflow_v=='mf2005'):
+    lpf = flopy.modflow.ModflowLpf(mf, hk=hk, vka=vka, sy=sy, ss=ss, layvka=layvka, laytyp=laytyp)
+    pcg = flopy.modflow.ModflowPcg(mf, hclose=tol_head, rclose=tol_head)
+elif (modflow_v=='mfnwt'):
+    upw = flopy.modflow.ModflowUpw(mf, hk=hk, vka=vka, sy=sy, ss=ss, layvka=layvka, laytyp=laytyp)
+    nwt = flopy.modflow.ModflowNwt(mf, headtol=tol_head, linmeth=2, options='COMPLEX')
 
 ## recharge
 # long-term average baseflow is 150 mm/yr
@@ -206,14 +210,6 @@ if (stream_BC=='SFR'):
 ## create WEL package, but don't pump anything
 wel = flopy.modflow.mfwel.ModflowWel(mf, stress_period_data={0: [0,50,50,0]},
                                      ipakcb=71, filenames=[modelname+'.wel', modelname+'.wel.out'])
-
-# set up solver depending on version of MODFLOW
-tol_head = 1e-1
-if (modflow_v=='mf2005'):
-    pcg = flopy.modflow.ModflowPcg(mf, hclose=tol_head, rclose=tol_head)
-elif (modflow_v=='mfnwt'):
-    # linmeth has two matrix solver options (1 or 2)
-    nwt = flopy.modflow.ModflowNwt(mf, headtol=tol_head, linmeth=2, options='COMPLEX')
 
 ## write inputs and run model
 # write input datasets

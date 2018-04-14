@@ -18,6 +18,7 @@
 *.spyderworkspace
 *.go
 *.gage
+*.upw
 modflow/input/*.tif
 *head.txt
 *sfr.csv
