@@ -3,7 +3,8 @@
 LIST               2  Navarro-SteadyState.list
 DIS               11  ../mf0/Navarro-SteadyState.dis 
 BAS6              13  ../mf0/Navarro-SteadyState.bas 
-LPF               15  ../mf0/Navarro-SteadyState.lpf 
+UPW               31  ../mf0/Navarro-SteadyState.upw 
+NWT               32  ../mf0/Navarro-SteadyState.nwt 
 RCH               19  ../mf0/Navarro-SteadyState.rch 
 OC                14  ../mf0/Navarro-SteadyState.oc 
 RIV               18  ../mf0/Navarro-SteadyState.riv

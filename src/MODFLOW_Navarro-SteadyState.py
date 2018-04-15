@@ -15,7 +15,7 @@ import platform
 # set up your model
 modelname = 'Navarro-SteadyState'
 modflow_v = 'mf2005'  # 'mfnwt' or 'mf2005'
-stream_BC = 'SFR'     # 'RIV' or 'SFR'
+stream_BC = 'RIV'     # 'RIV' or 'SFR'
 
 # where is your MODFLOW-2005 executable?
 if (modflow_v=='mf2005'):
@@ -30,7 +30,7 @@ elif (modflow_v=='mfnwt'):
         path2mf = modflow_v
 
 # check if model workspace exists; create if not
-model_ws = os.path.join('modflow', modelname, stream_BC)
+model_ws = os.path.join('modflow', modelname, stream_BC, modflow_v)
 if not os.path.isdir(model_ws):
     os.makedirs(model_ws)
 
