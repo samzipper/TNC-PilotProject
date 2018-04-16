@@ -25,6 +25,7 @@ require(geosphere)
 require(magrittr)
 require(dismo)
 require(hydroGOF)
+require(RCurl)
 
 ## metadata about watershed
 station.outlet <- "11468000"  # USGS gage station number for outlet gauge
@@ -334,4 +335,17 @@ apportion.tpoly <- function(reach,        # vector of reaches
   colnames(df.temp) <- col.names
   
   return(df.temp)
+}
+
+## function for sourcing scripts directly from GitHub
+source_github <- function(u) {
+  # from: https://stackoverflow.com/questions/35720660/how-to-use-an-r-script-from-github
+  # load package
+  require(RCurl)
+  
+  # read script lines from website
+  script <- getURL(u, ssl.verifypeer = FALSE)
+  
+  # parase lines and evaluate in the global environment
+  eval(parse(text = script))
 }
