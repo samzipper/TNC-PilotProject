@@ -14,8 +14,8 @@ import platform
 
 # set up your model
 modelname = 'Navarro-SteadyState'
-modflow_v = 'mf2005'  # 'mfnwt' or 'mf2005'
-stream_BC = 'RIV'     # 'RIV' or 'SFR'
+modflow_v = 'mfnwt'  # 'mfnwt' or 'mf2005'
+stream_BC = 'SFR'     # 'RIV' or 'SFR'
 
 # where is your MODFLOW-2005 executable?
 if (modflow_v=='mf2005'):

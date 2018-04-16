@@ -8,8 +8,9 @@ source("src/paths+packages.R")
 ## what is the pumping rate?
 Qw <- -6*100*0.00378541  # [m3/d]
 
-## choose stream boundary condition
-stream_BC <- "RIV"  # RIV or SFR (have not processed SFR data yet)
+## choose stream boundary condition and modflow version
+stream_BC <- "RIV"    # "RIV" or "SFR"
+modflow_v <- "mfnwt"  # "mfnwt" or "mf2005"
 
 ## load stream shapefile
 shp.streams <- readOGR(dsn=file.path("modflow", "input"), layer="iriv")
@@ -29,7 +30,7 @@ df.apportion <-
 
 ## load MODFLOW output
 df.MODFLOW <- 
-  file.path("modflow","HTC", "Navarro", "SteadyState", stream_BC, "RIV-SummarizeLeakage.csv") %>% 
+  file.path("modflow","HTC", "Navarro", "SteadyState", stream_BC, modflow_v, "RIV-SummarizeLeakage.csv") %>% 
   read.csv(stringsAsFactors=F)
 
 ## calculate MODFLOW depletion
@@ -55,8 +56,17 @@ df.MODFLOW <-
   left_join(df.MODFLOW, ., by="WellNum") %>% 
   subset(SegNum %in% segs.navarro)
 
-# calculate depletion as percentage of depletion.sum
-df.MODFLOW$depletion.prc.modflow <- df.MODFLOW$depletion_m3.d/df.MODFLOW$depletion.sum
+## two approaches to calculating modflow depletion:
+# (1) calculate depletion.prc as percentage of pumping rate (this is the definition of capture fraction from Leake et al., 2010)
+df.MODFLOW$depletion.prc.modflow <- df.MODFLOW$depletion_m3.d/Qw
+
+# # (2) calculate depletion.prc as percentage of all changes in leakage (this forces range 0-1)
+# df.MODFLOW$depletion.prc.modflow <- df.MODFLOW$depletion_m3.d/df.MODFLOW$depletion.sum
+# 
+# ggplot(df.MODFLOW, aes(x=depletion.prc.modflow.1, y=depletion.prc.modflow.2)) + 
+#   geom_abline(intercept=0, slope=1, color="gray65") + 
+#   geom_point() + 
+#   stat_smooth(method="lm")
 
 ## combine MODFLOW with analytical
 df <- 
@@ -66,6 +76,10 @@ df <-
        value.name="depletion.prc", variable.name="method")
 
 ## make plots
+# figure out limits
+min.depletion <- min(c(min(df$depletion.prc.modflow), min(df$depletion.prc), 0))
+max.depletion <- max(c(max(df$depletion.prc.modflow), max(df$depletion.prc), 1))
+
 p.depletion <-
   ggplot(df, aes(x=depletion.prc, y=depletion.prc.modflow)) +
   geom_abline(intercept=0, slope=1, color="gray65") +
@@ -73,10 +87,12 @@ p.depletion <-
   stat_smooth(method="lm") +
   facet_wrap(~method, labeller=as_labeller(labels.method)) +
   labs(title="Comparison of Depletion Apportionment Equations to Steady-State MODFLOW",
-       subtitle="Each dot = 1 stream segment response to 1 pumping well") +
-  scale_x_continuous(name="Analytical Depletion Fraction", limits=c(0,1), expand=c(0,0)) +
-  scale_y_continuous(name="MODFLOW Depletion Fraction", expand=c(0,0))
-ggsave(file.path("results", "Navarro_CompareMODFLOWtoDepletionApportionment_p.depletion.png"),
+       subtitle=paste0("MODFLOW: ", modflow_v, "; Stream BC: ", stream_BC, "; 1 dot = 1 stream segment response to 1 pumping well")) +
+  scale_x_continuous(name="Analytical Depletion Fraction", 
+                     limits=c(min.depletion,max.depletion), breaks=seq(0,1,0.25), expand=c(0,0)) +
+  scale_y_continuous(name="MODFLOW Depletion Fraction", 
+                     limits=c(min.depletion,max.depletion), breaks=seq(0,1,0.25), expand=c(0,0))
+ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_p.depletion_", stream_BC, "_", modflow_v, ".png")),
        p.depletion, width=8, height=6, units="in")
 
 # calculate fit statistics
@@ -98,3 +114,5 @@ df.fit <-
 
 # print to screen
 df.fit[,c("method", "KGE.overall")]
+
+df.fit[,c("method", "MSE.bias.norm", "MSE.var.norm", "MSE.cor.norm")]

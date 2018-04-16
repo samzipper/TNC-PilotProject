@@ -9,11 +9,12 @@
 
 source("src/paths+packages.R")
 
-## which stream BC are you using?
-stream_BC = "RIV"  # RIV or SFR
+## choose stream boundary condition and modflow version
+stream_BC <- "RIV"    # "RIV" or "SFR"
+modflow_v <- "mfnwt"  # "mfnwt" or "mf2005"
 
 ## define which directory you are interested in
-dir.runs <- file.path("modflow", "HTC", "Navarro", "SteadyState", stream_BC)
+dir.runs <- file.path("modflow", "HTC", "Navarro", "SteadyState", stream_BC, modflow_v)
 
 ## load common data
 # domain boundary shapefile
@@ -24,7 +25,7 @@ shp.adj <- readOGR(dsn=file.path("data", "NHD", "WBD"), layer="WBDHU12_Navarro+A
 shp.adj.UTM <- spTransform(shp.adj, crs.MODFLOW)
 
 # streamlines
-shp.streams <- readOGR(dsn="modflow/input", layer="iriv", stringsAsFactors=F)
+shp.streams <- readOGR(dsn=file.path("modflow", "input"), layer="iriv", stringsAsFactors=F)
 
 ## prep polygon boundaries for plots
 df.basin <- tidy(shp.UTM)
@@ -32,7 +33,7 @@ df.basin.adj <- tidy(shp.adj.UTM)
 df.riv <- tidy(shp.streams)
 
 ## load ibound raster
-r.ibound <- raster("modflow/input/ibound.tif")
+r.ibound <- raster(file.path("modflow", "input", "ibound.tif"))
 DELR <- res(r.ibound)[1]
 DELC <- res(r.ibound)[2]
 
@@ -68,5 +69,5 @@ p.wel.succ <-
   theme(axis.text.y=element_text(angle=90, hjust=0.5),
         legend.position=c(0.01, 0.01),
         legend.justification=c(0,0))
-ggsave(file.path(dir.runs, paste0(stream_BC, "_CheckFailure.png")), p.wel.succ,
+ggsave(file.path(dir.runs, "CheckFailure.png"), p.wel.succ,
        width=150, height=150, units="mm")
