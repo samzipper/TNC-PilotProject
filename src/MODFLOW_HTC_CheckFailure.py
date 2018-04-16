@@ -6,8 +6,12 @@
 import os, glob
 import numpy as np
 
+# what stream BC and modflow version?
+stream_BC = 'RIV'  # 'RIV' or 'SFR'
+modflow_v = 'mfnwt'  # 'mfnwt' or 'mf2005'
+
 # define the folder and the prefix
-dir_runs = os.path.join('modflow', 'HTC', 'Navarro', 'SteadyState', 'RIV')
+dir_runs = os.path.join('modflow', 'HTC', 'Navarro', 'SteadyState', stream_BC, modflow_v)
 prefix_runs = 'mf'
 
 # get filenames

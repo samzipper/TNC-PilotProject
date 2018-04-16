@@ -8,8 +8,12 @@ import flopy.utils.binaryfile as bf
 import pandas as pd
 import glob
 
-## set things up
-dir_runs = os.path.join('modflow', 'HTC', 'Navarro', 'SteadyState', 'RIV')
+# what stream BC and modflow version?
+stream_BC = 'RIV'  # 'RIV' or 'SFR'
+modflow_v = 'mfnwt'  # 'mfnwt' or 'mf2005'
+
+# define the folder and the prefix
+dir_runs = os.path.join('modflow', 'HTC', 'Navarro', 'SteadyState', stream_BC, modflow_v)
 prefix_runs = 'mf'
 modelname = 'Navarro-SteadyState'
 time=1
