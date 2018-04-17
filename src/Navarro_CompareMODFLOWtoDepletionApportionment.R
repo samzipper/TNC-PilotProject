@@ -9,7 +9,7 @@ source("src/paths+packages.R")
 Qw <- -6*100*0.00378541  # [m3/d]
 
 ## choose stream boundary condition and modflow version
-stream_BC <- "RIV"    # "RIV" or "SFR"
+stream_BC <- "SFR"    # "RIV" or "SFR"
 modflow_v <- "mfnwt"  # "mfnwt" or "mf2005"
 
 ## load stream shapefile
@@ -30,8 +30,17 @@ df.apportion <-
 
 ## load MODFLOW output
 df.MODFLOW <- 
-  file.path("modflow","HTC", "Navarro", "SteadyState", stream_BC, modflow_v, "RIV-SummarizeLeakage.csv") %>% 
+  file.path("modflow","HTC", "Navarro", "SteadyState", stream_BC, modflow_v, paste0(stream_BC, "-SummarizeLeakage.csv")) %>% 
   read.csv(stringsAsFactors=F)
+
+## if it's SFR: need to get SegNum
+if (stream_BC=="SFR"){
+  df.MODFLOW <- 
+    read.table(file.path("modflow", "input", "isfr_SegmentData.txt"), 
+               stringsAsFactors=F, header=T) %>% 
+    left_join(df.MODFLOW, ., by="SFR_NSEG")
+  
+}
 
 ## calculate MODFLOW depletion
 # make separate column for no pumping depletion
@@ -89,9 +98,9 @@ p.depletion <-
   labs(title="Comparison of Depletion Apportionment Equations to Steady-State MODFLOW",
        subtitle=paste0("MODFLOW: ", modflow_v, "; Stream BC: ", stream_BC, "; 1 dot = 1 stream segment response to 1 pumping well")) +
   scale_x_continuous(name="Analytical Depletion Fraction", 
-                     limits=c(min.depletion,max.depletion), breaks=seq(0,1,0.25), expand=c(0,0)) +
+                     limits=c(min.depletion,max.depletion), breaks=seq(-1,1,0.25), expand=c(0,0)) +
   scale_y_continuous(name="MODFLOW Depletion Fraction", 
-                     limits=c(min.depletion,max.depletion), breaks=seq(0,1,0.25), expand=c(0,0))
+                     limits=c(min.depletion,max.depletion), breaks=seq(-1,1,0.25), expand=c(0,0))
 ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_p.depletion_", stream_BC, "_", modflow_v, ".png")),
        p.depletion, width=8, height=6, units="in")
 

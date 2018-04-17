@@ -10,7 +10,7 @@
 source("src/paths+packages.R")
 
 ## choose stream boundary condition and modflow version
-stream_BC <- "RIV"    # "RIV" or "SFR"
+stream_BC <- "SFR"    # "RIV" or "SFR"
 modflow_v <- "mfnwt"  # "mfnwt" or "mf2005"
 
 ## define which directory you are interested in

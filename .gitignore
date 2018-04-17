@@ -28,6 +28,9 @@ modflow/input/*.tif
 *.png
 *.tif
 
+# GIS files
+*.qgs*
+
 # History files
 .Rhistory
 .Rapp.history

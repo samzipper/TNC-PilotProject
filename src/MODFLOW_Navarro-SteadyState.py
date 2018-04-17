@@ -15,7 +15,7 @@ import platform
 # set up your model
 modelname = 'Navarro-SteadyState'
 modflow_v = 'mfnwt'  # 'mfnwt' or 'mf2005'
-stream_BC = 'SFR'     # 'RIV' or 'SFR'
+stream_BC = 'RIV'     # 'RIV' or 'SFR'
 
 # where is your MODFLOW-2005 executable?
 if (modflow_v=='mf2005'):
@@ -78,8 +78,8 @@ bas = flopy.modflow.ModflowBas(mf, ibound=ibound, strt=0)
 hk = 1e-11*1e7*86400     # horizontal K [m/d], convert k [m-2] to K [m/s] to K [m/d]
 layvka = 1  # if layvka != 0, vka = ratio of Kh/Kv
 vka = 1.    # anisotropy
-sy = 0.10    # specific yield (using 50% of domain mean porosity for now)
-ss = 1e-5  # specific storage
+sy = 0.10   # specific yield (using 50% of domain mean porosity for now)
+ss = 1e-5   # specific storage
 laytyp = 1  # layer type
 tol_head = 1e-1
 if (modflow_v=='mf2005'):
