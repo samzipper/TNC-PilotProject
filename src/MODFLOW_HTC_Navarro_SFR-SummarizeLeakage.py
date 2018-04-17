@@ -52,7 +52,7 @@ for w in succ.WellNum:
         ## save RIV output
         np.savetxt(os.path.join(dir_runs, prefix_runs+str(w), 'SFR_leakage.txt'), 
                    sfr_merge[['SFR_NSEG', 'Qaquifer', 'WellNum']],
-                   header="SegNum,leakage,WellNum", comments='')
+                   header="SFR_NSEG,leakage,WellNum", comments='')
         
         ## add to overall data frame
         if (start_flag):
@@ -66,7 +66,7 @@ for w in succ.WellNum:
 
 ## save all output
 np.savetxt(os.path.join(dir_runs, 'SFR-SummarizeLeakage.csv'), sfr_all,
-           delimiter=",", header="SegNum,leakage,WellNum", comments='')
+           delimiter=",", header="SFR_NSEG,leakage,WellNum", comments='')
 
 ## print total leakage across all segments
 sfr_all_summary = sfr_all.groupby('WellNum', as_index=False).agg({'Qaquifer': 'sum'})
