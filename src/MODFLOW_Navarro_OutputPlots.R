@@ -1,5 +1,7 @@
 ## MODFLOW_Navarro_OutputPlots.R
-#' This script is intended to plot output data from MODFLOW.
+#' This script is intended to plot output data from MODFLOW:
+#'  WTE = water table elevation [m]
+#'  WTD = water table depth [m] = ELEV - WTE
 #' 
 #' We are using EPSG:26910 as our projected CRS for MODFLOW, 
 #' which has units of meters.
@@ -10,7 +12,7 @@
 source("src/paths+packages.R")
 
 ## choose stream boundary condition and modflow version
-stream_BC <- "RIV"    # "RIV" or "SFR"
+stream_BC <- "SFR"    # "RIV" or "SFR"
 modflow_v <- "mfnwt"  # "mfnwt" or "mf2005"
 
 ## load common data
@@ -38,26 +40,26 @@ DELC <- res(r.ibound)[2]
 df <- data.frame(rasterToPoints(r.ibound))
 colnames(df) <- c("lon", "lat", "ibound")
 
-# Head and WTD ---------------------------------------
+# WTE and WTD ---------------------------------------
 
 # load matrices
-m.head <- as.matrix(read.table(file.path("modflow", "Navarro-SteadyState", stream_BC, modflow_v, "head.txt")))
+m.wte <- as.matrix(read.table(file.path("modflow", "Navarro-SteadyState", stream_BC, modflow_v, "wte.txt")))
 m.wtd <- as.matrix(read.table(file.path("modflow", "Navarro-SteadyState", stream_BC, modflow_v, "wtd.txt")))
 
 # add to data frame
-df$head <- as.vector(t(m.head))
+df$wte <- as.vector(t(m.wte))
 df$wtd <- as.vector(t(m.wtd))
 
 ## make plots
-p.head <- 
+p.wte <- 
   ggplot() +
-  geom_raster(data=df, aes(x=lon, y=lat, fill=head)) +
-  geom_contour(data=df, aes(x=lon, y=lat, z=head), color="white", binwidth=50) +
+  geom_raster(data=df, aes(x=lon, y=lat, fill=wte)) +
+  geom_contour(data=df, aes(x=lon, y=lat, z=wte), color="white", binwidth=50) +
   geom_polygon(data=df.basin, aes(x=long, y=lat, group=group), fill=NA, color="red") +
   scale_x_continuous(name="Easting [m]", expand=c(0,0), breaks=map.breaks.x) +
   scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
-  labs(subtitle=paste0("Range: ", round(min(m.head, na.rm=T), 2), " to ", round(max(m.head, na.rm=T), 2), " m")) +
-  scale_fill_viridis(name="Head [m]", na.value="white") +
+  labs(subtitle=paste0("Range: ", round(min(m.wte, na.rm=T), 2), " to ", round(max(m.wte, na.rm=T), 2), " m")) +
+  scale_fill_viridis(name="WTE [m]", na.value="white") +
   coord_equal() +
   theme(axis.text.y=element_text(angle=90, hjust=0.5))
 
@@ -74,13 +76,13 @@ p.wtd <-
 
 ## save plots
 # align
-p1 <- ggplotGrob(p.head+theme(legend.position="bottom"))
+p1 <- ggplotGrob(p.wte+theme(legend.position="bottom"))
 p2 <- ggplotGrob(p.wtd+theme(legend.position="bottom"))
 p <- cbind(p1, p2, size="first")
 p$heights <- unit.pmax(p1$heights, p2$heights)
 
 # save
-ggsave(file.path("modflow", "Navarro-SteadyState", stream_BC, modflow_v, "head+wtd.png"),
+ggsave(file.path("modflow", "Navarro-SteadyState", stream_BC, modflow_v, "wte+wtd.png"),
        p, width=190, height=110, units="mm")
 
 # SFR output --------------------------------------------------------------

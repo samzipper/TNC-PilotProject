@@ -10,6 +10,7 @@ import flopy
 import pandas as pd
 import flopy.utils.binaryfile as bf
 import flopy.utils.sfroutputfile as sf
+import flopy.utils.postprocessing as pp
 import platform
 
 # set up your model
@@ -44,11 +45,12 @@ ibound = np.array(pd.read_csv(os.path.join('modflow', 'input', 'ibound.txt'),
                               header=None, delim_whitespace=True), dtype=np.int32)
                               
 # discretization (space) - these should be the same as in your R script                         
-nlay = 1
+nlay = 5
 nrow = ibound.shape[0]
 ncol = ibound.shape[1]
 delr = 100
 delc = 100
+delv = 20
 
 # discretization (time)
 nper = 1
@@ -66,10 +68,19 @@ strt = ztop
 # define bottom elevation (-100 m everywhere)
 zbot = -100
 
+# set up bottom of each layer
+botm = np.empty([nlay, nrow, ncol])
+for l in np.arange(0,(nlay-1)):
+    botm[l,:,:] = np.array(pd.read_csv(os.path.join('modflow', 'input', 'zbot_'+str(l+1)+'.txt'),
+                            header=None, delim_whitespace=True))
+
+# for lowermost layer, set botm equal to zbot everywhere
+botm[(nlay-1),:,:] = zbot
+
 # make MODFLOW objects
 dis = flopy.modflow.ModflowDis(mf, nlay, nrow, ncol, 
                                delr=delr, delc=delc,
-                               top=ztop, botm=zbot,
+                               top=ztop, botm=botm,
                                nper=nper, perlen=perlen, 
                                nstp=nstp, steady=steady)
 bas = flopy.modflow.ModflowBas(mf, ibound=ibound, strt=0)
@@ -239,11 +250,12 @@ head = h.get_data(totim=time)
 head[head <= bas.hnoflo] = np.nan
 
 # calculate WTD
-wtd = ztop - head[0,:,:]
+wte = pp.get_water_table(head, nodata=bas.hnoflo)
+wtd = ztop - wte
 
 ## save data to plot in R
 # head and water table depth
-np.savetxt(os.path.join(model_ws, 'head.txt'), head[0,:,:])
+np.savetxt(os.path.join(model_ws, 'wte.txt'), wte)
 np.savetxt(os.path.join(model_ws, 'wtd.txt'), wtd)
 
 ## stream output

@@ -13,6 +13,7 @@
 *.pcg
 *.nwt
 *.rch
+*.chk*
 *.sfr*
 *.cbc
 *.spyderworkspace
@@ -23,6 +24,7 @@ modflow/input/*.tif
 *head.txt
 *sfr.csv
 *wtd.txt
+*wte.txt
 
 # Image files
 *.png

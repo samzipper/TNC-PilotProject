@@ -13,15 +13,15 @@ source("src/paths+packages.R")
 # X and Y resolution
 DELR <- 100  # x spacing - column width
 DELC <- 100  # y spacing - row height
-DELV <- 25   # z spacing - layer height - only matters if nlay>1
-nlay <- 1    # number of layers
+DELV <- 20   # z spacing - layer height - only matters if nlay>1
+nlay <- 5    # number of layers
 
 # what variables to process?
 ibound <- F
 GLHYMPS <- F
 ztop <- T
 riv <- T
-wel <- T
+wel <- F
 
 ## load common data
 # domain boundary shapefile
@@ -211,6 +211,9 @@ if (ztop){
   m.dem.proj <- as.matrix(r.dem.proj)
   m.dem.proj[m.ibound==-1] <- 0
   m.dem.proj[m.ibound==0] <- 0
+  
+  # round off some digits
+  m.dem.proj <- round(m.dem.proj, 2)
   
   # put back into raster
   r.dem.proj[] <- m.dem.proj[]
@@ -849,13 +852,12 @@ if (riv){
   ## update elevation output
   # there can be multiple reaches with different min elevations per cell; set DEM equal to the highest one
   df.rowcol.elev <- 
-    riv.seg.out %>% 
+    riv.seg.out[,c("row", "col", "lon", "lat", "elev_m_min")] %>% 
+    rbind(., riv.int@data[,c("row", "col", "lon", "lat", "elev_m_min")]) %>% 
     group_by(row, col) %>% 
     summarize(elev_m_min_max = max(elev_m_min),
               lon = mean(lon),
-              lat = mean(lat),
-              SFR_NSEG = max(SFR_NSEG),
-              SFR_IREACH = max(SFR_IREACH))
+              lat = mean(lat))
   m.dem.proj[as.matrix(df.rowcol.elev[,c("row", "col")])+1] <- 
     df.rowcol.elev$elev_m_min_max
   r.dem.proj[] <- m.dem.proj[]
