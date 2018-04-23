@@ -70,9 +70,9 @@ zbot = -100
 
 # set up bottom of each layer
 botm = np.empty([nlay, nrow, ncol])
-for l in np.arange(0,(nlay-1)):
-    botm[l,:,:] = np.array(pd.read_csv(os.path.join('modflow', 'input', 'zbot_'+str(l+1)+'.txt'),
-                            header=None, delim_whitespace=True))
+botm[0,:,:] = ztop-delv
+for l in np.arange(1,(nlay-1)):
+    botm[l,:,:] = botm[(l-1),:,:]-delv
 
 # for lowermost layer, set botm equal to zbot everywhere
 botm[(nlay-1),:,:] = zbot
@@ -88,7 +88,7 @@ bas = flopy.modflow.ModflowBas(mf, ibound=ibound, strt=0)
 ## set up flow properties and solver depending on version of MODFLOW
 hk = 1e-12*1e7*86400     # horizontal K [m/d], convert k [m-2] to K [m/s] to K [m/d]
 layvka = 1  # if layvka != 0, Kv = Kh/vka
-vka = 10.    # anisotropy
+vka = 1.    # anisotropy
 sy = 0.10   # specific yield (using 50% of domain mean porosity for now)
 ss = 1e-5   # specific storage
 laytyp = 1  # layer type
@@ -218,9 +218,47 @@ if (stream_BC=='SFR'):
     gage = flopy.modflow.ModflowGage(mf, numgage=numgage,
                                      gage_data=gage_data, unitnumber=90)
 
-## create WEL package, but don't pump anything
-wel = flopy.modflow.mfwel.ModflowWel(mf, stress_period_data={0: [0,50,50,0]},
-                                     ipakcb=71, filenames=[modelname+'.wel', modelname+'.wel.out'])
+### create WEL package, but don't pump anything
+#wel = flopy.modflow.mfwel.ModflowWel(mf, stress_period_data={0: [0,50,50,0]},
+#                                     ipakcb=71, filenames=[modelname+'.wel', modelname+'.wel.out'])
+
+## create MNW2 package
+# Based on: https://github.com/modflowpy/flopy/blob/develop/examples/Notebooks/flopy3_mnw2package_example.ipynb
+row_wel = 25
+col_wel = 5
+
+# top 4 layers (80 m)
+node_data = pd.DataFrame([['Well1', 0, row_wel, col_wel, 
+                           dis.top[row_wel, col_wel],
+                           dis.botm[0, row_wel, col_wel], 
+                           'THIEM', -1, 0, 1, 0, 1., 160],
+                           ['Well1', 1, row_wel, col_wel, 
+                           dis.botm[0, row_wel, col_wel],
+                           dis.botm[1, row_wel, col_wel], 
+                           'THIEM', -1, 0, 1, 0, 1., 160],
+                           ['Well1', 2, row_wel, col_wel, 
+                           dis.botm[1, row_wel, col_wel],
+                           dis.botm[2, row_wel, col_wel], 
+                           'THIEM', -1, 0, 1, 0, 1., 160],
+                           ['Well1', 3, row_wel, col_wel, 
+                           dis.botm[2, row_wel, col_wel],
+                           dis.botm[3, row_wel, col_wel], 
+                           'THIEM', -1, 0, 1, 0, 1., 160]], 
+             columns=['wellid', 'k', 'i', 'j', 
+             'ztop', 'zbotm', 
+             'losstype', 'pumploc', 'qlimit', 'ppflag', 'pumpcap', 'rw', 'zpump'])
+
+# convert to recarray to work with python
+node_data = node_data.to_records()
+
+# set up stress period data
+stress_period_data = {0: pd.DataFrame([[0, 'Well1', 0]], 
+                                  columns=['per', 'wellid', 'qdes']).to_records()}
+
+mnw2 = flopy.modflow.ModflowMnw2(model=mf, mnwmax=1, 
+                                 node_data=node_data,
+                                 stress_period_data=stress_period_data,
+                                 itmp=[1],)
 
 ## write inputs and run model
 # write input datasets
