@@ -88,7 +88,7 @@ bas = flopy.modflow.ModflowBas(mf, ibound=ibound, strt=0)
 ## set up flow properties and solver depending on version of MODFLOW
 hk = 1e-12*1e7*86400     # horizontal K [m/d], convert k [m-2] to K [m/s] to K [m/d]
 layvka = 1  # if layvka != 0, Kv = Kh/vka
-vka = 1.    # anisotropy
+vka = 10.    # anisotropy
 sy = 0.10   # specific yield (using 50% of domain mean porosity for now)
 ss = 1e-5   # specific storage
 laytyp = 1  # layer type
@@ -112,9 +112,8 @@ oc = flopy.modflow.ModflowOc(mf, stress_period_data=spd, compact=True)
 
 ## stream boundary condition: RIV or SFR  
 # constant domain parameters
-depth = 4  # river depth?
+depth = 5  # river depth?
 riverbed_K = hk/10
-river_width = 10
 riverbed_thickness = 1
 
 if (stream_BC=='RIV'):
@@ -122,7 +121,7 @@ if (stream_BC=='RIV'):
     iriv = pd.read_table(os.path.join('modflow', 'input', 'iriv.txt'), delimiter=' ')
     
     # estimate conductance based on: river width, river length, riverbed thickness, riverbed K
-    iriv['cond'] = round(riverbed_K*river_width*iriv['totalLength_m']*riverbed_thickness)   # river bottom conductance? 
+    iriv['cond'] = round(riverbed_K*iriv['width_m']*iriv['totalLength_m']*riverbed_thickness)   # river bottom conductance? 
     
     # empty list to hold stress period data
     riv_list = []
@@ -147,28 +146,32 @@ if (stream_BC=='SFR'):
               [(0, isfr_ReachData['row'][0], isfr_ReachData['col'][0], isfr_ReachData['SFR_NSEG'][0], 
                 isfr_ReachData['SFR_IREACH'][0], isfr_ReachData['length_m'][0], 
                 isfr_ReachData['elev_m_min'][0]-depth,isfr_ReachData['SLOPE'][0], 
-                1.0, riverbed_K)], 
+                riverbed_thickness, riverbed_K)], 
     dtype=[('k', '<f8'), ('i', '<f8'), ('j', '<f8'), ('iseg', '<f8'), 
            ('ireach', '<f8'), ('rchlen', '<f8'),
-           ('strtop', '<f8'), ('slope', '<f8'), ('strthick', '<f8'), ('strhc1', '<f8')])
+           ('strtop', '<f8'), ('slope', '<f8'),
+           ('strthick', '<f8'), ('strhc1', '<f8')])
     for r in range(1,isfr_ReachData.shape[0]):
         reach_data=np.vstack([reach_data, 
                               np.array(
               [(0, isfr_ReachData['row'][r], isfr_ReachData['col'][r], isfr_ReachData['SFR_NSEG'][r], 
                 isfr_ReachData['SFR_IREACH'][r], isfr_ReachData['length_m'][r], 
-                isfr_ReachData['elev_m_min'][r]-depth,isfr_ReachData['SLOPE'][r], 
-                1.0, riverbed_K)], 
+                isfr_ReachData['elev_m_min'][r]-depth,isfr_ReachData['SLOPE'][r],
+                riverbed_thickness, riverbed_K)], 
                 dtype=[('k', '<f8'), ('i', '<f8'), ('j', '<f8'), ('iseg', '<f8'), ('ireach', '<f8'), ('rchlen', '<f8'),
                        ('strtop', '<f8'), ('slope', '<f8'), ('strthick', '<f8'), ('strhc1', '<f8')])
                        ])
     reach_data=reach_data[:,0]
     
     ## segment data (Dataset 6a-c)
-    # width1, width2 only used if icalc=3
+    # icalc=1 --> stream depth calculates using Manning's equation assuming wide rectangular channel
+    # width1, width2 only used if icalc=3 so not in this case
+    # roughch=Manning's n=0.4 which seemed like a good ballpark for natural channels: 
+    #   http://www.fsl.orst.edu/geowater/FX3/help/8_Hydraulic_Reference/Mannings_n_Tables.htm
     seg_data_array = np.array(
               [(isfr_SegmentData['SFR_NSEG'][0], 1, isfr_SegmentData['SFR_OUTSEG'][0], 0, 
                 0, 0, 0, 0, 
-                0.03, 3, 3)], 
+                0.04, isfr_SegmentData['width_m'][0], isfr_SegmentData['width_m'][0])], 
     dtype=[('nseg', '<f8'), ('icalc', '<f8'), ('outseg', '<f8'), ('iupseg', '<f8'), 
            ('flow', '<f8'), ('runoff', '<f8'), ('etsw', '<f8'), ('pptsw', '<f8'), 
            ('roughch', '<f8'), ('width1', '<f8'), ('width2', '<f8')])
@@ -177,7 +180,7 @@ if (stream_BC=='SFR'):
                               np.array(
               [(isfr_SegmentData['SFR_NSEG'][s], 1, isfr_SegmentData['SFR_OUTSEG'][s], 0, 
                 0, 0, 0, 0, 
-                0.03, 3, 3)], 
+                0.04, isfr_SegmentData['width_m'][s], isfr_SegmentData['width_m'][s])], 
                 dtype=[('nseg', '<f8'), ('icalc', '<f8'), ('outseg', '<f8'), ('iupseg', '<f8'), 
                        ('flow', '<f8'), ('runoff', '<f8'), ('etsw', '<f8'), ('pptsw', '<f8'), 
                        ('roughch', '<f8'), ('width1', '<f8'), ('width2', '<f8')])

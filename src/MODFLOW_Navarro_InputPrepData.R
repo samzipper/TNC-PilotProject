@@ -335,9 +335,10 @@ if (riv){
   
   # summarize some metrics for each cell
   riv.int.cell <- 
-    riv.int@data[,c("ncell", "id", "row", "col", "ibound", "elev_m_min", "elev_m_med", "elev_m_mean", "elev_m_max", "elev_m", "length_m", "SegNum")] %>% 
-    group_by(ncell, id, row, col, ibound, elev_m_min, elev_m_med, elev_m_mean, elev_m_max, elev_m) %>% 
+    riv.int@data[,c("ncell", "id", "row", "col", "ibound", "elev_m_min", "elev_m", "TotDASqKM", "length_m", "SegNum")] %>% 
+    group_by(ncell, id, row, col, ibound, elev_m_min, elev_m) %>% 
     summarize(totalLength_m = sum(length_m),
+              drainageArea_km2 = max(TotDASqKM),
               n.segments = length(unique(SegNum))) %>% 
     subset(ibound != 0)
 
@@ -353,7 +354,10 @@ if (riv){
   riv.int.cell$HUC <- raster::extract(r.HUC, riv.int.cell$ncell) 
   
   # matrix indices
-  i.riv <- riv.int.cell[,c("row", "col", "elev_m_min", "elev_m_med", "elev_m_mean", "elev_m_max", "elev_m", "totalLength_m")]
+  i.riv <- riv.int.cell[,c("row", "col", "elev_m_min", "elev_m", "drainageArea_km2", "totalLength_m")]
+  
+  # estimate river width based on drainage area
+  i.riv$width_m <- WidthFromDA(DA=i.riv$drainageArea_km2, w.min=1, w.max=100)
   
   # add layer
   i.riv$lay <- 1
@@ -407,7 +411,7 @@ if (riv){
   
   ## for each river segment, figure out OUTSEG
   # get all unique segments
-  riv.seg.info <- unique(riv.seg.all[,c("SegNum", "FromNode", "ToNode", "SFR_NSEG", "TerminalFl", "TerminalPa")])
+  riv.seg.info <- unique(riv.seg.all[,c("SegNum", "FromNode", "ToNode", "SFR_NSEG", "TotDASqKM", "TerminalFl", "TerminalPa")])
   
   # use ToNode/FromNode to map segment connections
   riv.seg.info$SFR_OUTSEG <- 
@@ -798,6 +802,10 @@ if (riv){
   slope.min <- 0.001
   riv.seg.out$SLOPE[riv.seg.out$SLOPE<slope.min] <- slope.min
   
+  # estimate river width based on drainage area
+  riv.seg.out$width_m <- WidthFromDA(DA=riv.seg.out$TotDASqKM, w.min=1, w.max=100)
+  riv.seg.info$width_m <- WidthFromDA(DA=riv.seg.info$TotDASqKM, w.min=1, w.max=100)
+  
   ## extract coordinates and add to data frame
   riv.seg.out <-
     cellFromRowCol(r.riv.id, rownr=riv.seg.out$row, colnr=riv.seg.out$col) %>% 
@@ -890,7 +898,7 @@ if (riv){
   write.table(df.gages, file.path("modflow", "input", "gage_data.txt"), sep=" ", row.names=F, col.names=T)
   
   # add SFR data to output
-  df <- left_join(df, df.rowcol.elev[,c("lon", "lat", "SFR_NSEG", "SFR_IREACH")], by=c("lon", "lat"))
+  df <- left_join(df, df.rowcol.elev[,c("lon", "lat", "elev_m_min_max")], by=c("lon", "lat"))
 }
 
 # Prep pumping well data --------------------------------------------------

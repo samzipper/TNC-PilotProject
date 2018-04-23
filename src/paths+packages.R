@@ -167,6 +167,19 @@ labels.NLCD <- c("11"="Open Water",
                  "95"="Herb. Wetland")
 
 ## functions
+# estimate stream width based on drainage area
+# (see Navarro_StreamWidthEstimates.xlsx file)
+WidthFromDA <- function(DA, w.min, w.max){
+  # DA = drainage area [km2]
+  # w.min = minimum allowed width [m]
+  # w.max = maximum allowed width [m]
+  # w = estimated width [m]
+  w <- 9.7133*exp(0.0023*DA)
+  w[w>w.max] <- w.max
+  w[w<w.min] <- w.min
+  return(w)
+}
+
 # crop and mask a raster based on a shapefile
 crop.mask <- function(r, shp){
   return(mask(crop(r, extent(shp)), shp))
