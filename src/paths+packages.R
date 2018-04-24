@@ -26,10 +26,13 @@ require(magrittr)
 require(dismo)
 require(hydroGOF)
 require(RCurl)
+require(SPEI)
 
 ## metadata about watershed
 station.outlet <- "11468000"  # USGS gage station number for outlet gauge
 station.outlet.name <- "NAVARRO R NR NAVARRO CA"
+station.outlet.lat <- 39.17055556
+station.outlet.lon <- -123.66694444
 HUC <- "1801010804"  # navarro
 outlet.TerminalPa <- 10013609
 area.mi2 <- 303  # gage contributing area (from https://waterdata.usgs.gov/nwis/inventory/?site_no=11468000)
