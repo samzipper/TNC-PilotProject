@@ -3,15 +3,14 @@
 LIST               2  Navarro-SteadyState.list
 DIS               11  ../mf0/Navarro-SteadyState.dis 
 BAS6              13  ../mf0/Navarro-SteadyState.bas 
-UPW               31  ../mf0/Navarro-SteadyState.upw 
 NWT               32  ../mf0/Navarro-SteadyState.nwt 
-RCH               19  ../mf0/Navarro-SteadyState.rch 
+MNW2              34  Navarro-SteadyState.mnw2 
 OC                14  ../mf0/Navarro-SteadyState.oc 
 RIV               18  ../mf0/Navarro-SteadyState.riv
-WEL               20  Navarro-SteadyState.wel 
+RCH               19  ../mf0/Navarro-SteadyState.rch 
+UPW               31  ../mf0/Navarro-SteadyState.upw 
 DATA(BINARY)      51  Navarro-SteadyState.hds REPLACE
 DATA(BINARY)      52  Navarro-SteadyState.ddn REPLACE
 DATA(BINARY)      61  Navarro-SteadyState.riv.out REPLACE
-DATA(BINARY)      71  Navarro-SteadyState.wel.out REPLACE
 
 

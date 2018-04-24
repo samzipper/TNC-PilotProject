@@ -43,8 +43,8 @@ colnames(df) <- c("lon", "lat", "ibound")
 # WTE and WTD ---------------------------------------
 
 # load matrices
-m.wte <- as.matrix(read.table(file.path("modflow", "Navarro-SteadyState", stream_BC, modflow_v, "wte.txt")))
-m.wtd <- as.matrix(read.table(file.path("modflow", "Navarro-SteadyState", stream_BC, modflow_v, "wtd.txt")))
+m.wte <- as.matrix(read.csv(file.path("modflow", "Navarro-SteadyState", stream_BC, modflow_v, "wte.csv"), header=F))
+m.wtd <- as.matrix(read.csv(file.path("modflow", "Navarro-SteadyState", stream_BC, modflow_v, "wtd.csv"), header=F))
 
 # add to data frame
 df$wte <- as.vector(t(m.wte))

@@ -26,6 +26,8 @@ modflow/input/*.tif
 *wtd.txt
 *wte.txt
 *.mnw2*
+*wtd.csv
+*wte.csv
 
 # Image files
 *.png

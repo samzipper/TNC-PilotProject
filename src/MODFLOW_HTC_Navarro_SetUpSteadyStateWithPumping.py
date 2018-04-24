@@ -14,7 +14,7 @@ import platform
 # set up your model
 modelname = 'Navarro-SteadyState'
 modflow_v = 'mfnwt'  # 'mfnwt' or 'mf2005'
-stream_BC = 'SFR'  # options: 'RIV' 'SFR'
+stream_BC = 'RIV'  # options: 'RIV' 'SFR'
 
 # where is your MODFLOW-2005 executable?
 if (modflow_v=='mf2005'):
@@ -58,12 +58,27 @@ iwel = pd.read_table(os.path.join('modflow', 'input', 'iwel.txt'), delimiter=' '
 # define pumping rate
 Qw = -6*100*0.00378541  # [m3/d]  6 gal/plant/day*100 plants*0.00378541 m3/gal
 
-# load existing wel package
-wel = mf.wel
+# define well screen length (will start at SS WTE)
+screen_length = 50  # [m]
 
-for w in range(0,iwel.shape[0]):
-#for w in range(0,3):
+# load existing MNW2 package
+mnw2 = mf.Mnw2
+
+# define well parameters
+losstype = 'THIEM'
+pumploc = 0
+qlimit = 0
+ppflag = 1
+pumpcap = 0
+rw = 0.25
+
+# load WTE from SS simulation, which will be used to define top of well screen
+wte = np.array(pd.read_csv(os.path.join('modflow', modelname, stream_BC, modflow_v, 'wte.csv'),
+                           header=None), dtype=np.float64)
+
+for w in range(0,9): #iwel.shape[0]):
     WellNum = iwel['WellNum'][w]
+    wellid = 'Well'+str(WellNum)
 
     # create output folder
     w_model_ws = os.path.join('modflow', 'HTC', 'Navarro', 'SteadyState', stream_BC, modflow_v, model_prefix+str(WellNum))
@@ -71,12 +86,80 @@ for w in range(0,iwel.shape[0]):
         os.makedirs(w_model_ws)
         mf.model_ws = w_model_ws
 
+    # extract WTE from SS results for top of screen
+    row_wel = iwel['row'][w]
+    col_wel = iwel['col'][w]
+    screen_top = wte[row_wel, col_wel]
+    screen_bot = screen_top - screen_length
+    
+    # figure out which layer well screen starts and ends in
+    if (screen_top > mf.dis.botm[0, row_wel, col_wel]):
+        screen_top_k = 0
+    elif (screen_top > mf.dis.botm[1, row_wel, col_wel]):
+        screen_top_k = 1
+    elif (screen_top > mf.dis.botm[2, row_wel, col_wel]):
+        screen_top_k = 2
+    elif (screen_top > mf.dis.botm[3, row_wel, col_wel]):
+        screen_top_k = 3
+    elif (screen_top > mf.dis.botm[4, row_wel, col_wel]):
+        screen_top_k = 4
+
+    if (screen_bot > mf.dis.botm[0, row_wel, col_wel]):
+        screen_bot_k = 0
+    elif (screen_bot > mf.dis.botm[1, row_wel, col_wel]):
+        screen_bot_k = 1
+    elif (screen_bot > mf.dis.botm[2, row_wel, col_wel]):
+        screen_bot_k = 2
+    elif (screen_bot > mf.dis.botm[3, row_wel, col_wel]):
+        screen_bot_k = 3
+    elif (screen_bot > mf.dis.botm[4, row_wel, col_wel]):
+        screen_bot_k = 4 
+    
+    # build node data
+    if (screen_top_k==screen_bot_k):
+        # when top and bottom of screen are in same layer, only 1 node necessary
+        node_data = pd.DataFrame([[wellid, screen_top_k, row_wel, col_wel, 
+                               screen_top, screen_bot, 
+                               losstype, pumploc, qlimit, ppflag, pumpcap, rw]], 
+                 columns=['wellid', 'k', 'i', 'j', 'ztop', 'zbotm', 'losstype', 
+                 'pumploc', 'qlimit', 'ppflag', 'pumpcap', 'rw'])
+    else:
+        # build data frame with nodes in all intersected layers
+        node_data = pd.DataFrame([[wellid, screen_top_k, row_wel, col_wel, 
+                                   screen_top,
+                                   mf.dis.botm[screen_top_k, row_wel, col_wel], 
+                                   losstype, pumploc, qlimit, ppflag, pumpcap, rw]], 
+                     columns=['wellid', 'k', 'i', 'j', 'ztop', 'zbotm', 'losstype', 
+                     'pumploc', 'qlimit', 'ppflag', 'pumpcap', 'rw'])
+        for lay_wel in range(screen_top_k+1, screen_bot_k+1):
+            if (lay_wel==screen_bot_k):
+                lay_bot = screen_bot
+            else:
+                lay_bot = mf.dis.botm[lay_wel, row_wel, col_wel]
+                
+            node_data_lay = pd.DataFrame([[wellid, lay_wel, row_wel, col_wel, 
+                                       mf.dis.botm[lay_wel-1, row_wel, col_wel], lay_bot, 
+                                       losstype, pumploc, qlimit, ppflag, pumpcap, rw]], 
+                         columns=['wellid', 'k', 'i', 'j', 'ztop', 'zbotm', 'losstype', 
+                         'pumploc', 'qlimit', 'ppflag', 'pumpcap', 'rw'])
+            node_data = node_data.append(node_data_lay)
+        
+    
+    # convert to recarray to work with python
+    node_data = node_data.to_records()
+    
     # set up stress period data
-    wel.stress_period_data = {0: [iwel['lay'][w], iwel['row'][w], iwel['col'][w], Qw]}
-    wel.filenames=[modelname+'.wel', modelname+'.wel.out']
+    stress_period_data = {0: pd.DataFrame([[0, wellid, Qw]],
+                                          columns=['per', 'wellid', 'qdes']).to_records()}   
+                                          
+                                          
+    mnw2 = flopy.modflow.ModflowMnw2(model=mf, mnwmax=1, 
+                                 node_data=node_data,
+                                 stress_period_data=stress_period_data,
+                                 itmp=[1],)
 
     # write input (NAM and WEL only)
-    mf.write_input(SelPackList=['WEL'])
+    mf.write_input(SelPackList=['MNW2'])
         
     # copy launch script
     shutil.copy2(os.path.join('modflow', 'HTC', 'Navarro', 'SteadyState', stream_BC, 'launch_thisRun_'+modflow_v+'.sh'),

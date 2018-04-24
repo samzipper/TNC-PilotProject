@@ -230,33 +230,41 @@ if (stream_BC=='SFR'):
 row_wel = 25
 col_wel = 5
 
+# define well parameters
+losstype = 'THIEM'
+pumploc = 0
+qlimit = 0
+ppflag = 1
+pumpcap = 0
+rw = 0.25
+
 # top 4 layers (80 m)
 node_data = pd.DataFrame([['Well1', 0, row_wel, col_wel, 
                            dis.top[row_wel, col_wel],
                            dis.botm[0, row_wel, col_wel], 
-                           'THIEM', -1, 0, 1, 0, 1., 160],
+                           losstype, pumploc, qlimit, ppflag, pumpcap, rw],
                            ['Well1', 1, row_wel, col_wel, 
                            dis.botm[0, row_wel, col_wel],
                            dis.botm[1, row_wel, col_wel], 
-                           'THIEM', -1, 0, 1, 0, 1., 160],
+                           losstype, pumploc, qlimit, ppflag, pumpcap, rw],
                            ['Well1', 2, row_wel, col_wel, 
                            dis.botm[1, row_wel, col_wel],
                            dis.botm[2, row_wel, col_wel], 
-                           'THIEM', -1, 0, 1, 0, 1., 160],
+                           losstype, pumploc, qlimit, ppflag, pumpcap, rw],
                            ['Well1', 3, row_wel, col_wel, 
                            dis.botm[2, row_wel, col_wel],
                            dis.botm[3, row_wel, col_wel], 
-                           'THIEM', -1, 0, 1, 0, 1., 160]], 
+                           losstype, pumploc, qlimit, ppflag, pumpcap, rw]], 
              columns=['wellid', 'k', 'i', 'j', 
              'ztop', 'zbotm', 
-             'losstype', 'pumploc', 'qlimit', 'ppflag', 'pumpcap', 'rw', 'zpump'])
+             'losstype', 'pumploc', 'qlimit', 'ppflag', 'pumpcap', 'rw'])
 
 # convert to recarray to work with python
 node_data = node_data.to_records()
 
 # set up stress period data
-stress_period_data = {0: pd.DataFrame([[0, 'Well1', 0]], 
-                                  columns=['per', 'wellid', 'qdes']).to_records()}
+stress_period_data = {0: pd.DataFrame([[0, 'Well1', 0]],
+                                      columns=['per', 'wellid', 'qdes']).to_records()}
 
 mnw2 = flopy.modflow.ModflowMnw2(model=mf, mnwmax=1, 
                                  node_data=node_data,
@@ -296,8 +304,8 @@ wtd = ztop - wte
 
 ## save data to plot in R
 # head and water table depth
-np.savetxt(os.path.join(model_ws, 'wte.txt'), wte)
-np.savetxt(os.path.join(model_ws, 'wtd.txt'), wtd)
+np.savetxt(os.path.join(model_ws, 'wte.csv'), wte, fmt='%6.2f', delimiter=',')
+np.savetxt(os.path.join(model_ws, 'wtd.csv'), wtd, fmt='%6.2f', delimiter=',')
 
 ## stream output
 if (stream_BC=='SFR'):
