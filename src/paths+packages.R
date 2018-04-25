@@ -107,7 +107,9 @@ theme_scz <- function(...){
       strip.text=element_text(size=rel(1)),
       legend.title=element_text(face="bold", size=rel(1)),
       legend.text=element_text(size=rel(1)),
-      panel.grid=element_blank())
+      panel.grid=element_blank(),
+      plot.margin=unit(c(0.5,0.5,0.5,0.5), "mm"),
+      strip.background=element_blank())
 }
 
 theme_set(theme_scz())
