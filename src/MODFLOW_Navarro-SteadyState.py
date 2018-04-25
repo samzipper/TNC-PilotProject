@@ -221,10 +221,6 @@ if (stream_BC=='SFR'):
     gage = flopy.modflow.ModflowGage(mf, numgage=numgage,
                                      gage_data=gage_data, unitnumber=90)
 
-### create WEL package, but don't pump anything
-#wel = flopy.modflow.mfwel.ModflowWel(mf, stress_period_data={0: [0,50,50,0]},
-#                                     ipakcb=71, filenames=[modelname+'.wel', modelname+'.wel.out'])
-
 ## create MNW2 package
 # Based on: https://github.com/modflowpy/flopy/blob/develop/examples/Notebooks/flopy3_mnw2package_example.ipynb
 row_wel = 25
@@ -238,22 +234,10 @@ ppflag = 1
 pumpcap = 0
 rw = 0.25
 
-# top 4 layers (80 m)
-node_data = pd.DataFrame([['Well1', 0, row_wel, col_wel, 
+# 1 layer
+node_data = pd.DataFrame([['Well0', 0, row_wel, col_wel, 
                            dis.top[row_wel, col_wel],
                            dis.botm[0, row_wel, col_wel], 
-                           losstype, pumploc, qlimit, ppflag, pumpcap, rw],
-                           ['Well1', 1, row_wel, col_wel, 
-                           dis.botm[0, row_wel, col_wel],
-                           dis.botm[1, row_wel, col_wel], 
-                           losstype, pumploc, qlimit, ppflag, pumpcap, rw],
-                           ['Well1', 2, row_wel, col_wel, 
-                           dis.botm[1, row_wel, col_wel],
-                           dis.botm[2, row_wel, col_wel], 
-                           losstype, pumploc, qlimit, ppflag, pumpcap, rw],
-                           ['Well1', 3, row_wel, col_wel, 
-                           dis.botm[2, row_wel, col_wel],
-                           dis.botm[3, row_wel, col_wel], 
                            losstype, pumploc, qlimit, ppflag, pumpcap, rw]], 
              columns=['wellid', 'k', 'i', 'j', 
              'ztop', 'zbotm', 
@@ -263,7 +247,7 @@ node_data = pd.DataFrame([['Well1', 0, row_wel, col_wel,
 node_data = node_data.to_records()
 
 # set up stress period data
-stress_period_data = {0: pd.DataFrame([[0, 'Well1', 0]],
+stress_period_data = {0: pd.DataFrame([[0, 'Well0', 0]],
                                       columns=['per', 'wellid', 'qdes']).to_records()}
 
 mnw2 = flopy.modflow.ModflowMnw2(model=mf, mnwmax=1, 

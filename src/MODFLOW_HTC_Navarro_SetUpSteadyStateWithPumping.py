@@ -1,6 +1,8 @@
 ## MODFLOW_HTC_Navarro-SetUp-SteadyState-WithPumping.py
-# This script creates a steady-state groundwater flow model for the 
-# Navarro River Watershed in California.
+# This script creates a bunch of different MODFLOW input files with
+# synthetic pumping wells.
+#
+# MAKE SURE YOU'VE RUN MODFLOW_Navarro-SteadyState.py FIRST
 #
 # Using default units of ITMUNI=4 (days) and LENUNI=2 (meters)
 
@@ -24,7 +26,7 @@ if (modflow_v=='mf2005'):
         path2mf = modflow_v
 elif (modflow_v=='mfnwt'):
     if platform.system() == 'Windows':
-        path2mf = 'C:/Users/Sam/Dropbox/Work/Models/MODFLOW/MODFLOW-NWT_1.1.3/bin/MODFLOW-NWT.exe'
+        path2mf = 'C:/Users/Sam/Dropbox/Work/Models/MODFLOW/MODFLOW-NWT_1.1.4/bin/MODFLOW-NWT.exe'
     else:
         path2mf = modflow_v
 
@@ -76,7 +78,7 @@ rw = 0.25
 wte = np.array(pd.read_csv(os.path.join('modflow', modelname, stream_BC, modflow_v, 'wte.csv'),
                            header=None), dtype=np.float64)
 
-for w in range(0,9): #iwel.shape[0]):
+for w in range(0,iwel.shape[0]):
     WellNum = iwel['WellNum'][w]
     wellid = 'Well'+str(WellNum)
 
