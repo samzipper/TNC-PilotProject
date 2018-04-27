@@ -31,7 +31,7 @@ for w in succ.WellNum:
         df_flux, df_vol = mfl.get_dataframes()
 
         # add column for well name
-        df_flux['WellNum'] = 0
+        df_flux['WellNum'] = w
        
         ## add to overall data frame
         if (start_flag):
