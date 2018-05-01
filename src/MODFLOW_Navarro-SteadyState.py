@@ -221,45 +221,127 @@ if (stream_BC=='SFR'):
     gage = flopy.modflow.ModflowGage(mf, numgage=numgage,
                                      gage_data=gage_data, unitnumber=90)
 
+## write inputs and run model (the first time - will be run again with MNW2 package)
+mf.write_input()
+success, mfoutput = mf.run_model()
+if not success:
+    raise Exception('MODFLOW did not terminate normally.')
+
+## need to figure out steady-state WTE to define wells
+# use head output from the SS situation without boreholes
+time = perlen[0]
+h = bf.HeadFile(os.path.join(mf.model_ws, modelname+'.hds'), text='head')
+head = h.get_data(totim=time)
+wte = pp.get_water_table(head, nodata=bas.hnoflo)
+
 ## create MNW2 package
 # Based on: https://github.com/modflowpy/flopy/blob/develop/examples/Notebooks/flopy3_mnw2package_example.ipynb
-row_wel = 410  # well 493
-col_wel = 360  # well 493
+iwel = pd.read_table(os.path.join('modflow', 'input', 'iwel.txt'), delimiter=' ')
 
 # define well parameters
 losstype = 'THIEM'
-pumploc = 0
-qlimit = 0
-ppflag = 1
-pumpcap = 0
+pumploc = 0  # 0=intake location assumed to occur above first active node
+qlimit = 0   # 0=do not constrain pumping rate based on head
+ppflag = 1   # 1=adjust head for partial penetration
+pumpcap = 0  # 0=do not adjust pumping rate for changes in lift
 rw = 0.25
+screen_length = 50  # [m] - will start at SS WTE
 
-# 1 layer
-node_data = pd.DataFrame([['Well0', 0, row_wel, col_wel, 
-                           dis.top[row_wel, col_wel],
-                           dis.botm[0, row_wel, col_wel], 
-                           losstype, pumploc, qlimit, ppflag, pumpcap, rw]], 
-             columns=['wellid', 'k', 'i', 'j', 
-             'ztop', 'zbotm', 
-             'losstype', 'pumploc', 'qlimit', 'ppflag', 'pumpcap', 'rw'])
+start_flag = True
+for w in range(0,iwel.shape[0]):
+    WellNum = iwel['WellNum'][w]
+    wellid = 'Well'+str(WellNum)
 
-# convert to recarray to work with python
-node_data = node_data.to_records()
+    # extract WTE from SS results for top of screen
+    row_wel = iwel['row'][w]
+    col_wel = iwel['col'][w]
+    screen_top = wte[row_wel, col_wel]
+    screen_bot = screen_top - screen_length
+    
+    # figure out which layer well screen starts and ends in
+    if (screen_top > mf.dis.botm[0, row_wel, col_wel]):
+        screen_top_k = 0
+    elif (screen_top > mf.dis.botm[1, row_wel, col_wel]):
+        screen_top_k = 1
+    elif (screen_top > mf.dis.botm[2, row_wel, col_wel]):
+        screen_top_k = 2
+    elif (screen_top > mf.dis.botm[3, row_wel, col_wel]):
+        screen_top_k = 3
+    elif (screen_top > mf.dis.botm[4, row_wel, col_wel]):
+        screen_top_k = 4
+
+    if (screen_bot > mf.dis.botm[0, row_wel, col_wel]):
+        screen_bot_k = 0
+    elif (screen_bot > mf.dis.botm[1, row_wel, col_wel]):
+        screen_bot_k = 1
+    elif (screen_bot > mf.dis.botm[2, row_wel, col_wel]):
+        screen_bot_k = 2
+    elif (screen_bot > mf.dis.botm[3, row_wel, col_wel]):
+        screen_bot_k = 3
+    elif (screen_bot > mf.dis.botm[4, row_wel, col_wel]):
+        screen_bot_k = 4 
+    
+    # build node data
+    if (screen_top_k==screen_bot_k):
+        # when top and bottom of screen are in same layer, only 1 node necessary
+        node_data = pd.DataFrame([[wellid, screen_top_k, row_wel, col_wel, 
+                               screen_top, screen_bot, 
+                               losstype, pumploc, qlimit, ppflag, pumpcap, rw]], 
+                 columns=['wellid', 'k', 'i', 'j', 'ztop', 'zbotm', 'losstype', 
+                 'pumploc', 'qlimit', 'ppflag', 'pumpcap', 'rw'])
+    else:
+        # build data frame with nodes in all intersected layers
+        node_data = pd.DataFrame([[wellid, screen_top_k, row_wel, col_wel, 
+                                   screen_top,
+                                   mf.dis.botm[screen_top_k, row_wel, col_wel], 
+                                   losstype, pumploc, qlimit, ppflag, pumpcap, rw]], 
+                     columns=['wellid', 'k', 'i', 'j', 'ztop', 'zbotm', 'losstype', 
+                     'pumploc', 'qlimit', 'ppflag', 'pumpcap', 'rw'])
+        for lay_wel in range(screen_top_k+1, screen_bot_k+1):
+            if (lay_wel==screen_bot_k):
+                lay_bot = screen_bot
+            else:
+                lay_bot = mf.dis.botm[lay_wel, row_wel, col_wel]
+                
+            node_data_lay = pd.DataFrame([[wellid, lay_wel, row_wel, col_wel, 
+                                       mf.dis.botm[lay_wel-1, row_wel, col_wel], lay_bot, 
+                                       losstype, pumploc, qlimit, ppflag, pumpcap, rw]], 
+                         columns=['wellid', 'k', 'i', 'j', 'ztop', 'zbotm', 'losstype', 
+                         'pumploc', 'qlimit', 'ppflag', 'pumpcap', 'rw'])
+            node_data = node_data.append(node_data_lay)
+            
+    # set up stress period data
+    mnw_spd = pd.DataFrame([[0, wellid, 0]], columns=['per', 'wellid', 'qdes'])
+    
+    # make master output node dat
+    if (start_flag):
+        node_data_all = node_data
+        mnw_spd_all = mnw_spd
+        start_flag = False
+    else:
+        node_data_all = node_data_all.append(node_data)
+        mnw_spd_all = mnw_spd_all.append(mnw_spd)
+
+# convert node data to recarray to work with python
+node_data_all = node_data_all.to_records()
 
 # set up stress period data
-stress_period_data = {0: pd.DataFrame([[0, 'Well0', 0]],
-                                      columns=['per', 'wellid', 'qdes']).to_records()}
+stress_period_data = {0: mnw_spd_all.to_records()}
 
-mnw2 = flopy.modflow.ModflowMnw2(model=mf, mnwmax=1, 
-                                 node_data=node_data,
+# mnw2
+n_wel = iwel.shape[0]
+mnw2 = flopy.modflow.ModflowMnw2(model=mf, mnwmax=n_wel, 
+                                 node_data=node_data_all,
                                  stress_period_data=stress_period_data,
-                                 itmp=[1],)
+                                 itmp=[n_wel],
+                                 filenames=[modelname+'.mnw2', modelname+'.mnw2.out'])
 
-## write inputs and run model
-# write input datasets
+## update starting head
+head[head <= bas.hnoflo] = 0
+bas.strt = head
+
+## rerun model with MNW boreholes (but no pumping)
 mf.write_input()
-
-# run model
 success, mfoutput = mf.run_model()
 if not success:
     raise Exception('MODFLOW did not terminate normally.')

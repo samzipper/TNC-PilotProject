@@ -52,107 +52,22 @@ mf.name = modelname
 mf.change_model_ws(model_ws)
 
 ## update MNW2 package
-# which well do you want to use?
+# which well do you want to pump?
 WellNum = 493
 wellid = 'Well'+str(WellNum)
-
-# load wel boundary condition info
-iwel = pd.read_table(os.path.join('modflow', 'input', 'iwel.txt'), delimiter=' ')
-
-# get index
-w = iwel.index[iwel['WellNum']==WellNum].tolist()[0]
 
 # define pumping rate
 Qw = -6*100*0.00378541  # [m3/d]  6 gal/plant/day*100 plants*0.00378541 m3/gal
 
-# define well screen length (will start at SS WTE)
-screen_length = 50  # [m]
+# update pumping rate for this well stress period data; 
+mf.mnw2.mnw[wellid].stress_period_data['qdes'][0] = Qw
+mf.mnw2.stress_period_data[0]['qdes'][mf.mnw2.stress_period_data[0]['wellid']==wellid] = Qw
 
-# load existing MNW2 package
-mnw2 = mf.Mnw2
-
-# define well parameters
-losstype = 'THIEM'
-pumploc = 0
-qlimit = 0
-ppflag = 1
-pumpcap = 0
-rw = 0.25
-
-# extract WTE from heads, which will be used to define top of well screen
-head[head <= mf.bas6.hnoflo] = np.nan
-wte = pp.get_water_table(head, nodata=mf.bas6.hnoflo)
-
-# extract WTE from SS results for top of screen
-row_wel = iwel['row'][w]
-col_wel = iwel['col'][w]
-screen_top = wte[row_wel, col_wel]
-screen_bot = screen_top - screen_length
-
-# figure out which layer well screen starts and ends in
-if (screen_top > mf.dis.botm[0, row_wel, col_wel]):
-    screen_top_k = 0
-elif (screen_top > mf.dis.botm[1, row_wel, col_wel]):
-    screen_top_k = 1
-elif (screen_top > mf.dis.botm[2, row_wel, col_wel]):
-    screen_top_k = 2
-elif (screen_top > mf.dis.botm[3, row_wel, col_wel]):
-    screen_top_k = 3
-elif (screen_top > mf.dis.botm[4, row_wel, col_wel]):
-    screen_top_k = 4
-
-if (screen_bot > mf.dis.botm[0, row_wel, col_wel]):
-    screen_bot_k = 0
-elif (screen_bot > mf.dis.botm[1, row_wel, col_wel]):
-    screen_bot_k = 1
-elif (screen_bot > mf.dis.botm[2, row_wel, col_wel]):
-    screen_bot_k = 2
-elif (screen_bot > mf.dis.botm[3, row_wel, col_wel]):
-    screen_bot_k = 3
-elif (screen_bot > mf.dis.botm[4, row_wel, col_wel]):
-    screen_bot_k = 4 
-
-# build node data
-if (screen_top_k==screen_bot_k):
-    # when top and bottom of screen are in same layer, only 1 node necessary
-    node_data = pd.DataFrame([[wellid, screen_top_k, row_wel, col_wel, 
-                           screen_top, screen_bot, 
-                           losstype, pumploc, qlimit, ppflag, pumpcap, rw]], 
-             columns=['wellid', 'k', 'i', 'j', 'ztop', 'zbotm', 'losstype', 
-             'pumploc', 'qlimit', 'ppflag', 'pumpcap', 'rw'])
-else:
-    # build data frame with nodes in all intersected layers
-    node_data = pd.DataFrame([[wellid, screen_top_k, row_wel, col_wel, 
-                               screen_top,
-                               mf.dis.botm[screen_top_k, row_wel, col_wel], 
-                               losstype, pumploc, qlimit, ppflag, pumpcap, rw]], 
-                 columns=['wellid', 'k', 'i', 'j', 'ztop', 'zbotm', 'losstype', 
-                 'pumploc', 'qlimit', 'ppflag', 'pumpcap', 'rw'])
-    for lay_wel in range(screen_top_k+1, screen_bot_k+1):
-        if (lay_wel==screen_bot_k):
-            lay_bot = screen_bot
-        else:
-            lay_bot = mf.dis.botm[lay_wel, row_wel, col_wel]
-            
-        node_data_lay = pd.DataFrame([[wellid, lay_wel, row_wel, col_wel, 
-                                   mf.dis.botm[lay_wel-1, row_wel, col_wel], lay_bot, 
-                                   losstype, pumploc, qlimit, ppflag, pumpcap, rw]], 
-                     columns=['wellid', 'k', 'i', 'j', 'ztop', 'zbotm', 'losstype', 
-                     'pumploc', 'qlimit', 'ppflag', 'pumpcap', 'rw'])
-        node_data = node_data.append(node_data_lay)
-    
-
-# convert to recarray to work with python
-node_data = node_data.to_records()
-
-# set up stress period data
-stress_period_data = {0: pd.DataFrame([[0, wellid, Qw]],
-                                      columns=['per', 'wellid', 'qdes']).to_records()}   
-                                               
-mnw2 = flopy.modflow.ModflowMnw2(model=mf, mnwmax=1, 
-                             node_data=node_data,
-                             stress_period_data=stress_period_data,
-                             itmp=[1],)
+# for some reason, MNW2 package reverses node data when a model is loaded and rewritten
+# reverse node_data so that topmost node is listed first
+for w in range(1,(mf.mnw2.mnwmax+1)):
+    mf.mnw2.mnw['Well'+str(w)].node_data = np.flipud(mf.mnw2.mnw['Well'+str(w)].node_data)
+mf.mnw2.node_data = np.flipud(mf.mnw2.node_data)
 
 ## write inputs and run model
 # write input datasets
@@ -164,9 +79,15 @@ if not success:
     raise Exception('MODFLOW did not terminate normally.')
 
 ## look at budget outputs
-mfl = flopy.utils.MfListBudget(os.path.join(model_ws, modelname+".list"))
+mfl_pumped = flopy.utils.MfListBudget(os.path.join(model_ws, modelname+".list"))
+df_flux_pumped, df_vol_pumped = mfl_pumped.get_dataframes()
+print(df_flux_pumped)
+
+mfl = flopy.utils.MfListBudget(os.path.join('modflow', 'Navarro-SteadyState', stream_BC, modflow_v, 'Navarro-SteadyState.list'))
 df_flux, df_vol = mfl.get_dataframes()
 print(df_flux)
+
+df_flux_pumped - df_flux
 
 #### plot results ####
 ## look at output
@@ -178,13 +99,34 @@ time = 1
 h = bf.HeadFile(os.path.join(mf.model_ws, modelname+'.hds'), text='head')
 
 # extract data matrix
-head = h.get_data(totim=time)
-head[head <= mf.bas6.hnoflo] = np.nan
+head_pumped = h.get_data(totim=time)
+head_pumped[head_pumped <= mf.bas6.hnoflo] = np.nan
 
 # calculate WTE and DDN
-wte_pumped = pp.get_water_table(head, nodata=mf.bas6.hnoflo)
+wte_pumped = pp.get_water_table(head_pumped, nodata=mf.bas6.hnoflo)
 ddn = wte - wte_pumped
 
-## make plot
+## load MNW output
+mnwout = bf.CellBudgetFile(os.path.join(model_ws, modelname+'.mnw2.out'), verbose=False)
+mnwout_data = mnwout.get_data(totim=time, text='MNW2', full3D=True)[0]
+mnwout_data[:,row_wel,col_wel]
+
+# well
+head[:,row_wel,col_wel]
+head_pumped[:,row_wel,col_wel]
+wte[row_wel, col_wel]
+wte_pumped[row_wel, col_wel]
+
+# closest point on RIV SegNum 220; RIV elevation is 243.28 m
+head[:,410,359]
+head_pumped[:,410,359]
+wte[410,359]
+wte_pumped[410,359]
+
+mnwout.close()
+
+## make plots
 plt.imshow(ddn)
 plt.colorbar()
+
+plt.imshow(ddn<0)
