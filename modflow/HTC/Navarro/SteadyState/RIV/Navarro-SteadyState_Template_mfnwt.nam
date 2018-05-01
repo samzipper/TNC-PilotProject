@@ -9,6 +9,7 @@ OC                14  ../mf0/Navarro-SteadyState.oc
 RIV               18  ../mf0/Navarro-SteadyState.riv
 RCH               19  ../mf0/Navarro-SteadyState.rch 
 UPW               31  ../mf0/Navarro-SteadyState.upw 
+DATA(BINARY)      71  Navarro-SteadyState.mnw2.out REPLACE
 DATA(BINARY)      51  Navarro-SteadyState.hds REPLACE
 DATA(BINARY)      52  Navarro-SteadyState.ddn REPLACE
 DATA(BINARY)      61  Navarro-SteadyState.riv.out REPLACE
