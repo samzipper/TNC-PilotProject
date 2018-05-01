@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 
 # set up your model
 modelname = 'Navarro-SteadyState-WithPumping'
+modelname_NoPump = 'Navarro-SteadyState'
 modflow_v = 'mfnwt'  # 'mfnwt' or 'mf2005'
 stream_BC = 'RIV'     # 'RIV' or 'SFR'
 
@@ -33,19 +34,15 @@ elif (modflow_v=='mfnwt'):
         path2mf = modflow_v
 
 # check if model workspace exists; create if not
+model_ws_NoPump = os.path.join('modflow', modelname_NoPump, stream_BC, modflow_v)
 model_ws = os.path.join('modflow', modelname, stream_BC, modflow_v)
 if not os.path.isdir(model_ws):
     os.makedirs(model_ws)
 
 # Assign name and create modflow model object
-mf = flopy.modflow.Modflow.load('Navarro-SteadyState.nam', 
+mf = flopy.modflow.Modflow.load(modelname_NoPump+'.nam', 
         exe_name=path2mf, version=modflow_v, 
-        model_ws=os.path.join('modflow', 'Navarro-SteadyState', stream_BC, modflow_v))
-
-## set up initial conditions
-h = bf.HeadFile(os.path.join(mf.model_ws, 'Navarro-SteadyState.hds'), text='head')
-head = h.get_data(totim=1)
-mf.bas6.start = head
+        model_ws=model_ws_NoPump)
 
 # rename and update model workspace
 mf.name = modelname
@@ -64,9 +61,7 @@ mf.mnw2.mnw[wellid].stress_period_data['qdes'][0] = Qw
 mf.mnw2.stress_period_data[0]['qdes'][mf.mnw2.stress_period_data[0]['wellid']==wellid] = Qw
 
 # for some reason, MNW2 package reverses node data when a model is loaded and rewritten
-# reverse node_data so that topmost node is listed first
-for w in range(1,(mf.mnw2.mnwmax+1)):
-    mf.mnw2.mnw['Well'+str(w)].node_data = np.flipud(mf.mnw2.mnw['Well'+str(w)].node_data)
+# need to flip node_data so that topmost node is listed first
 mf.mnw2.node_data = np.flipud(mf.mnw2.node_data)
 
 ## write inputs and run model
@@ -79,54 +74,93 @@ if not success:
     raise Exception('MODFLOW did not terminate normally.')
 
 ## look at budget outputs
-mfl_pumped = flopy.utils.MfListBudget(os.path.join(model_ws, modelname+".list"))
-df_flux_pumped, df_vol_pumped = mfl_pumped.get_dataframes()
-print(df_flux_pumped)
-
-mfl = flopy.utils.MfListBudget(os.path.join('modflow', 'Navarro-SteadyState', stream_BC, modflow_v, 'Navarro-SteadyState.list'))
+mfl = flopy.utils.MfListBudget(os.path.join(model_ws, modelname+".list"))
 df_flux, df_vol = mfl.get_dataframes()
-print(df_flux)
 
-df_flux_pumped - df_flux
+mfl_NoPump = flopy.utils.MfListBudget(os.path.join(model_ws_NoPump, modelname_NoPump+'.list'))
+df_flux_NoPump, df_vol_NoPump = mfl_NoPump.get_dataframes()
+
+# change in net fluxes
+(df_flux['MNW2_IN'] - df_flux['MNW2_OUT']) - (df_flux_NoPump['MNW2_IN'] - df_flux_NoPump['MNW2_OUT'])
+(df_flux['RIVER_LEAKAGE_IN'] - df_flux['RIVER_LEAKAGE_OUT']) - (df_flux_NoPump['RIVER_LEAKAGE_IN'] - df_flux_NoPump['RIVER_LEAKAGE_OUT'])
 
 #### plot results ####
 ## look at output
+
+## note: for some reason, FloPy doesn't change the prefix of output files, so they
+# will all be in the model_ws folder bot have the modelname_NoPump prefix
+
 # figure out timestep
 time = 1
 
 ## head output
 # Create the headfile object
-h = bf.HeadFile(os.path.join(mf.model_ws, modelname+'.hds'), text='head')
+h = bf.HeadFile(os.path.join(model_ws, modelname_NoPump+'.hds'), text='head')
+h_NoPump = bf.HeadFile(os.path.join(model_ws_NoPump, modelname_NoPump+'.hds'), text='head')
 
 # extract data matrix
-head_pumped = h.get_data(totim=time)
-head_pumped[head_pumped <= mf.bas6.hnoflo] = np.nan
+head = h.get_data(totim=time)
+head[head <= mf.bas6.hnoflo] = np.nan
+
+head_NoPump = h_NoPump.get_data(totim=time)
+head_NoPump[head_NoPump <= mf.bas6.hnoflo] = np.nan
 
 # calculate WTE and DDN
-wte_pumped = pp.get_water_table(head_pumped, nodata=mf.bas6.hnoflo)
-ddn = wte - wte_pumped
+wte = pp.get_water_table(head, nodata=mf.bas6.hnoflo)
+wte_NoPump = pp.get_water_table(head_NoPump, nodata=mf.bas6.hnoflo)
+
+ddn = wte_NoPump - wte
 
 ## load MNW output
-mnwout = bf.CellBudgetFile(os.path.join(model_ws, modelname+'.mnw2.out'), verbose=False)
+mnwout = bf.CellBudgetFile(os.path.join(model_ws, modelname_NoPump+'.mnw2.out'), verbose=False)
 mnwout_data = mnwout.get_data(totim=time, text='MNW2', full3D=True)[0]
+mnwout.close()
+
+# well of interest
+row_wel = 410  # Well 493
+col_wel = 360  # Well 493
 mnwout_data[:,row_wel,col_wel]
 
 # well
 head[:,row_wel,col_wel]
-head_pumped[:,row_wel,col_wel]
+head_NoPump[:,row_wel,col_wel]
 wte[row_wel, col_wel]
-wte_pumped[row_wel, col_wel]
-
-# closest point on RIV SegNum 220; RIV elevation is 243.28 m
-head[:,410,359]
-head_pumped[:,410,359]
-wte[410,359]
-wte_pumped[410,359]
-
-mnwout.close()
+wte_NoPump[row_wel, col_wel]
 
 ## make plots
 plt.imshow(ddn)
 plt.colorbar()
 
 plt.imshow(ddn<0)
+
+## process RIV data
+# load RIV input
+iriv = pd.read_table(os.path.join('modflow', 'input', 'iriv.txt'), delimiter=' ')
+iriv_ReachData = pd.read_table(os.path.join('modflow', 'input', 'iriv_ReachData.txt'), delimiter=' ')
+
+# load RIV output
+rivout = bf.CellBudgetFile(os.path.join(model_ws, modelname_NoPump+'.riv.out'))
+rivout_3D = rivout.get_data(totim=time, text='RIVER LEAKAGE', full3D=True)
+iriv['leakage'] = rivout_3D[0][iriv['lay'],iriv['row'],iriv['col']]
+rivout.close()
+
+rivout_NoPump = bf.CellBudgetFile(os.path.join(model_ws_NoPump, modelname_NoPump+'.riv.out'))
+rivout_3D_NoPump = rivout_NoPump.get_data(totim=time, text='RIVER LEAKAGE', full3D=True)
+iriv['leakage_NoPump'] = rivout_3D_NoPump[0][iriv['lay'],iriv['row'],iriv['col']]
+rivout_NoPump.close()
+
+# join leakage to reach_data
+iriv_ReachData = pd.merge(iriv_ReachData[['SegNum', 'row', 'col']], iriv[['row', 'col', 'leakage', 'leakage_NoPump']],
+                          how='left', on=['row','col'])
+                      
+# summarize by segment number
+iriv_out = iriv_ReachData.groupby('SegNum', as_index=False).agg({'leakage': 'sum', 'leakage_NoPump': 'sum'})
+
+# calculate depletion and depletion.prc for each SegNum
+MNW_net = (df_flux['MNW2_IN'] - df_flux['MNW2_OUT']) - (df_flux_NoPump['MNW2_IN'] - df_flux_NoPump['MNW2_OUT'])
+iriv_out['depletion'] = iriv_out['leakage_NoPump'] - iriv_out['leakage']
+iriv_out['depletion_prc'] = iriv_out['depletion']/MNW_net[0]
+
+sum(iriv_out['depletion_prc'])
+max(iriv_out['depletion_prc'])
+min(iriv_out['depletion_prc'])

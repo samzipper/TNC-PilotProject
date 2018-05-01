@@ -333,7 +333,7 @@ n_wel = iwel.shape[0]
 mnw2 = flopy.modflow.ModflowMnw2(model=mf, mnwmax=n_wel, 
                                  node_data=node_data_all,
                                  stress_period_data=stress_period_data,
-                                 itmp=[n_wel],
+                                 itmp=[n_wel], ipakcb=71,
                                  filenames=[modelname+'.mnw2', modelname+'.mnw2.out'])
 
 ## update starting head
