@@ -47,7 +47,13 @@ for w in succ.WellNum:
         ## summarize by segment number
         iriv_merge['leakage'] = iriv_merge['leakage']*iriv_merge['seg_proportion']
         iriv_out = iriv_merge.groupby('SegNum', as_index=False).agg({'leakage': 'sum'})
-        iriv_out['WellNum'] = w
+        iriv_out['WellNum'] = w              
+        
+        ## calculate net well pumping rate (close, but not identical, to qdes)
+        mnwout = bf.CellBudgetFile(os.path.join(dir_runs, prefix_runs+str(w), modelname+'.mnw2.out'), verbose=False)
+        mnwout_data = mnwout.get_data(totim=time, text='MNW2', full3D=False)
+        mnwout.close()
+        iriv_out['MNW_net'] = sum(mnwout_data[0]['q'])
 
         ## save RIV output
         np.savetxt(os.path.join(dir_runs, prefix_runs+str(w), 'RIV_leakage.txt'), iriv_out,

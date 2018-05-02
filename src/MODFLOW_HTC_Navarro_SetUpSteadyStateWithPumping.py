@@ -45,7 +45,11 @@ mf.change_model_ws(model_ws)
 
 # print info about stream BC package
 print('Using ', stream_BC, ' for stream features')
-                
+
+# for some reason, MNW2 package reverses node data when a model is loaded and rewritten
+# need to flip node_data so that topmost node is listed first
+mf.mnw2.node_data = np.flipud(mf.mnw2.node_data)
+
 ## write inputs for no-pumping scenario
 mf.write_input()
 
@@ -63,7 +67,7 @@ iwel = pd.read_table(os.path.join('modflow', 'input', 'iwel.txt'), delimiter=' '
 # define pumping rate
 Qw = -6*100*0.00378541  # [m3/d]  6 gal/plant/day*100 plants*0.00378541 m3/gal
 
-for w in range(0,3):#iwel.shape[0]):
+for w in range(0,iwel.shape[0]):
     WellNum = iwel['WellNum'][w]
     wellid = 'Well'+str(WellNum)
 
@@ -73,15 +77,11 @@ for w in range(0,3):#iwel.shape[0]):
         os.makedirs(w_model_ws)
         mf.model_ws = w_model_ws
 
-    # update pumping rate for this well stress period data; 
+    # turn on this well 
     mf.mnw2.mnw[wellid].stress_period_data['qdes'][0] = Qw
     mf.mnw2.stress_period_data[0]['qdes'][mf.mnw2.stress_period_data[0]['wellid']==wellid] = Qw
     
-    # for some reason, MNW2 package reverses node data when a model is loaded and rewritten
-    # need to flip node_data so that topmost node is listed first
-    mf.mnw2.node_data = np.flipud(mf.mnw2.node_data)
-
-    # write input (NAM and WEL only)
+    # write input (NAM and MNW2 only)
     mf.write_input(SelPackList=['MNW2'])
 
     # turn off this well
