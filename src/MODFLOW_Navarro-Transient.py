@@ -148,11 +148,10 @@ if not success:
 mfl = flopy.utils.MfListBudget(os.path.join(model_ws, modelname+".list"))
 df_flux, df_vol = mfl.get_dataframes()
 
-plt.plot(range(1,62), df_flux['RECHARGE_IN'])
-plt.plot(range(1,62), df_flux['RIVER_LEAKAGE_IN'])
-plt.plot(range(1,62), df_flux['RIVER_LEAKAGE_OUT'])
-plt.plot(range(1,62), df_flux['RIVER_LEAKAGE_IN']-df_flux['RIVER_LEAKAGE_OUT'])
-
+plt.plot(range(0,df_flux.shape[0]), df_flux['RECHARGE_IN'])
+plt.plot(range(0,df_flux.shape[0]), df_flux['RIVER_LEAKAGE_IN'])
+plt.plot(range(0,df_flux.shape[0]), df_flux['RIVER_LEAKAGE_OUT'])
+plt.plot(range(0,df_flux.shape[0]), df_flux['RIVER_LEAKAGE_IN']-df_flux['RIVER_LEAKAGE_OUT'])
 
 ## note: for some reason, FloPy doesn't change the prefix of output files, so they
 # will all be in the model_ws folder bot have the modelname_NoPump prefix

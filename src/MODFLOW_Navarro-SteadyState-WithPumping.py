@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 modelname = 'Navarro-SteadyState-WithPumping'
 modelname_NoPump = 'Navarro-SteadyState'
 modflow_v = 'mfnwt'  # 'mfnwt' or 'mf2005'
-stream_BC = 'RIV'     # 'RIV' or 'SFR'
+stream_BC = 'SFR'     # 'RIV' or 'SFR'
 
 # where is your MODFLOW-2005 executable?
 if (modflow_v=='mf2005'):
@@ -82,7 +82,9 @@ df_flux_NoPump, df_vol_NoPump = mfl_NoPump.get_dataframes()
 
 # change in net fluxes
 (df_flux['MNW2_IN'] - df_flux['MNW2_OUT']) - (df_flux_NoPump['MNW2_IN'] - df_flux_NoPump['MNW2_OUT'])
+
 (df_flux['RIVER_LEAKAGE_IN'] - df_flux['RIVER_LEAKAGE_OUT']) - (df_flux_NoPump['RIVER_LEAKAGE_IN'] - df_flux_NoPump['RIVER_LEAKAGE_OUT'])
+(df_flux['STREAM_LEAKAGE_IN'] - df_flux['STREAM_LEAKAGE_OUT']) - (df_flux_NoPump['STREAM_LEAKAGE_IN'] - df_flux_NoPump['STREAM_LEAKAGE_OUT'])
 
 #### plot results ####
 ## look at output

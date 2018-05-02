@@ -10,12 +10,12 @@
 #' For the domain, we are using the Navarro River watershed
 #' (HUC 1801010804) plus all adjacent HUC12 watersheds.
 
-source("src/paths+packages.R")
+source(file.path("src", "paths+packages.R"))
 
 # Prep input data ---------------------------------------------------------
 
 ## load well locations
-df.wel <- read.table("modflow/input/iwel.txt", sep=" ", header=T)
+df.wel <- read.table(file.path("modflow", "input", "iwel.txt"), sep=" ", header=T)
 
 # make a spatial points data frame
 xy <- df.wel[,c("lon", "lat")]
@@ -24,7 +24,7 @@ spdf.wel <- SpatialPointsDataFrame(coords = xy, data = df.wel,
 
 
 ## load stream data - created in MODFLOW_Navarro_InputPrepData.R
-shp.streams <- readOGR(dsn="modflow/input", layer="iriv")
+shp.streams <- readOGR(dsn=file.path("modflow", "input"), layer="iriv")
 
 # shapefile shortens names; rename them
 names(shp.streams) <- c("OBJECTID", "REACHCODE", "TerminalPa", "lineLength_m", "TotDASqKM", "StreamOrde", 
@@ -38,23 +38,25 @@ shp.streams.dissolve <- gLineMerge(shp.streams)
 
 # Calculate local area ----------------------------------------------------
 
-# load raster
-r.ibound <- raster("modflow/input/ibound.tif")
-
-# get x/y/z data frame
-df.ibound <- as.data.frame(rasterToPoints(r.ibound))
-df.ibound <- subset(df.ibound, ibound != 0)
-names(df.ibound) <- c("lon", "lat", "ibound")
-
-# convert to spatial points
-spdf.ibound <- SpatialPointsDataFrame(coords = df.ibound[,c("lon", "lat")], data = df.ibound,
-                                      proj4string = CRS(crs.MODFLOW))
-
-# calculate distance to nearest stream feature
-spdf.ibound$distToStream <- gDistance(spdf.ibound, shp.streams.dissolve, byid=T)[1,]
-
-# calculate local area (95th percentile) [m]
-local.area.m <- quantile(spdf.ibound$distToStream, 0.95)
+### don't need to redo this commented out section unless ibound changes
+# # load raster
+# r.ibound <- raster(file.path("modflow", "input", "ibound.tif"))
+# 
+# # get x/y/z data frame
+# df.ibound <- as.data.frame(rasterToPoints(r.ibound))
+# df.ibound <- subset(df.ibound, ibound != 0)
+# names(df.ibound) <- c("lon", "lat", "ibound")
+# 
+# # convert to spatial points
+# spdf.ibound <- SpatialPointsDataFrame(coords = df.ibound[,c("lon", "lat")], data = df.ibound,
+#                                       proj4string = CRS(crs.MODFLOW))
+# 
+# # calculate distance to nearest stream feature
+# spdf.ibound$distToStream <- gDistance(spdf.ibound, shp.streams.dissolve, byid=T)[1,]
+# 
+# # calculate local area (95th percentile) [m]
+# local.area.m <- quantile(spdf.ibound$distToStream, 0.95)
+local.area.m <- 4616.931  # for 100 m resolution
 
 # increase local area by 5x to include streams several catchments distant
 local.area.m <- local.area.m*5
@@ -165,6 +167,13 @@ for (wel in df.wel$WellNum){
 df.apportion.all[is.na(df.apportion.all)] <- 0
 
 # Save output -------------------------------------------------------------
+
+# round to 5 significant digits to reduce file size
+df.apportion.all$f.InvDist <- round(df.apportion.all$f.InvDist, 5)
+df.apportion.all$f.InvDistSq <- round(df.apportion.all$f.InvDistSq, 5)
+df.apportion.all$f.Web <- round(df.apportion.all$f.Web, 5)
+df.apportion.all$f.WebSq <- round(df.apportion.all$f.WebSq, 5)
+df.apportion.all$f.TPoly <- round(df.apportion.all$f.TPoly, 5)
 
 write.csv(df.apportion.all, 
           file.path("results","Navarro_DepletionApportionment_AllMethods+Wells+Reaches.csv"), 

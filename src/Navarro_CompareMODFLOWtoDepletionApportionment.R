@@ -3,7 +3,7 @@
 #' from MODFLOW (calculate from output of script MODFLOW_HTC_Navarro_Riv-SummarizeLeakage.py)
 #' and geometric depletion apportionment methods.
 
-source("src/paths+packages.R")
+source(file.path("src", "paths+packages.R"))
 
 ## what is the pumping rate?
 Qw <- -6*100*0.00378541  # [m3/d]
@@ -11,6 +11,10 @@ Qw <- -6*100*0.00378541  # [m3/d]
 ## choose stream boundary condition and modflow version
 stream_BC <- "RIV"    # "RIV" or "SFR"
 modflow_v <- "mfnwt"  # "mfnwt" or "mf2005"
+masked <- F           # use masked depletion apportionment? should only be T for SFR
+if (stream_BC != "SFR" & masked){
+  stop("Error: Using masked depletion apportionment results with RIV MODFLOW output")
+}
 
 ## load stream shapefile
 shp.streams <- readOGR(dsn=file.path("modflow", "input"), layer="iriv")
@@ -23,34 +27,24 @@ names(shp.streams) <- c("OBJECTID", "REACHCODE", "TerminalPa", "lineLength_m", "
 segs.navarro <- shp.streams@data$SegNum[shp.streams@data$TerminalPa==outlet.TerminalPa]
 
 ## load geometric data (from script Navarro_DepletionApportionment.R)
-df.apportion <- 
-  read.csv(file.path("results","Navarro_DepletionApportionment_AllMethods+Wells+Reaches.csv"),
-           stringsAsFactors=F) %>% 
-  subset(SegNum %in% segs.navarro)
+if (masked){
+  df.apportion <- 
+    read.csv(file.path("results","Navarro_DepletionApportionment_MaskDryStreams_AllMethods+Wells+Reaches.csv"),
+             stringsAsFactors=F) %>% 
+    subset(SegNum %in% segs.navarro)
+  
+} else {
+  df.apportion <- 
+    read.csv(file.path("results","Navarro_DepletionApportionment_AllMethods+Wells+Reaches.csv"),
+             stringsAsFactors=F) %>% 
+    subset(SegNum %in% segs.navarro)
+}
 
 ## load MODFLOW output
 # leakage
 df.MODFLOW <- 
   file.path("modflow","HTC", "Navarro", "SteadyState", stream_BC, modflow_v, paste0(stream_BC, "-SummarizeLeakage.csv")) %>% 
   read.csv(stringsAsFactors=F)
-
-# budget
-df.MODFLOW.budget <- 
-  file.path("modflow","HTC", "Navarro", "SteadyState", stream_BC, modflow_v, "SummarizeBudgetTerms.csv") %>% 
-  read.csv(stringsAsFactors=F)
-
-#### temporary due to bug: manually set WellNum
-df.MODFLOW.budget$WellNum <- seq(0,787)
-
-# calculate net terms
-df.MODFLOW.budget$MNW.net <- df.MODFLOW.budget$MNW2_IN - df.MODFLOW.budget$MNW2_OUT  # negative = net sink
-df.MODFLOW.budget$RIV.net <- df.MODFLOW.budget$RIVER_LEAKAGE_IN - df.MODFLOW.budget$RIVER_LEAKAGE_OUT  # negative = net sink
-df.MODFLOW.budget$CHB.net <- df.MODFLOW.budget$CONSTANT_HEAD_IN - df.MODFLOW.budget$CONSTANT_HEAD_OUT  # negative = net sink
-df.MODFLOW.budget$error <- df.MODFLOW.budget$TOTAL_IN - df.MODFLOW.budget$TOTAL_OUT  # negative = net sink
-
-# combine
-df.MODFLOW <- 
-  left_join(df.MODFLOW, df.MODFLOW.budget[,c("WellNum", "MNW.net", "RIV.net", "CHB.net", "error")], by="WellNum")
 
 ## if it's SFR: need to get SegNum
 if (stream_BC=="SFR"){
@@ -65,29 +59,21 @@ if (stream_BC=="SFR"){
 # make separate column for no pumping depletion
 df.MODFLOW<- 
   df.MODFLOW %>% 
-  subset(WellNum==0, select=c("SegNum", "leakage", "MNW.net", "RIV.net", "CHB.net")) %>% 
-  set_colnames(c("SegNum", "leakage_NoPump", "MNW_NoPump", "RIV_NoPump", "CHB_NoPump")) %>% 
+  subset(WellNum==0, select=c("SegNum", "leakage", "MNW_net")) %>% 
+  set_colnames(c("SegNum", "leakage_NoPump", "MNW_NoPump")) %>% 
   left_join(subset(df.MODFLOW, WellNum != 0), ., by=c("SegNum")) %>% 
-  arrange(WellNum, SegNum)
-
-# calculate change in leakage
-# convention: negative value for leakage means gaining stream;
-# so if (leakage_NoPump - leakage) < 0, stream is depleted due to pumping
-df.MODFLOW$depletion_m3.d <- df.MODFLOW$leakage_NoPump - df.MODFLOW$leakage
-
-## this is not actually necessary I think - except the subset part
-df.MODFLOW <- 
-  df.MODFLOW %>% 
-  group_by(WellNum) %>% 
-  summarize(leakage.sum = sum(leakage),
-            leakage_NoPump.sum = sum(leakage_NoPump),
-            depletion.sum = sum(depletion_m3.d)) %>% 
-  left_join(df.MODFLOW, ., by="WellNum") %>% 
+  arrange(WellNum, SegNum) %>% 
   subset(SegNum %in% segs.navarro)
+
+# calculate change in leakage and MNW
+# convention: negative value means flow out of aquifer (gaining stream, pumping well)
+# so if (leakage_NoPump - leakage) < 0, stream is depleted due to pumping
+df.MODFLOW$Qw_m3.d <- df.MODFLOW$MNW_net - df.MODFLOW$MNW_NoPump
+df.MODFLOW$depletion_m3.d <- df.MODFLOW$leakage_NoPump - df.MODFLOW$leakage
 
 ## two approaches to calculating modflow depletion:
 # (1) calculate depletion.prc as percentage of pumping rate (this is the definition of capture fraction from Leake et al., 2010)
-df.MODFLOW$depletion.prc.modflow <- df.MODFLOW$depletion_m3.d/df.MODFLOW$MNW.net
+df.MODFLOW$depletion.prc.modflow <- df.MODFLOW$depletion_m3.d/df.MODFLOW$Qw_m3.d
 
 # # (2) calculate depletion.prc as percentage of all changes in leakage (this forces range 0-1)
 # df.MODFLOW$depletion.prc.modflow <- df.MODFLOW$depletion_m3.d/df.MODFLOW$depletion.sum
@@ -99,7 +85,7 @@ df.MODFLOW$depletion.prc.modflow <- df.MODFLOW$depletion_m3.d/df.MODFLOW$MNW.net
 
 ## combine MODFLOW with analytical
 df <- 
-  left_join(df.apportion, df.MODFLOW[,c("SegNum", "WellNum", "depletion.prc.modflow")], by=c("SegNum", "WellNum")) %>% 
+  left_join(df.apportion, df.MODFLOW[,c("SegNum", "WellNum", "depletion.prc.modflow")], by=c("SegNum", "WellNum"), all.x=T, all.y=T) %>% 
   subset(is.finite(depletion.prc.modflow)) %>% 
   melt(id=c("SegNum", "WellNum", "distToWell.min.m", "depletion.prc.modflow"),
        value.name="depletion.prc", variable.name="method")
@@ -116,13 +102,13 @@ p.depletion <-
   stat_smooth(method="lm") +
   facet_wrap(~method, labeller=as_labeller(labels.method)) +
   labs(title="Comparison of Depletion Apportionment Equations to Steady-State MODFLOW",
-       subtitle=paste0("MODFLOW: ", modflow_v, "; Stream BC: ", stream_BC, "; 1 dot = 1 stream segment response to 1 pumping well")) +
+       subtitle=paste0("MODFLOW: ", modflow_v, "; Stream BC: ", stream_BC, "; Mask: ", masked, "; 1 dot = 1 stream segment response to 1 pumping well")) +
   scale_x_continuous(name="Analytical Depletion Fraction", 
                      limits=c(0,1), breaks=seq(0,1,0.25), expand=c(0,0)) +
   scale_y_continuous(name="MODFLOW Depletion Fraction", 
                      limits=c(min.depletion,max.depletion), expand=c(0,0))
-p.depletion
-ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_p.depletion_", stream_BC, "_", modflow_v, ".png")),
+#p.depletion
+ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_p.depletion_", stream_BC, "_", modflow_v, "_mask", masked, ".png")),
        p.depletion, width=8, height=6, units="in")
 
 # calculate fit statistics
