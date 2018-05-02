@@ -48,25 +48,32 @@ for w in succ.WellNum:
                              
         # add well number column
         sfr_merge['WellNum'] = w
+        
+        ## calculate net well pumping rate (close, but not identical, to qdes)
+        mnwout = bf.CellBudgetFile(os.path.join(dir_runs, prefix_runs+str(w), modelname+'.mnw2.out'), verbose=False)
+        mnwout_data = mnwout.get_data(totim=time, text='MNW2', full3D=False)
+        mnwout.close()
+        sfr_merge['MNW_net'] = sum(mnwout_data[0]['q'])
+
 
         ## save RIV output
         np.savetxt(os.path.join(dir_runs, prefix_runs+str(w), 'SFR_leakage.txt'), 
-                   sfr_merge[['SFR_NSEG', 'Qaquifer', 'WellNum']],
-                   header="SFR_NSEG,leakage,WellNum", comments='')
+                   sfr_merge[['SFR_NSEG', 'Qaquifer', 'WellNum', 'MNW_net']],
+                   header="SFR_NSEG,leakage,WellNum,MNW_net", comments='')
         
         ## add to overall data frame
         if (start_flag):
-            sfr_all = sfr_merge[['SFR_NSEG', 'Qaquifer', 'WellNum']]
+            sfr_all = sfr_merge[['SFR_NSEG', 'Qaquifer', 'WellNum','MNW_net']]
             start_flag = False
         else:
-            sfr_all = sfr_all.append(sfr_merge[['SFR_NSEG', 'Qaquifer', 'WellNum']])
+            sfr_all = sfr_all.append(sfr_merge[['SFR_NSEG', 'Qaquifer', 'WellNum', 'MNW_net']])
 
     ## status update
     print(w, ' complete')
 
 ## save all output
 np.savetxt(os.path.join(dir_runs, 'SFR-SummarizeLeakage.csv'), sfr_all,
-           delimiter=",", header="SFR_NSEG,leakage,WellNum", comments='')
+           delimiter=",", header="SFR_NSEG,leakage,WellNum,MNW_net", comments='')
 
 ## print total leakage across all segments
 sfr_all_summary = sfr_all.groupby('WellNum', as_index=False).agg({'Qaquifer': 'sum'})

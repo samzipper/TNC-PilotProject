@@ -8,7 +8,7 @@ import flopy
 import pandas as pd
 
 # what stream BC and modflow version?
-stream_BC = 'RIV'  # 'RIV' or 'SFR'
+stream_BC = 'SFR'  # 'RIV' or 'SFR'
 modflow_v = 'mfnwt'  # 'mfnwt' or 'mf2005'
 
 # define the folder and the prefix

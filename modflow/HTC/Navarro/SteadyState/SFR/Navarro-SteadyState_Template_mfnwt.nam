@@ -15,3 +15,4 @@ DATA(BINARY)      52  Navarro-SteadyState.ddn REPLACE
 DATA(BINARY)      53  Navarro-SteadyState.cbc REPLACE
 DATA              81  Navarro-SteadyState.sfr.out
 DATA              91  Navarro-SteadyState.gage1.go
+DATA(BINARY)      71  Navarro-SteadyState.mnw2.out REPLACE
