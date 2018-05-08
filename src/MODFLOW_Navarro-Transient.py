@@ -54,17 +54,16 @@ mf.change_model_ws(model_ws)
 ## update DIS
 
 # parameters controlling time discretization
-numyears = 2                # number of years for transient simulation (1st year will always be SS)
-sp_per_year = 2             # dry season and wet season for now
-sp_length_days = [150, 215] # 5 months (wet), 7 months (dry)
-sp_season = ['wet', 'dry']  # must be same length as sp_length_days
-ts_length_days = 5          # number of days per timestep - should divide evenly
-                            #   into all numbers in sp_length_days
+numyears = 1                # number of years for transient simulation (1st year will always be SS)
+sp_per_year = 12             # dry season and wet season for now
+sp_length_days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] # 5 months (wet), 7 months (dry)
+sp_season = ['wet']*4 + ['dry']*7 + ['wet']  # must be same length as sp_length_days
+ts_length_days = 10          # number of days per timestep - will be approximate because nstp must be integer
 
 # define stress period data
 nper = 1+numyears*sp_per_year
 perlen = [365]+sp_length_days*numyears
-nstp_yr = (np.array(sp_length_days, dtype='f')/ts_length_days).tolist()
+nstp_yr = [round(elem, 0) for elem in (np.array(sp_length_days, dtype='f')/ts_length_days).tolist()]
 nstp = [1]+nstp_yr*numyears
 steady = [True]+[False]*(nper-1)
 
@@ -100,11 +99,21 @@ for sp in np.arange(1, len(sp_season_all)):
 mf.rch.rech = rech
 
 ## update OC - just save at every timestep for now
-oc = flopy.modflow.ModflowOc(mf, save_every=True, compact=True)
-#oc_spd = {(0, 0): ['save head'],
-#          (1, 2): ['save head'],
-#          (2, 2): ['save head']}
-#mf.oc.stress_period_data = oc_spd
+#oc = flopy.modflow.ModflowOc(mf, save_every=True, compact=True)
+oc_spd = {(0, 0): ['save head'],
+          (1, 2): ['save head'],
+          (2, 2): ['save head'],
+          (3, 2): ['save head'],
+          (4, 2): ['save head'],
+          (5, 2): ['save head'],
+          (6, 2): ['save head'],
+          (7, 2): ['save head'],
+          (8, 2): ['save head'],
+          (9, 2): ['save head'],
+          (10, 2): ['save head'],
+          (11, 2): ['save head'],
+          (12, 2): ['save head']}
+mf.oc.stress_period_data = oc_spd
 
 ## update MNW2
 # for some reason, MNW2 package reverses node data when a model is loaded and rewritten
@@ -153,9 +162,6 @@ plt.plot(range(0,df_flux.shape[0]), df_flux['RIVER_LEAKAGE_IN'])
 plt.plot(range(0,df_flux.shape[0]), df_flux['RIVER_LEAKAGE_OUT'])
 plt.plot(range(0,df_flux.shape[0]), df_flux['RIVER_LEAKAGE_IN']-df_flux['RIVER_LEAKAGE_OUT'])
 
-## note: for some reason, FloPy doesn't change the prefix of output files, so they
-# will all be in the model_ws folder bot have the modelname_NoPump prefix
-
 # figure out timestep
 time = 1
 
@@ -169,11 +175,11 @@ head_SS = h.get_data(kstpkper=(0,0))
 head_SS[head_SS <= mf.bas6.hnoflo] = np.nan
 wte_SS = pp.get_water_table(head_SS, nodata=mf.bas6.hnoflo)
 
-head_sp1 = h.get_data(kstpkper=(29,1))
+head_sp1 = h.get_data(kstpkper=(2,10))
 head_sp1[head_sp1 <= mf.bas6.hnoflo] = np.nan
 wte_sp1 = pp.get_water_table(head_sp1, nodata=mf.bas6.hnoflo)
 
-head_sp2 = h.get_data(kstpkper=(29,2))
+head_sp2 = h.get_data(kstpkper=(2,12))
 head_sp2[head_sp2 <= mf.bas6.hnoflo] = np.nan
 wte_sp2 = pp.get_water_table(head_sp2, nodata=mf.bas6.hnoflo)
 
