@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 modelname = 'Navarro-Transient'
 modelname_SS = 'Navarro-SteadyState'
 modflow_v = 'mfnwt'  # 'mfnwt' or 'mf2005'
-stream_BC = 'RIV'     # 'RIV' or 'SFR'
+stream_BC = 'SFR'     # 'RIV' or 'SFR'
 
 # where is your MODFLOW-2005 executable?
 if (modflow_v=='mf2005'):
@@ -133,6 +133,14 @@ if (stream_BC=='RIV'):
 
 if (stream_BC=='SFR'):
     ## update SFR
+    sfr_d5 = {}
+    for i in range(0,nper): sfr_d5[i] = [485, 0, 0, 0]
+    mf.sfr.dataset_5 = sfr_d5
+    
+    sfr_segData = {}
+    for i in range(0,nper): sfr_segData[i] = mf.sfr.segment_data[0]:
+    mf.sfr.segment_data = sfr_segData
+    
 
 ## write inputs and run model
 mf.write_input()
@@ -157,10 +165,15 @@ if not success:
 mfl = flopy.utils.MfListBudget(os.path.join(model_ws, modelname+".list"))
 df_flux, df_vol = mfl.get_dataframes()
 
+if (stream_BC=='RIV'):
+    budgetPrefix = 'RIVER'
+if (stream_BC=='SFR'):
+    budgetPrefix = 'STREAM'
+
 plt.plot(range(0,df_flux.shape[0]), df_flux['RECHARGE_IN'])
-plt.plot(range(0,df_flux.shape[0]), df_flux['RIVER_LEAKAGE_IN'])
-plt.plot(range(0,df_flux.shape[0]), df_flux['RIVER_LEAKAGE_OUT'])
-plt.plot(range(0,df_flux.shape[0]), df_flux['RIVER_LEAKAGE_IN']-df_flux['RIVER_LEAKAGE_OUT'])
+plt.plot(range(0,df_flux.shape[0]), df_flux[budgetPrefix+'_LEAKAGE_IN'])
+plt.plot(range(0,df_flux.shape[0]), df_flux[budgetPrefix+'_LEAKAGE_OUT'])
+plt.plot(range(0,df_flux.shape[0]), df_flux[budgetPrefix+'_LEAKAGE_IN']-df_flux[budgetPrefix+'_LEAKAGE_OUT'])
 
 # figure out timestep
 time = 1
