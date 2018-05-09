@@ -895,6 +895,7 @@ if (riv){
               lat = mean(lat))
   m.dem.proj[as.matrix(df.rowcol.elev[,c("row", "col")])+1] <- 
     df.rowcol.elev$elev_m_min_max
+  m.dem.proj <- round(m.dem.proj, 2)
   r.dem.proj[] <- m.dem.proj[]
   
   if (nlay > 1){
