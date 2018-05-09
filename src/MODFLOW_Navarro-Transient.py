@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 modelname = 'Navarro-Transient'
 modelname_SS = 'Navarro-SteadyState'
 modflow_v = 'mfnwt'  # 'mfnwt' or 'mf2005'
-stream_BC = 'SFR'     # 'RIV' or 'SFR'
+stream_BC = 'RIV'     # 'RIV' or 'SFR'
 
 # where is your MODFLOW-2005 executable?
 if (modflow_v=='mf2005'):
@@ -54,11 +54,11 @@ mf.change_model_ws(model_ws)
 ## update DIS
 
 # parameters controlling time discretization
-numyears = 1                # number of years for transient simulation (1st year will always be SS)
+numyears = 10                # number of years for transient simulation (1st year will always be SS)
 sp_per_year = 12             # dry season and wet season for now
 sp_length_days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] # 5 months (wet), 7 months (dry)
 sp_season = ['wet']*4 + ['dry']*7 + ['wet']  # must be same length as sp_length_days
-ts_length_days = 10          # number of days per timestep - will be approximate because nstp must be integer
+ts_length_days = 5          # number of days per timestep - will be approximate because nstp must be integer
 
 # define stress period data
 nper = 1+numyears*sp_per_year
@@ -98,22 +98,13 @@ for sp in np.arange(1, len(sp_season_all)):
     if sp_season_all[sp]=='dry': rech[sp] = rchrate_dry
 mf.rch.rech = rech
 
-## update OC - just save at every timestep for now
+## update OC - save at end of every stress period
 #oc = flopy.modflow.ModflowOc(mf, save_every=True, compact=True)
-oc_spd = {(0, 0): ['save head'],
-          (1, 2): ['save head'],
-          (2, 2): ['save head'],
-          (3, 2): ['save head'],
-          (4, 2): ['save head'],
-          (5, 2): ['save head'],
-          (6, 2): ['save head'],
-          (7, 2): ['save head'],
-          (8, 2): ['save head'],
-          (9, 2): ['save head'],
-          (10, 2): ['save head'],
-          (11, 2): ['save head'],
-          (12, 2): ['save head']}
-mf.oc.stress_period_data = oc_spd
+oc_spd = {}
+oc_spd[(0,0)] = ['save head', 'save budget']
+for sp in range(1,nper):
+    oc_spd[(sp,(nstp[sp]-1))] = ['save head', 'save budget']
+oc = flopy.modflow.ModflowOc(mf, stress_period_data=oc_spd, compact=True)
 
 ## update MNW2
 # for some reason, MNW2 package reverses node data when a model is loaded and rewritten
@@ -130,6 +121,7 @@ mf.mnw2.itmp = itmp
 if (stream_BC=='RIV'):
     ## don't need to do anything unless RIV properties (e.g. stage, conductance)
     ## change between stress periods
+    print(stream_BC)
 
 if (stream_BC=='SFR'):
     ## update SFR
@@ -138,9 +130,8 @@ if (stream_BC=='SFR'):
     mf.sfr.dataset_5 = sfr_d5
     
     sfr_segData = {}
-    for i in range(0,nper): sfr_segData[i] = mf.sfr.segment_data[0]:
+    for i in range(0,nper): sfr_segData[i] = mf.sfr.segment_data[0]
     mf.sfr.segment_data = sfr_segData
-    
 
 ## write inputs and run model
 mf.write_input()
