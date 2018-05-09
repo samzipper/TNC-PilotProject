@@ -19,7 +19,7 @@ nlay <- 5    # number of layers
 # what variables to process?
 ibound <- F
 GLHYMPS <- F
-ztop <- T
+ztop <- F
 riv <- T
 wel <- F
 
@@ -619,9 +619,9 @@ if (riv){
           df.path$elev_m <- seq(from=riv.seg$elev_m[i.term], to=riv.seg$elev_m[i.closest],
                                 length.out=dim(df.path)[1]+2)[-c(1, (dim(df.path)[1]+2))]
           df.path[,c("REACHCODE", "TerminalPa", "lineLength_m", "TotDASqKM", "StreamOrde", "TerminalFl", "SLOPE",
-                     "FromNode", "ToNode", "SegNum", "ibound", "SFR_NSEG")] <-
+                     "FromNode", "ToNode", "SegNum", "ibound", "drainageArea_km2", "SFR_NSEG")] <-
             riv.seg[i.term, c("REACHCODE", "TerminalPa", "lineLength_m", "TotDASqKM", "StreamOrde", "TerminalFl", "SLOPE",
-                              "FromNode", "ToNode", "SegNum", "ibound", "SFR_NSEG")]
+                              "FromNode", "ToNode", "SegNum", "ibound", "drainageArea_km2", "SFR_NSEG")]
           
           # update IREACH for i.closest
           riv.seg$SFR_IREACH[i.closest] <- max(df.path$SFR_IREACH)+1
@@ -781,9 +781,9 @@ if (riv){
                               to=riv.seg.starts$elev_m[riv.seg.starts$SFR_NSEG==outseg.this],
                               length.out=dim(df.conn)[1]+2)[-c(1, (dim(df.conn)[1]+2))]
         df.conn[,c("REACHCODE", "TerminalPa", "lineLength_m", "TotDASqKM", "StreamOrde", "TerminalFl", "SLOPE",
-                   "FromNode", "ToNode", "SegNum", "ibound")] <-
+                   "FromNode", "ToNode", "drainageArea_km2", "SegNum", "ibound")] <-
           riv.seg.starts[riv.seg.ends$SFR_NSEG==nseg, c("REACHCODE", "TerminalPa", "lineLength_m", "TotDASqKM", "StreamOrde", "TerminalFl", "SLOPE",
-                                                        "FromNode", "ToNode", "SegNum", "ibound")]
+                                                        "FromNode", "ToNode", "drainageArea_km2", "SegNum", "ibound")]
         
         # status update
         print(paste0("Connecting ", nseg, " to ", outseg.this, ": ", dim(df.conn)[1], " reach(es) created"))
@@ -796,6 +796,33 @@ if (riv){
     }
     
   }  # end of while loop
+  
+  ## figure out direct drainage area for each segment
+  riv.seg.info$DirectDASqKM <- NaN
+  for (i in 1:length(riv.seg.info$SFR_NSEG)){
+    nseg <- riv.seg.info$SFR_NSEG[i]
+    
+    # figure out which NSEG are draining into this
+    nseg_upstream <- riv.seg.info$SFR_NSEG[riv.seg.info$SFR_OUTSEG==nseg]
+    
+    # calculate directDA
+    riv.seg.info$DirectDASqKM[i] <- riv.seg.info$TotDASqKM[i] - 
+      sum(riv.seg.info$TotDASqKM[riv.seg.info$SFR_NSEG %in% nseg_upstream])
+    
+    # some SegNums have a weird situation with two parallel channels draining into them and need special treatment
+    if (riv.seg.info$SegNum[i] %in% c(71, 79, 134, 307)){
+      riv.seg.info$DirectDASqKM[i] <- riv.seg.info$TotDASqKM[i] - 
+        max(riv.seg.info$TotDASqKM[riv.seg.info$SFR_NSEG %in% nseg_upstream])
+    }
+    
+    # other SegNums are weird for other reasons so just set direct drainage to 0
+    if (riv.seg.info$SegNum[i] %in% c(72, 80, 136, 148, 354, 358, 368)){
+      # 72, 80, 136 = parallel to other segment
+      # 148, 354, 358, 368 = terminal segments outside Navarro
+      riv.seg.info$DirectDASqKM[i] <- 0
+    }
+    
+  }
   
   ## check slope
   # define minimum allowed slope [m/m]
