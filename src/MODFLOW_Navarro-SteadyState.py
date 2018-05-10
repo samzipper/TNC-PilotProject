@@ -16,7 +16,7 @@ import platform
 # set up your model
 modelname = 'Navarro-SteadyState'
 modflow_v = 'mfnwt'  # 'mfnwt' or 'mf2005'
-stream_BC = 'RIV'     # 'RIV' or 'SFR'
+stream_BC = 'SFR'     # 'RIV' or 'SFR'
 
 # where is your MODFLOW-2005 executable?
 if (modflow_v=='mf2005'):
@@ -86,12 +86,10 @@ dis = flopy.modflow.ModflowDis(mf, nlay, nrow, ncol,
 bas = flopy.modflow.ModflowBas(mf, ibound=ibound, strt=0)
 
 ## set up flow properties and solver depending on version of MODFLOW
-hk = 1e-12*1e7*86400     # horizontal K [m/d], convert k [m-2] to K [m/s] to K [m/d]
-layvka = 1  # if layvka != 0, Kv = Kh/vka
-vka = 10.    # anisotropy
-sy = 0.10   # specific yield (using 50% of domain mean porosity for now)
-ss = 1e-5   # specific storage
-laytyp = 1  # layer type
+hk = 1e-12*1e7*86400   # horizontal K [m/d], convert k [m-2] to K [m/s] to K [m/d]
+layvka = 1             # if layvka != 0, Kv = Kh/vka
+vka = 10.              # anisotropy
+laytyp = 1             # layer type
 tol_head = 1e-1
 if (modflow_v=='mf2005'):
     lpf = flopy.modflow.ModflowLpf(mf, hk=hk, vka=vka, sy=sy, ss=ss, layvka=layvka, laytyp=laytyp)
@@ -168,9 +166,13 @@ if (stream_BC=='SFR'):
     # width1, width2 only used if icalc=3 so not in this case
     # roughch=Manning's n=0.4 which seemed like a good ballpark for natural channels: 
     #   http://www.fsl.orst.edu/geowater/FX3/help/8_Hydraulic_Reference/Mannings_n_Tables.htm
+    
+    # monthly quickflow [mm/mo] from the script Navarro_StreamflowData.R
+    quickflow_mo = [119.61, 91.86, 70.45, 27.65, 5.87, 1.64, 0.52, 0.21, 0.21, 2.04, 16.92, 78.91]
+    
     seg_data_array = np.array(
               [(isfr_SegmentData['SFR_NSEG'][0], 1, isfr_SegmentData['SFR_OUTSEG'][0], 0, 
-                0, 0, 0, 0, 
+                0, isfr_SegmentData['DirectDASqKM'][0]*1000*1000*sum(quickflow_mo)/(1000*365), 0, 0, 
                 0.04, isfr_SegmentData['width_m'][0], isfr_SegmentData['width_m'][0])], 
     dtype=[('nseg', '<f8'), ('icalc', '<f8'), ('outseg', '<f8'), ('iupseg', '<f8'), 
            ('flow', '<f8'), ('runoff', '<f8'), ('etsw', '<f8'), ('pptsw', '<f8'), 
@@ -179,7 +181,7 @@ if (stream_BC=='SFR'):
         seg_data_array=np.vstack([seg_data_array, 
                               np.array(
               [(isfr_SegmentData['SFR_NSEG'][s], 1, isfr_SegmentData['SFR_OUTSEG'][s], 0, 
-                0, 0, 0, 0, 
+                0, isfr_SegmentData['DirectDASqKM'][s]*1000*1000*sum(quickflow_mo)/(1000*365), 0, 0, 
                 0.04, isfr_SegmentData['width_m'][s], isfr_SegmentData['width_m'][s])], 
                 dtype=[('nseg', '<f8'), ('icalc', '<f8'), ('outseg', '<f8'), ('iupseg', '<f8'), 
                        ('flow', '<f8'), ('runoff', '<f8'), ('etsw', '<f8'), ('pptsw', '<f8'), 

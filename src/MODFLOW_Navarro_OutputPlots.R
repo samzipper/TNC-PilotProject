@@ -9,10 +9,10 @@
 #' For the domain, we are using the Navarro River watershed
 #' (HUC 1801010804) plus all adjacent HUC12 watersheds.
 
-source("src/paths+packages.R")
+source(file.path("src", "paths+packages.R"))
 
 ## choose stream boundary condition and modflow version
-stream_BC <- "RIV"    # "RIV" or "SFR"
+stream_BC <- "SFR"    # "RIV" or "SFR"
 modflow_v <- "mfnwt"  # "mfnwt" or "mf2005"
 
 ## load common data

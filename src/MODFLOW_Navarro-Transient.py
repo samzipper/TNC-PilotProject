@@ -16,12 +16,13 @@ import flopy.utils.sfroutputfile as sf
 import flopy.utils.postprocessing as pp
 import platform
 import matplotlib.pyplot as plt
+import copy
 
 # set up your model
 modelname = 'Navarro-Transient'
 modelname_SS = 'Navarro-SteadyState'
 modflow_v = 'mfnwt'  # 'mfnwt' or 'mf2005'
-stream_BC = 'RIV'     # 'RIV' or 'SFR'
+stream_BC = 'SFR'     # 'RIV' or 'SFR'
 
 # where is your MODFLOW-2005 executable?
 if (modflow_v=='mf2005'):
@@ -50,11 +51,11 @@ mf = flopy.modflow.Modflow.load(modelname_SS+'.nam',
 mf.name = modelname
 mf.change_model_ws(model_ws)
 
-### the following packages have stress period data: DIS, RCH, OC, RIV/SF, MNW2
+### the following packages have stress period data: DIS, UPW, RCH, OC, RIV/SF, MNW2
 ## update DIS
 
 # parameters controlling time discretization
-numyears = 10                # number of years for transient simulation (1st year will always be SS)
+numyears = 1                # number of years for transient simulation (1st year will always be SS)
 sp_per_year = 12             # dry season and wet season for now
 sp_length_days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] # 5 months (wet), 7 months (dry)
 sp_season = ['wet']*4 + ['dry']*7 + ['wet']  # must be same length as sp_length_days
@@ -82,6 +83,14 @@ dis = flopy.modflow.ModflowDis(mf, nlay, nrow, ncol,
                                top=ztop, botm=botm,
                                nper=nper, perlen=perlen, 
                                nstp=nstp, steady=steady)
+
+## update UPW
+sy = 0.10   # specific yield (using 50% of domain mean porosity for now)
+ss = 1e-5   # specific storage
+hani = 1.0  # ratio of hk along columns to hk along rows
+mf.upw.sy = sy
+mf.upw.ss = ss
+mf.upw.hani = hani
 
 ## update RCH
 rchrate_yr = 150/(1000*365)  # [mm/yr] --> [m/d]
@@ -124,13 +133,23 @@ if (stream_BC=='RIV'):
     print(stream_BC)
 
 if (stream_BC=='SFR'):
-    ## update SFR
+    ## number of active streams per stress period
     sfr_d5 = {}
-    for i in range(0,nper): sfr_d5[i] = [485, 0, 0, 0]
+    for i in range(0,nper): sfr_d5[i] = mf.sfr.dataset_5[0]
     mf.sfr.dataset_5 = sfr_d5
     
+    ## set up quickflow 
+    # monthly quickflow [mm/mo] from the script Navarro_StreamflowData.R
+    quickflow_mo = [119.61, 91.86, 70.45, 27.65, 5.87, 1.64, 0.52, 0.21, 0.21, 2.04, 16.92, 78.91]
+    quickflow_mo_prc = [quickflow_mo[i]/sum(quickflow_mo) for i in range(0,len(quickflow_mo))]
+    quickflow_mo_prc_sp = [1]+quickflow_mo_prc*numyears
+    
+    ## update SFR
+    SS_segData = mf.sfr.segment_data[0].copy()
     sfr_segData = {}
-    for i in range(0,nper): sfr_segData[i] = mf.sfr.segment_data[0]
+    for i in range(0,nper):
+        sfr_segData[i] = SS_segData.copy()
+        sfr_segData[i]['runoff'] = sfr_segData[i]['runoff']*quickflow_mo_prc_sp[i]
     mf.sfr.segment_data = sfr_segData
 
 ## write inputs and run model
@@ -151,43 +170,3 @@ namfile.close()
 success, mfoutput = mf.run_model()
 if not success:
     raise Exception('MODFLOW did not terminate normally.')
-
-## look at budget outputs
-mfl = flopy.utils.MfListBudget(os.path.join(model_ws, modelname+".list"))
-df_flux, df_vol = mfl.get_dataframes()
-
-if (stream_BC=='RIV'):
-    budgetPrefix = 'RIVER'
-if (stream_BC=='SFR'):
-    budgetPrefix = 'STREAM'
-
-plt.plot(range(0,df_flux.shape[0]), df_flux['RECHARGE_IN'])
-plt.plot(range(0,df_flux.shape[0]), df_flux[budgetPrefix+'_LEAKAGE_IN'])
-plt.plot(range(0,df_flux.shape[0]), df_flux[budgetPrefix+'_LEAKAGE_OUT'])
-plt.plot(range(0,df_flux.shape[0]), df_flux[budgetPrefix+'_LEAKAGE_IN']-df_flux[budgetPrefix+'_LEAKAGE_OUT'])
-
-# figure out timestep
-time = 1
-
-## head output
-# Create the headfile object
-h = bf.HeadFile(os.path.join(model_ws, modelname+'.hds'), text='head')
-times = h.list_records()
-
-# extract head and calculate wte
-head_SS = h.get_data(kstpkper=(0,0))
-head_SS[head_SS <= mf.bas6.hnoflo] = np.nan
-wte_SS = pp.get_water_table(head_SS, nodata=mf.bas6.hnoflo)
-
-head_sp1 = h.get_data(kstpkper=(2,10))
-head_sp1[head_sp1 <= mf.bas6.hnoflo] = np.nan
-wte_sp1 = pp.get_water_table(head_sp1, nodata=mf.bas6.hnoflo)
-
-head_sp2 = h.get_data(kstpkper=(2,12))
-head_sp2[head_sp2 <= mf.bas6.hnoflo] = np.nan
-wte_sp2 = pp.get_water_table(head_sp2, nodata=mf.bas6.hnoflo)
-
-plt.imshow(wte_SS); plt.colorbar()
-plt.imshow(wte_SS-wte_sp1); plt.colorbar()
-plt.imshow(wte_SS-wte_sp2); plt.colorbar()
-plt.imshow(wte_sp1-wte_sp2); plt.colorbar()

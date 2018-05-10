@@ -2,7 +2,7 @@
 #' This script is intended to download streamflow data for the Navarro River Watershed
 #' and do some simple analysis and plotting.
 
-source("src/paths+packages.R")
+source(file.path("src", "paths+packages.R"))
 
 ## get data from USGS
 df <- importDVs(station.outlet, code="00060", stat="00003", sdate="1900-01-01", edate="2017-12-31")
@@ -43,6 +43,8 @@ df.yr.mo <-
   summarize(group_by(df, year, month),
             discharge.mm_d.mean = mean(discharge.mm_d),
             discharge.mm_d.cum = sum(discharge.mm_d),
+            quickflow.mm_d.mean = mean(quickflow.mm_d),
+            quickflow.mm_d.cum = sum(quickflow.mm_d),
             baseflow.mm_d.mean = mean(baseflow.mm_d),
             baseflow.mm_d.cum = sum(baseflow.mm_d))
 df.yr.mo$date.mid <- ymd(paste0(df.yr.mo$year, "-", df.yr.mo$month, "-", round(days_in_month(df.yr.mo$month)/2)))
@@ -56,7 +58,15 @@ df.yr.water <-
 # summarize by DOY
 df.DOY <- summarize(group_by(df, DOY),
                     discharge.mm_d.mean = mean(discharge.mm_d, na.rm=T),
+                    quickflow.mm_d.mean = mean(quickflow.mm_d, na.rm=T),
                     baseflow.mm_d.mean = mean(baseflow.mm_d, na.rm=T))
+
+# summarize to monthly means
+df.mo <- 
+  group_by(df.yr.mo, month) %>% 
+  summarize(discharge.mm_mo = mean(discharge.mm_d.cum),
+            quickflow.mm_mo = mean(quickflow.mm_d.cum),
+            baseflow.mm_mo = mean(baseflow.mm_d.cum))
 
 # flow-duration curve
 df.fdc <- df[order(-df$discharge.mm_d), ]
