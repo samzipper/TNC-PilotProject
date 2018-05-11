@@ -92,10 +92,10 @@ vka = 10.              # anisotropy
 laytyp = 1             # layer type
 tol_head = 1e-1
 if (modflow_v=='mf2005'):
-    lpf = flopy.modflow.ModflowLpf(mf, hk=hk, vka=vka, sy=sy, ss=ss, layvka=layvka, laytyp=laytyp)
+    lpf = flopy.modflow.ModflowLpf(mf, hk=hk, vka=vka, layvka=layvka, laytyp=laytyp)
     pcg = flopy.modflow.ModflowPcg(mf, hclose=tol_head, rclose=tol_head)
 elif (modflow_v=='mfnwt'):
-    upw = flopy.modflow.ModflowUpw(mf, hk=hk, vka=vka, sy=sy, ss=ss, layvka=layvka, laytyp=laytyp)
+    upw = flopy.modflow.ModflowUpw(mf, hk=hk, vka=vka, layvka=layvka, laytyp=laytyp)
     nwt = flopy.modflow.ModflowNwt(mf, headtol=tol_head, linmeth=2, options='COMPLEX')
 
 ## recharge

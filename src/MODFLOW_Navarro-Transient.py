@@ -22,7 +22,7 @@ import copy
 modelname = 'Navarro-Transient'
 modelname_SS = 'Navarro-SteadyState'
 modflow_v = 'mfnwt'  # 'mfnwt' or 'mf2005'
-stream_BC = 'SFR'     # 'RIV' or 'SFR'
+stream_BC = 'RIV'     # 'RIV' or 'SFR'
 
 # where is your MODFLOW-2005 executable?
 if (modflow_v=='mf2005'):
@@ -55,7 +55,7 @@ mf.change_model_ws(model_ws)
 ## update DIS
 
 # parameters controlling time discretization
-numyears = 1                # number of years for transient simulation (1st year will always be SS)
+numyears = 10                # number of years for transient simulation (1st year will always be SS)
 sp_per_year = 12             # dry season and wet season for now
 sp_length_days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] # 5 months (wet), 7 months (dry)
 sp_season = ['wet']*4 + ['dry']*7 + ['wet']  # must be same length as sp_length_days
