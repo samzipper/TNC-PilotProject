@@ -1,7 +1,7 @@
 ## Navarro-SteadyState-WithPumping.py
-# This script creates a steady-state groundwater flow model for the 
-# Navarro River Watershed in California. Starting head will be the 
-# output from Navarro-SteadyState
+# This script loads a steady-state groundwater flow model for the 
+# Navarro River Watershed in California and pumps a well. 
+# Starting head will be the output from Navarro-SteadyState
 #
 # Using default units of ITMUNI=4 (days) and LENUNI=2 (meters)
 

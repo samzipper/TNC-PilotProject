@@ -9,9 +9,9 @@ source(file.path("src", "paths+packages.R"))
 Qw <- -6*100*0.00378541  # [m3/d]
 
 ## choose stream boundary condition and modflow version
-stream_BC <- "RIV"    # "RIV" or "SFR"
+stream_BC <- "SFR"    # "RIV" or "SFR"
 modflow_v <- "mfnwt"  # "mfnwt" or "mf2005"
-masked <- F           # use masked depletion apportionment? should only be T for SFR
+masked <- T           # use masked depletion apportionment? should only be T for SFR
 if (stream_BC != "SFR" & masked){
   stop("Error: Using masked depletion apportionment results with RIV MODFLOW output")
 }
