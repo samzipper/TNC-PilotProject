@@ -68,13 +68,45 @@ df.mo.mean <-
 p.mo.mean <-
   ggplot(df.mo.mean, aes(x=month, y=value)) +
   geom_hline(yintercept=0, color="gray65") +
-  geom_bar(stat="identity") +
+  geom_bar(stat="identity", aes(fill=month, color=month)) +
   facet_wrap(~variable, ncol=2, scales="free_y", 
-             labeller=as_labeller(c("prec"="Precipitation [mm/mo]",
-                                    "Tmax"="Max Daily Temperature [C]",
-                                    "PET"="Potential ET [mm/mo]",
-                                    "defc"="Precip. Deficit (PET - Precip) [mm/mo]"))) +
+             labeller=as_labeller(c("prec"="(a) Precipitation [mm/mo]",
+                                    "Tmax"="(b) Max Daily Temperature [C]",
+                                    "PET"="(c) Potential ET [mm/mo]",
+                                    "defc"="(d) Precip. Deficit (PET - Precip) [mm/mo]"))) +
   scale_y_continuous(name="Long-Term Monthly Mean") +
-  scale_x_discrete(name="Month")
+  scale_x_discrete(name="Month") +
+  scale_fill_manual(values=c("Jan"=col.cat.blu,
+                             "Feb"=col.cat.blu,
+                             "Mar"=col.cat.blu,
+                             "Apr"=col.cat.blu,
+                             "May"=col.cat.red,
+                             "Jun"=col.cat.red,
+                             "Jul"=col.cat.red,
+                             "Aug"=col.cat.red,
+                             "Sep"=col.cat.red,
+                             "Oct"=col.cat.red,
+                             "Nov"=col.cat.red,
+                             "Dec"=col.cat.blu),
+                    guide=F) +
+  scale_color_manual(values=c("Jan"=col.cat.blu,
+                              "Feb"=col.cat.blu,
+                              "Mar"=col.cat.blu,
+                              "Apr"=col.cat.blu,
+                              "May"=col.cat.red,
+                              "Jun"=col.cat.red,
+                              "Jul"=col.cat.red,
+                              "Aug"=col.cat.red,
+                              "Sep"=col.cat.red,
+                              "Oct"=col.cat.red,
+                              "Nov"=col.cat.red,
+                              "Dec"=col.cat.blu),
+                     guide=F)
 ggsave(file.path("figures+tables", "Figure_MetData.png"), p.mo.mean,
        width=190, height=95, units="mm")
+
+## statistics
+df.mo.mean %>% 
+  group_by(variable) %>% 
+  summarize(var.mean = mean(value),
+            var.sum = sum(value))

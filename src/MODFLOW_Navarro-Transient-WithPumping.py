@@ -12,11 +12,7 @@ import os
 import numpy as np
 import flopy
 import pandas as pd
-import flopy.utils.binaryfile as bf
-import flopy.utils.sfroutputfile as sf
-import flopy.utils.postprocessing as pp
 import platform
-import matplotlib.pyplot as plt
 
 # set up your model
 modelname = 'Navarro-Transient-WithPumping'
@@ -52,21 +48,26 @@ mf.name = modelname
 mf.change_model_ws(model_ws)
 
 ### the following packages have stress period data: DIS, RCH, OC, RIV/SFR, MNW2
+## assumption is that the length of the spin-up simulation will always be longer
+## than the pumping simulation, so we can just take a subset of the stress period 
+## data from the transient spin-up.
+##
+## remember that the first SP of the transient spin-up is SS
+
 ## update DIS
 
 # parameters controlling time discretization
-numyears = 2                # number of years for transient simulation (1st year will always be SS)
+numyears = 2                # number of years for transient simulation
 sp_per_year = 12             # dry season and wet season for now
-sp_length_days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] # 5 months (wet), 7 months (dry)
-sp_season = ['wet']*4 + ['dry']*7 + ['wet']  # must be same length as sp_length_days
-ts_length_days = 5          # number of days per timestep - will be approximate because nstp must be integer
+ts_length_days = 1          # number of days per timestep - will be approximate because nstp must be integer
 
-# define stress period data
+# stress periods
 nper = numyears*sp_per_year
-perlen = sp_length_days*numyears
-nstp_yr = [round(elem, 0) for elem in (np.array(sp_length_days, dtype='f')/ts_length_days).tolist()]
-nstp = nstp_yr*numyears
+perlen = mf.dis.perlen[1:(nper+1)]
 steady = [False]*(nper)
+
+# timesteps
+nstp = [round(elem, 0) for elem in (np.array(perlen, dtype='f')/ts_length_days).tolist()]
 
 # grab other dis info from old model
 nlay = mf.dis.nlay
@@ -85,31 +86,24 @@ dis = flopy.modflow.ModflowDis(mf, nlay, nrow, ncol,
                                nstp=nstp, steady=steady)
 
 ## update RCH
-rchrate_yr = 150/(1000*365)  # [mm/yr] --> [m/d]
-rch_days = sum([sp_length_days[i] for i,x in enumerate(sp_season) if x=='wet'])    # number of days over which recharge occurs
-rchrate_wet = rchrate_yr*365/rch_days  # condense annual recharge rate into seasonal recharge [m/d]
-rchrate_dry = 0.
-
-# set recharge rate for each stress period
-sp_season_all = sp_season*numyears
 rech = {}
-for sp in range(0, len(sp_season_all)):
-    if sp_season_all[sp]=='wet': rech[sp] = rchrate_wet
-    if sp_season_all[sp]=='dry': rech[sp] = rchrate_dry
+for sp in range(1, (nper+1)):
+    rech[sp] = mf.rch.rech[sp][0,0]
 mf.rch.rech = rech
 
-## update OC - save at every timestep
-#oc = flopy.modflow.ModflowOc(mf, save_every=True, compact=True)
+## update OC
 oc_spd = {}
 for sp in range(0,nper):
-    for stp in range(0,int(nstp[sp])):
+    for stp in range(int(nstp[sp]-1),int(nstp[sp])):
         oc_spd[sp,stp] = ['save head', 'save budget']
 oc = flopy.modflow.ModflowOc(mf, stress_period_data=oc_spd, filenames=modelname, compact=True)
 
 ## update starting conditions from spinup
-h = bf.HeadFile(os.path.join(model_ws_NoPump, modelname_NoPump+'.hds'), text='head')
-head = h.get_data()  # if no time entered, will take last by default
-mf.bas6.strt = head
+strt = np.empty([nlay, nrow, ncol])
+for l in range(0,nlay):
+    strt[l,:,:] = np.array(pd.read_csv(os.path.join(model_ws_NoPump, 'head_layer'+str(l)+'.csv'),
+        header=None, delim_whitespace=False))
+mf.bas6.strt = strt
 
 ## update streams
 if (stream_BC=='RIV'):
@@ -142,7 +136,7 @@ if (stream_BC=='SFR'):
 WellNum = 493
 wellid = 'Well'+str(WellNum)
 
-# when should it start pumping? (which stress period; 0-based indexing, first SP is SS)
+# when should it start pumping? (which stress period; 0-based indexing)
 well_start_sp = 4
 
 # define pumping rate
@@ -154,7 +148,7 @@ mnw_node_data = np.flipud(mf.mnw2.node_data)
 
 mnw_spd = {}
 for sp in range(0,nper):
-    mnw_spd[sp] =  mf.mnw2.stress_period_data[0]
+    mnw_spd[sp] =  mf.mnw2.stress_period_data[0].copy()
 
 # update pumping rate for this well stress period data; 
 for sp in range(well_start_sp, nper):

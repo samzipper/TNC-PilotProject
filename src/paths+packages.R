@@ -102,13 +102,14 @@ theme_scz <- function(...){
   theme_bw(base_size=10, base_family="Arial") + 
     theme(
       text=element_text(color="black"),
+      plot.title=element_text(size=rel(1), hjust=0.5),
       axis.title=element_text(face="bold", size=rel(1)),
       axis.text=element_text(size=rel(1)),
       strip.text=element_text(size=rel(1)),
       legend.title=element_text(face="bold", size=rel(1)),
       legend.text=element_text(size=rel(1)),
       panel.grid=element_blank(),
-      plot.margin=unit(c(0.5,0.5,0.5,0.5), "mm"),
+      plot.margin=unit(c(1,1,1,1), "mm"),
       strip.background=element_blank())
 }
 
@@ -125,6 +126,7 @@ col.cat.yel <- "#ffe119"   # yellow
 col.cat.org <- "#f58231"   # orange
 col.cat.red <- "#e6194b"   # red
 col.cat.blu <- "#0082c8"   # blue
+col.gray <- "gray65"       # gray for annotation lines, etc
 pal.method <- c("f.TPoly"=col.cat.grn, "f.InvDist"=col.cat.yel, "f.InvDistSq"=col.cat.org, "f.Web"=col.cat.red, "f.WebSq"=col.cat.blu)
 labels.method <- c("f.TPoly"="Thiessen", "f.InvDist"="Inverse", "f.InvDistSq"="Inverse\nSquared", "f.Web"="Web", "f.WebSq"="Web\nSquared")
 

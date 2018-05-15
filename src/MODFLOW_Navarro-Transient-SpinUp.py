@@ -12,10 +12,7 @@ import numpy as np
 import flopy
 import pandas as pd
 import flopy.utils.binaryfile as bf
-import flopy.utils.sfroutputfile as sf
-import flopy.utils.postprocessing as pp
 import platform
-import matplotlib.pyplot as plt
 import copy
 
 # set up your model
@@ -55,7 +52,7 @@ mf.change_model_ws(model_ws)
 ## update DIS
 
 # parameters controlling time discretization
-numyears = 1                # number of years for transient simulation (1st year will always be SS)
+numyears = 20                # number of years for transient simulation (1st year will always be SS)
 sp_per_year = 12             # dry season and wet season for now
 sp_length_days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] # 5 months (wet), 7 months (dry)
 sp_season = ['wet']*4 + ['dry']*7 + ['wet']  # must be same length as sp_length_days
@@ -170,3 +167,31 @@ namfile.close()
 success, mfoutput = mf.run_model()
 if not success:
     raise Exception('MODFLOW did not terminate normally.')
+
+## save budget output to check equilibrium
+# load budget
+mfl = flopy.utils.MfListBudget(os.path.join(model_ws, modelname+".list"))
+df_flux, df_vol = mfl.get_dataframes()
+
+# extract net leakage
+if (stream_BC == 'RIV'):
+    stream_prefix = 'RIVER'
+if (stream_BC == 'SFR'):
+    stream_prefix = 'STREAM'
+
+# summary columns
+df_flux['datetime'] = df_flux.index[:]
+df_flux['leakage'] = df_flux[stream_prefix+'_LEAKAGE_IN'] - df_flux[stream_prefix+'_LEAKAGE_OUT']
+
+# save budget output
+df_flux.to_csv(os.path.join(model_ws, modelname+'_SummarizeBudget.csv'), index=False)
+
+## load heads
+h = bf.HeadFile(os.path.join(model_ws, modelname+'.hds'), text='head')
+times = h.get_times()
+heads = h.get_data(totim=times[-1])
+h.close()
+
+# save head output
+for l in range(0,nlay):
+    np.savetxt(os.path.join(model_ws, 'head_layer'+str(l)+'.csv'), heads[l,:,:], fmt='%6.2f', delimiter=',')
