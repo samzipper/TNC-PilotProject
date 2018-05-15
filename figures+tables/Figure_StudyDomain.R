@@ -59,29 +59,44 @@ df$BC[is.finite(df$stream)] <- "Stream"
 df$BC <- factor(df$BC, levels=c("Stream", "CHB", "Active"))
 
 ## make plot
+p.elev <- 
+  ggplot() +
+  geom_raster(data=subset(df, is.finite(ibound)), aes(x=lon, y=lat, fill=elev_m), na.rm=T) +
+  geom_polygon(data=df.basin, aes(x=long, y=lat, group=group, color=group), fill=NA) +
+  geom_path(data=df.streams, aes(x=long, y=lat, group=group, color="Stream")) +
+  scale_color_manual(name="Features", values=c(col.cat.red, col.gray), 
+                     labels=c("Navarro River\nWatershed", "Streams"), guide=F) +
+  scale_fill_viridis(name="Elevation [m]", expand=c(0,0)) +
+  scale_x_continuous(name="Easting [m]", expand=c(0,0), breaks=map.breaks.x) +
+  scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
+  coord_equal() +
+  theme(axis.text.y=element_text(angle=90, hjust=0.5),
+        legend.position=c(0,0),
+        legend.justification=c(0,0),
+        legend.background=element_blank(),
+        legend.box.background=element_blank()) +
+  guides(fill=guide_colorbar(barheight=4.5))
+
 p.BC <- 
   ggplot() +
   geom_raster(data=subset(df, is.finite(BC)), aes(x=lon, y=lat, fill=BC), na.rm=T) +
-  geom_polygon(data=df.basin, aes(x=long, y=lat, group=group), fill=NA, color=col.cat.red) +
-  geom_point(data=df.wel, aes(x=lon, y=lat, color=is.finite(WellNum))) +
+  #  geom_polygon(data=df.basin, aes(x=long, y=lat, group=group), fill=NA, color=col.cat.red) +
+  geom_point(data=df.wel, aes(x=lon, y=lat, color=is.finite(WellNum)), size=0.2, shape=21) +
   scale_fill_manual(name="MODFLOW B.C.", 
                     values=c("Stream"=col.cat.blu, "CHB"=col.cat.org, "Active"=col.gray),
-                    labels=c("Stream\n(RIV or SFR2)", "Constant\nHead", "Active")) +
-  scale_color_manual(name=NULL, values=c("black"), labels=c("Synthetic\nWell")) +
+                    labels=c("Stream", "Constant\nHead", "Domain"), guide=F) +
+  scale_color_manual(name=NULL, values=c("black"), labels=c("Synthetic\nWell"), guide=F) +
   scale_x_continuous(name="Easting [m]", expand=c(0,0), breaks=map.breaks.x) +
   scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
   coord_equal() +
   theme(axis.text.y=element_text(angle=90, hjust=0.5),
-        legend.position="bottom") + 
-  guides(color=guide_legend(order=2),
-         fill=guide_legend(order=1))
+        legend.position="bottom",
+        legend.box="vertical")
 
-ggplot() +
-  geom_raster(data=subset(df, is.finite(ibound)), aes(x=lon, y=lat, fill=elev_m), na.rm=T) +
-  geom_polygon(data=df.basin, aes(x=long, y=lat, group=group), fill=NA, color=col.cat.red) +
-  geom_path(data=shp.streams, aes(x=long, y=lat, group=group), color=col.cat.blu) +
-  scale_x_continuous(name="Easting [m]", expand=c(0,0), breaks=map.breaks.x) +
-  scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
-  coord_equal() +
-  theme(axis.text.y=element_text(angle=90, hjust=0.5),
-        legend.position="bottom")
+p1 <- ggplotGrob(p.elev)
+p2 <- ggplotGrob(p.BC)
+p <- cbind(p1, p2, size="first")
+p$heights <- unit.pmax(p1$heights, p1$heights)
+
+ggsave(file.path("figures+tables", "Figure_StudyDomain_NoText.pdf"),
+       p, width=190, height=88, units="mm", device=cairo_pdf)

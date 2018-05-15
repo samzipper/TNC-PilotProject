@@ -33,6 +33,7 @@ modflow/input/*.tif
 # Image files
 *.png
 *.tif
+*.pdf
 
 # GIS files
 *.qgs*
