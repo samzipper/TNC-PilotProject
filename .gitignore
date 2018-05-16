@@ -30,6 +30,9 @@ modflow/input/*.tif
 *wte.csv
 *.out
 
+# HTC individual model run folders
+modflow/HTC/Navarro/*/*/*/mf*/*
+
 # Image files
 *.png
 *.tif

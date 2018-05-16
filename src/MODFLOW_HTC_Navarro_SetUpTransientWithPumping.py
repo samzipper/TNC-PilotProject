@@ -95,9 +95,11 @@ mf.rch.rech = rech
 
 ## update OC
 oc_spd = {}
+ts_counter = 0
 for sp in range(0,nper):
     for stp in range(0,int(nstp[sp])):
-        oc_spd[sp,stp] = ['save budget']
+        ts_counter = ts_counter+1
+        if (ts_counter % 5 == 0): oc_spd[sp,stp] = ['save budget']
 oc = flopy.modflow.ModflowOc(mf, stress_period_data=oc_spd, compact=True)
 
 ## update starting conditions from spinup
@@ -153,7 +155,7 @@ namtext = namfile.read()
 namfile.close()
 
 namfile = open(os.path.join(model_ws, modelname+'.nam'), 'w') 
-namtext = namtext.replace('modflow\\'+modelname_NoPump+'\\'+stream_BC+'\\'+modflow_v+'\\', '')  # fix ddn - not sure why this is happening
+namtext = namtext.replace(os.path.join('modflow', modelname_NoPump, stream_BC, modflow_v, modelname_NoPump+'.ddn'), modelname+'.ddn')  # fix ddn - not sure why this is happening
 namtext = namtext.replace(modelname_NoPump, modelname)  # fix modelname
 namfile.write(namtext)
 namfile.close()
@@ -178,7 +180,8 @@ well_start_sp = 4
 # define pumping rate
 Qw = -6*100*0.00378541  # [m3/d]  6 gal/plant/day*100 plants*0.00378541 m3/gal
 
-for w in range(0,iwel.shape[0]):
+every_n_wells = 25  # if you want all wells, just set this to 1
+for w in range(0,iwel.shape[0], every_n_wells):
 #for w in range(0,3):
     WellNum = iwel['WellNum'][w]
     wellid = 'Well'+str(WellNum)
