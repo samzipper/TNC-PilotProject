@@ -52,7 +52,7 @@ mf.change_model_ws(model_ws)
 ## update DIS
 
 # parameters controlling time discretization
-numyears = 20                # number of years for transient simulation (1st year will always be SS)
+numyears = 30                # number of years for transient simulation (1st year will always be SS)
 sp_per_year = 12             # dry season and wet season for now
 sp_length_days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] # 5 months (wet), 7 months (dry)
 sp_season = ['wet']*4 + ['dry']*7 + ['wet']  # must be same length as sp_length_days
@@ -90,7 +90,7 @@ mf.upw.ss = ss
 mf.upw.hani = hani
 
 ## update RCH
-rchrate_yr = 150/(1000*365)  # [mm/yr] --> [m/d]
+rchrate_yr = 150/(1000*365)  # [mm/yr] -->i [m/d]
 rch_days = sum([sp_length_days[i] for i,x in enumerate(sp_season) if x=='wet'])    # number of days over which recharge occurs
 rchrate_wet = rchrate_yr*365/rch_days  # condense annual recharge rate into seasonal recharge [m/d]
 rchrate_dry = 0.
@@ -109,7 +109,7 @@ mf.rch.rech = rech
 oc_spd = {}
 oc_spd[(0,0)] = ['save head', 'save budget']
 for sp in range(1,nper):
-    oc_spd[(sp,(nstp[sp]-1))] = ['save head', 'save budget']
+    oc_spd[(sp,(nstp[sp]-1))] = ['save budget']
 oc = flopy.modflow.ModflowOc(mf, stress_period_data=oc_spd, compact=True)
 
 ## update MNW2

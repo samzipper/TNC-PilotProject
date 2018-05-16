@@ -19,8 +19,9 @@ df <- rbind(df.RIV[,c("datetime", "leakage", "stream_BC")],
 df$datetime <- ymd_hms(df$datetime)
 
 # calculate days since start of simulation
-df$days_since_start <- (df$datetime - min(df$datetime))/86400
+df$days_since_start <- as.numeric(df$datetime - min(df$datetime))/86400
 df$year <- year(df$datetime)
+spinup_yrs <- ceiling(max(df$days_since_start)/365)
 
 # summarize to annual
 df.ann <- 
@@ -37,15 +38,13 @@ df.ann[min(which(df.ann$stream_BC=="SFR")), c("change_range", "change_range_prc"
 p.mo.riv <- 
   ggplot(subset(df, stream_BC=="RIV"), aes(x=days_since_start/365, y=leakage)) +
   geom_line(color=col.cat.blu) +
-  scale_x_continuous(name=NULL, 
-                     limits=c(0,20), breaks=seq(0,20,5), expand=c(0,0)) +
+  scale_x_continuous(name=NULL, limits=c(0,spinup_yrs), expand=c(0,0)) +
   scale_y_continuous(name="Net Stream Leakage [m3/d]")
 
 p.mo.sfr <- 
   ggplot(subset(df, stream_BC=="SFR"), aes(x=days_since_start/365, y=leakage)) +
   geom_line(color=col.cat.blu) +
-  scale_x_continuous(name=NULL, 
-                     limits=c(0,20), breaks=seq(0,20,5), expand=c(0,0)) +
+  scale_x_continuous(name=NULL, limits=c(0,spinup_yrs), expand=c(0,0)) +
   scale_y_continuous(name=NULL)
 
 # annual plot
@@ -54,8 +53,7 @@ p.ann.change.riv <-
   geom_hline(yintercept=0, color=col.gray) +
   geom_line() +
   geom_point() +
-  scale_x_continuous(name=NULL, 
-                     limits=c(0,20), breaks=seq(0,20,5), expand=c(0,0)) +
+  scale_x_continuous(name=NULL, limits=c(0,spinup_yrs), expand=c(0,0)) +
   scale_y_continuous(name="Change in Stream Leakage Range\nfrom Previous Year [m3/d]")
 
 p.ann.change.sfr <-
@@ -63,8 +61,7 @@ p.ann.change.sfr <-
   geom_hline(yintercept=0, color=col.gray) +
   geom_line() +
   geom_point() +
-  scale_x_continuous(name=NULL, 
-                     limits=c(0,20), breaks=seq(0,20,5), expand=c(0,0)) +
+  scale_x_continuous(name=NULL, limits=c(0,spinup_yrs), expand=c(0,0)) +
   scale_y_continuous(name=NULL)
 
 p.ann.change_prc.riv <-
@@ -72,8 +69,7 @@ p.ann.change_prc.riv <-
   geom_hline(yintercept=0, color=col.gray) +
   geom_line() +
   geom_point() +
-  scale_x_continuous(name="Year of Transient Spin-Up", 
-                     limits=c(0,20), breaks=seq(0,20,5), expand=c(0,0)) +
+  scale_x_continuous(name="Year of Transient Spin-Up", limits=c(0,spinup_yrs), expand=c(0,0)) +
   scale_y_continuous(name="Change in Stream Leakage Range\nfrom Previous Year [% of range]", labels=scales::percent)
 
 p.ann.change_prc.sfr <-
@@ -81,8 +77,7 @@ p.ann.change_prc.sfr <-
   geom_hline(yintercept=0, color=col.gray) +
   geom_line() +
   geom_point() +
-  scale_x_continuous(name="Year of Transient Spin-Up", 
-                     limits=c(0,20), breaks=seq(0,20,5), expand=c(0,0)) +
+  scale_x_continuous(name="Year of Transient Spin-Up", limits=c(0,spinup_yrs), expand=c(0,0)) +
   scale_y_continuous(name=NULL, labels=scales::percent) +
   coord_cartesian(ylim=c(-0.01, max(subset(df.ann, stream_BC=="SFR")$change_range_prc, na.rm=T)))
 
