@@ -1,5 +1,5 @@
 #!/bin/bash -l
-#SBATCH --time=0-4:30:00
+#SBATCH --time=0-5:00:00
 #SBATCH --nodes=1
 #SBATCH --array=0,1-776:25
 #SBATCH --job-name=mf
