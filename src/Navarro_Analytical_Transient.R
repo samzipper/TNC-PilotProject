@@ -12,7 +12,7 @@
 #' For the domain, we are using the Navarro River watershed
 #' (HUC 1801010804) plus all adjacent HUC12 watersheds.
 
-source("src/paths+packages.R")
+source(file.path("src", "paths+packages.R"))
 
 # Define some parameters --------------------------------------------------------
 ## Make sure these are the same as your MODFLOW script!
@@ -20,26 +20,30 @@ source("src/paths+packages.R")
 ## choose stream boundary condition and modflow version
 stream_BC <- "RIV"    # "RIV" or "SFR"
 modflow_v <- "mfnwt"  # "mfnwt" or "mf2005"
+timeType  <- "Transient" # "SteadyState" or "Transient"
+
+## load MODFLOW depletion output
+df.MODFLOW <- 
+  file.path("modflow", "HTC", "Navarro", timeType, stream_BC, modflow_v, "Depletion_MODFLOW.csv") %>% 
+  read.csv(stringsAsFactors=F) %>% 
+  transform(depletion.prc.modflow = depletion_m3.d/Qw_m3.d)
 
 ## what timesteps are you interested in?
-ts.all <- c(5,10,100)
+ts.all <- unique(df.MODFLOW$Time)
+ts.pump.start <- sum(days_in_month(seq(1,4))) + 1
 
 ## various model parameters
 # units: [m] and [d]
 # flow parameters
-hk <- 1e-11*1e7*86400  # horizontal K [m/d], convert k [m-2] to K [m/s] to K [m/d]
+hk <- 1e-12*1e7*86400  # horizontal K [m/d], convert k [m-2] to K [m/s] to K [m/d]
 ss <- 1e-5             # specific storage
 sy <- 0.10             # specific yield (using 50% of domain mean porosity for now)
-vka <- 1.              # anisotropy
+vka <- 10              # anisotropy
 vk <- hk/vka           # calculate vertical K [m/d] based on horizontal K and anisotropy
 
-# define bottom elevation
-zbot <- -100
-
-# streambed parameters
-depth <- 4  # river depth?
+## streambed parameters
+depth <- 5  # river depth?
 riverbed_K <- hk/10
-river_width <- 10
 riverbed_thickness <- 1
 
 # Prep input data ---------------------------------------------------------
@@ -53,13 +57,13 @@ df.apportion <-
 df.wel <- read.table(file.path("modflow", "input", "iwel.txt"), sep=" ", header=T)
 
 ## load output from steady-state, no pumping scenario
-m.head <- as.matrix(read.table(file.path("modflow", "Navarro-SteadyState", stream_BC, modflow_v, "head.txt")))
+m.wte <- as.matrix(read.csv(file.path("modflow", "Navarro-SteadyState", stream_BC, modflow_v, "wte.csv")), header=F)
 
 # grab steady-state head based on row/col (need to add 1 because python is 0-based indexing)
-df.wel$head_m <- m.head[as.matrix(df.wel[,c("row", "col")])+1]
+df.wel$wte_m <- m.wte[as.matrix(df.wel[,c("row", "col")])+1]
 
 # add elevation to df.apportion
-df.apportion <- left_join(df.apportion, df.wel[,c("WellNum", "head_m", "ztop_m")], by="WellNum")
+df.apportion <- left_join(df.apportion, df.wel[,c("WellNum", "wte_m", "ztop_m")], by="WellNum")
 
 ## stream elevation needed for Reeves approximation of Hunt lambda
 df.apportion <- 
@@ -67,34 +71,63 @@ df.apportion <-
   group_by(SegNum, SFR_NSEG) %>% 
   summarize(totalStreamLength_m = sum(length_m),
             streambed_elev_m = median(elev_m_min)-depth) %>% 
-  left_join(df.apportion, ., by=c("SegNum"))
+  left_join(df.apportion, ., by=c("SegNum")) 
 
+## stream width needed for conductance
+# load stream shapefile
+shp.streams <- readOGR(dsn=file.path("modflow", "input"), layer="iriv")
+
+# shapefile shortens names; rename them
+names(shp.streams) <- c("OBJECTID", "REACHCODE", "TerminalPa", "lineLength_m", "TotDASqKM", "StreamOrde", 
+                        "TerminalFl", "SLOPE", "FromNode", "ToNode", "SegNum")
+
+# figure out which segments are part of Navarro
+segs.navarro <- shp.streams@data$SegNum[shp.streams@data$TerminalPa==outlet.TerminalPa]
+shp.streams@data$width_m <- WidthFromDA(DA=shp.streams@data$TotDASqKM, w.min=1, w.max=100)
+df.apportion <- left_join(df.apportion, shp.streams@data[,c("SegNum", "width_m")], by="SegNum")
 
 ## load analytical depletion apportionment equations
 # this is a different repository (StreamflowDepletionModels) so source them from GitHub
-Hunt1999 <- 
-  source_github("https://raw.githubusercontent.com/szipper/StreamflowDepletionModels/master/src/Hunt1999.R")
-Hunt1999_lmda <- 
-  source_github("https://raw.githubusercontent.com/szipper/StreamflowDepletionModels/master/src/Hunt1999_lmda.R")
-GloverBalmer1954 <- 
-  source_github("https://raw.githubusercontent.com/szipper/StreamflowDepletionModels/master/src/GloverBalmer1954.R")
+hunt <- 
+  source_github("https://raw.githubusercontent.com/szipper/StreamflowDepletionModels/master/R/hunt.R")
+streambed_conductance <- 
+  source_github("https://raw.githubusercontent.com/szipper/StreamflowDepletionModels/master/R/streambed_conductance.R")
+glover <- 
+  source_github("https://raw.githubusercontent.com/szipper/StreamflowDepletionModels/master/R/glover.R")
 
 # analytical calculations: continuous pumping -----------------------------------------------------
 
+# get rid of any segments with < 0.0001 depletion apportionment, or
+# WellNum that you don't have MODFLOW results for
+f.thres <- 0.0001  # =0.01%
+df.apportion <- 
+  subset(df.apportion, 
+         (f.InvDist > f.thres | f.InvDistSq > f.thres |
+            f.Web > f.thres | f.WebSq > f.thres | f.TPoly > f.thres) &
+           WellNum %in% unique(df.MODFLOW$WellNum) & 
+           SegNum %in% segs.navarro)
+
+# loop through timesteps
 start.flag <- T
 for (ts in ts.all){
-  for (analytical in c("Glover", "Hunt")){
+  for (analytical in c("glover", "hunt")){
     # add column for timestep and method
-    df.apportion$ts <- ts
+    df.apportion$Time <- ts
     df.apportion$analytical <- analytical
     
+    # calculate aquifer vertical thickness for transmissivity
+    screen_length = 50  # [m] - should be same as script MODFLOW_Navarro-SteadyState.py
+    df.apportion$thickness_m <- abs(df.apportion$wte_m-df.apportion$streambed_elev_m)    # reeves et al- uses vertical distance between top of well screen and streambed 
+    df.apportion$thickness_m[df.apportion$thickness_m < screen_length] <- screen_length  # if vertical distance is < screen length, use screen length
+    
     # calculate depletion fraction for each individual segment
-    if (analytical=="Glover"){
-      df.apportion$Qf <- GloverBalmer1954(d=df.apportion$distToWell.min.m, S=sy, Tr=(hk*(df.apportion$head_m-zbot)), t=ts)
-    } else if (analytical=="Hunt"){
+    if (analytical=="glover"){
+      df.apportion$Qf <- glover(t=(ts-ts.pump.start), d=df.apportion$distToWell.min.m, S=sy, 
+                                Tr=(hk*df.apportion$thickness_m))
+    } else if (analytical=="hunt"){
       df.apportion$Qf <- 
-        Hunt1999_lmda(Kv=vk, w=river_width, b=abs(df.apportion$ztop_m - df.apportion$streambed_elev_m)) %>% 
-        Hunt1999(d=df.apportion$distToWell.min.m, S=sy, Tr=(hk*(df.apportion$head_m-zbot)), t=ts, lmda=.)
+        streambed_conductance(w=df.apportion$width_m, Kriv=vk, briv=abs(df.apportion$ztop_m - df.apportion$streambed_elev_m)) %>% 
+        hunt(t=(ts-ts.pump.start), d=df.apportion$distToWell.min.m, S=sy, Tr=(hk*df.apportion$thickness_m), lmda=.)
     }
     
     # weight segments using depletion apportionment fractions
@@ -106,11 +139,36 @@ for (ts in ts.all){
     
     # add to overall data frame
     if (start.flag){
-      df.out <- df.apportion
+      df.out <- subset(df.apportion, Qf.InvDist > f.thres | Qf.InvDistSq > f.thres |
+                         Qf.Web > f.thres | Qf.WebSq > f.thres | Qf.TPoly > f.thres)
       start.flag <- F
     } else {
-      df.out <- rbind(df.out, df.apportion)
+      df.out <- rbind(df.out, 
+                      subset(df.apportion, Qf.InvDist > f.thres | Qf.InvDistSq > f.thres |
+                               Qf.Web > f.thres | Qf.WebSq > f.thres | Qf.TPoly > f.thres))
     }
+    
+    # status update
+    print(paste0(analytical, " ", ts, " complete"))
     
   } # end of analytical loop
 } # end of ts loop
+
+## save output csv
+df.out %>% 
+  dplyr::select(SegNum, WellNum, Time, analytical, 
+                Qf.InvDist, Qf.InvDistSq, Qf.Web, Qf.WebSq, Qf.TPoly) %>% 
+  write.csv(., file.path("modflow", "HTC", "Navarro", timeType, stream_BC, modflow_v, "Depletion_Analytical.csv"), row.names=F)
+
+## plot cumulative depletion for each well at each timestep
+df.out %>% 
+  group_by(Time, WellNum, analytical) %>% 
+  summarize(Qf.InvDist = sum(Qf.InvDist),
+            Qf.InvDistSq = sum(Qf.InvDistSq),
+            Qf.Web = sum(Qf.Web),
+            Qf.WebSq = sum(Qf.WebSq),
+            Qf.TPoly = sum(Qf.TPoly)) %>% 
+  melt(id=c("Time", "WellNum", "analytical")) %>% 
+  ggplot(aes(x=Time, y=value, group=WellNum)) +
+  geom_line() +
+  facet_grid(variable ~ analytical)

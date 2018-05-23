@@ -1,6 +1,6 @@
-## Navarro_CompareMODFLOWtoDepletionApportionment.R
-#' This script is intended to compare estimated streamflow depletion
-#' from MODFLOW (calculate from output of script MODFLOW_HTC_Navarro_Riv-SummarizeLeakage.py)
+## Navarro_CompareMODFLOWtoDepletionApportionment_SteadyState.R
+#' This script is intended to compare estimated steady-state streamflow depletion
+#' from MODFLOW (calculate from output of script MODFLOW_HTC_Navarro_RIV-SummarizeLeakage.py)
 #' and geometric depletion apportionment methods.
 
 source(file.path("src", "paths+packages.R"))

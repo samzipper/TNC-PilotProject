@@ -32,7 +32,7 @@ modflow/input/*.tif
 
 # HTC individual model run folders
 modflow/HTC/Navarro/*/*/*/mf*/*
-
+modflow/HTC/Navarro/Transient/*/*/*-SummarizeLeakage.csv
 # Image files
 *.png
 *.tif
