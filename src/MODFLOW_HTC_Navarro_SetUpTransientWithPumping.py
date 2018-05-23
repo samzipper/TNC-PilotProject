@@ -89,8 +89,8 @@ dis = flopy.modflow.ModflowDis(mf, nlay, nrow, ncol,
 
 ## update RCH
 rech = {}
-for sp in range(1, (nper+1)):
-    rech[sp] = mf.rch.rech[sp][0,0]
+for sp in range(0, nper):
+    rech[sp] = mf.rch.rech[sp+1][0,0]   # sp+1 because first sp of SpinUp is steady-state
 mf.rch.rech = rech
 
 ## update OC

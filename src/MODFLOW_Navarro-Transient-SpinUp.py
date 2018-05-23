@@ -90,7 +90,7 @@ mf.upw.ss = ss
 mf.upw.hani = hani
 
 ## update RCH
-rchrate_yr = 150/(1000*365)  # [mm/yr] -->i [m/d]
+rchrate_yr = 150/(1000*365)  # [mm/yr] --> [m/d]
 rch_days = sum([sp_length_days[i] for i,x in enumerate(sp_season) if x=='wet'])    # number of days over which recharge occurs
 rchrate_wet = rchrate_yr*365/rch_days  # condense annual recharge rate into seasonal recharge [m/d]
 rchrate_dry = 0.
