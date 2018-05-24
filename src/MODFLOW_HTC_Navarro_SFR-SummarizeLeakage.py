@@ -52,7 +52,7 @@ for w in succ.WellNum:
         
         ## calculate net well pumping rate (close, but not identical, to qdes)
         mnwout = bf.CellBudgetFile(os.path.join(dir_runs, prefix_runs+str(w), modelname+'.mnw2.out'), verbose=False)
-        pump_steps = pd.DataFrame({'kstpkper': list(set(sfr_merge['kstpkper'])), 'MNW_net': [0]*len(set(sfr_merge['kstpkper']))})
+        pump_steps = pd.DataFrame({'kstpkper': list(set(sfr_merge['kstpkper'])), 'MNW_net': [0.0]*len(set(sfr_merge['kstpkper']))})
         for k in range(0,pump_steps.shape[0]):
             mnwout_data = mnwout.get_data(kstpkper=pump_steps['kstpkper'][k], text='MNW2', full3D=False)
             pump_steps['MNW_net'][k] = sum(mnwout_data[0]['q'])

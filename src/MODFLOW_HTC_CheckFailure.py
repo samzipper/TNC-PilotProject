@@ -7,7 +7,7 @@ import os, glob
 import numpy as np
 
 # what stream BC and modflow version?
-stream_BC = 'RIV'  # 'RIV' or 'SFR'
+stream_BC = 'SFR'  # 'RIV' or 'SFR'
 modflow_v = 'mfnwt'  # 'mfnwt' or 'mf2005'
 timeType = 'Transient'  # 'SteadyState' or 'Transient'
 
