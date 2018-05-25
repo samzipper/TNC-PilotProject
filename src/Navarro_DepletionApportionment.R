@@ -166,6 +166,22 @@ for (wel in df.wel$WellNum){
 # any NA in the 'f' columns should be converted to a 0
 df.apportion.all[is.na(df.apportion.all)] <- 0
 
+# check: does it sum to 1 for each WellNum and method?
+df.sum <-
+  df.apportion.all %>% 
+  group_by(WellNum) %>% 
+  summarize(Qf.InvDist = sum(f.InvDist),
+            Qf.InvDistSq = sum(f.InvDistSq),
+            Qf.Web = sum(f.Web),
+            Qf.WebSq = sum(f.WebSq),
+            Qf.TPoly = sum(f.TPoly))
+
+table(df.sum$Qf.InvDist)
+table(df.sum$Qf.InvDistSq)
+table(df.sum$Qf.Web)
+table(df.sum$Qf.WebSq)
+table(df.sum$Qf.TPoly)
+
 # Save output -------------------------------------------------------------
 
 # round to 5 significant digits to reduce file size

@@ -60,6 +60,11 @@ baseflow.mm_d <- baseflow.cfs*(0.3048^3)*(0.001^3)*(1/area.km2)*86400*1000*1000
 labs.mo <- c("1"="Jan", "2"="Feb", "3"="Mar", "4"="Apr", "5"="May", "6"="Jun",
              "7"="Jul", "8"="Aug", "9"="Sep", "10"="Oct", "11"="Nov", "12"="Dec")
 
+labs.analytical <- c("glover"="Glover", "hunt"="Hunt")
+labs.method <- c("Qf.InvDist"="Inverse\nDistance", "Qf.InvDistSq"="Inverse\nDistance\nSquared",
+                 "Qf.Web"="Web", "Qf.WebSq"="Web\nSquared", "Qf.TPoly"="Thiessen\nPolygon")
+labs.stream_BC <- c("RIV"="RIV", "SFR"="SFR")
+
 ## CRS for WGS plots
 crs.WGS <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
 
@@ -324,6 +329,7 @@ apportion.tpoly <- function(reach,        # vector of reaches
                                    dist.closest=min(distToWell))
   df.wel.dist.closest <- left_join(df.wel.dist.closest, df.wel.dist,
                                    by=c("ReachNum"="ReachNum", "dist.closest"="distToWell"))
+  df.wel.dist.closest <- df.wel.dist.closest[!duplicated(df.wel.dist.closest$ReachNum), ]
   
   spdf.str.closest.to.wel <- SpatialPointsDataFrame(coords = df.wel.dist.closest[,c("lon", "lat")], 
                                                     data = df.wel.dist.closest,
