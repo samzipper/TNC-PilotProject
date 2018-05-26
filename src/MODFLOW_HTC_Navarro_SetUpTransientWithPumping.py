@@ -61,7 +61,7 @@ print('Using ', stream_BC, ' for stream features')
 # parameters controlling time discretization
 numyears = 2                # number of years for transient simulation
 sp_per_year = 12             # dry season and wet season for now
-ts_length_days = 1          # number of days per timestep - will be approximate because nstp must be integer
+ts_length_days = 0.5         # number of days per timestep - will be approximate because nstp must be integer
 
 # stress periods
 nper = numyears*sp_per_year
@@ -99,7 +99,7 @@ ts_counter = 0
 for sp in range(0,nper):
     for stp in range(0,int(nstp[sp])):
         ts_counter = ts_counter+1
-        if (ts_counter % 5 == 0): oc_spd[sp,stp] = ['save budget']
+        if (ts_counter % (5/ts_length_days) == 0): oc_spd[sp,stp] = ['save budget']
 oc = flopy.modflow.ModflowOc(mf, stress_period_data=oc_spd, compact=True)
 
 ## update starting conditions from spinup
