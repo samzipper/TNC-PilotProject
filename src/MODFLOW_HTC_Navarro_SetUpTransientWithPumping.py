@@ -59,9 +59,9 @@ print('Using ', stream_BC, ' for stream features')
 ## update DIS
 
 # parameters controlling time discretization
-numyears = 2                # number of years for transient simulation
+numyears = 10                # number of years for transient simulation
 sp_per_year = 12             # dry season and wet season for now
-ts_length_days = 0.5         # number of days per timestep - will be approximate because nstp must be integer
+ts_length_days = 5         # number of days per timestep - will be approximate because nstp must be integer
 
 # stress periods
 nper = numyears*sp_per_year
