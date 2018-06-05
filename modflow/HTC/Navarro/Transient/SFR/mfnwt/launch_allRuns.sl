@@ -16,3 +16,6 @@ cd /home/zipper/scratch/TNC-PilotProject/modflow/HTC/Navarro/Transient/SFR/mfnwt
 # launch script in directory
 ./launch_thisRun.sh
 
+# postprocess
+pyenv postprocess_thisRun.py
+

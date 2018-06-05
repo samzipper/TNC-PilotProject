@@ -29,10 +29,10 @@ modflow/input/*.tif
 *wtd.csv
 *wte.csv
 *.out
+postprocess_thisRun*
+launch_thisRun*
+*_postprocess.csv
 
-# HTC individual model run folders
-modflow/HTC/Navarro/*/*/*/mf*/*
-modflow/HTC/Navarro/Transient/*/*/*-SummarizeLeakage.csv
 # Image files
 *.png
 *.tif

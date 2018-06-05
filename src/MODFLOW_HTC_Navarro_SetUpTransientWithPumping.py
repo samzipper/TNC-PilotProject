@@ -17,7 +17,7 @@ import platform
 modelname = 'Navarro-Transient'
 modelname_NoPump = 'Navarro-Transient-SpinUp'
 modflow_v = 'mfnwt'  # 'mfnwt' or 'mf2005'
-stream_BC = 'SFR'     # 'RIV' or 'SFR'
+stream_BC = 'RIV'     # 'RIV' or 'SFR'
 
 # where is your MODFLOW-2005 executable?
 if (modflow_v=='mf2005'):
@@ -138,7 +138,7 @@ for sp in range(0,nper):
 mnw2 = flopy.modflow.ModflowMnw2(model=mf, mnwmax=itmp[0], 
                                  node_data=mnw_node_data,
                                  stress_period_data=mnw_spd,
-                                 itmp=itmp[0:1]*nper, ipakcb=71,
+                                 itmp=itmp[0:1]+[-1]*(nper-1), ipakcb=71,
                                  filenames=[modelname+'.mnw2', modelname+'.mnw2.out'])
 
 # for some reason, MNW2 package reverses node data when a model is loaded and rewritten
@@ -163,9 +163,12 @@ namfile.close()
 # run model for testing
 #mf.run_model()
 
-## copy launch script
+## copy launch and postprocessing scripts
 shutil.copy2(os.path.join('modflow', 'HTC', 'Navarro', 'Transient', 'launch_thisRun.sh'), 
         os.path.join(model_ws, 'launch_thisRun.sh'))
+
+shutil.copy2(os.path.join('modflow', 'HTC', 'Navarro', 'Transient', 'postprocess_thisRun_'+stream_BC+'.py'), 
+        os.path.join(model_ws, 'postprocess_thisRun.py'))
 
 ### Now: scroll through wells and create WEL input files
 # all wells are already set up in MODFLOW_Navarro-SteadyState script so 
@@ -197,6 +200,9 @@ for w in range(0,iwel.shape[0], every_n_wells):
         mf.mnw2.mnw[wellid].stress_period_data['qdes'][sp] = Qw
         mf.mnw2.stress_period_data[sp]['qdes'][mf.mnw2.stress_period_data[sp]['wellid']==wellid] = Qw
     
+    # update itmp
+    mf.mnw2.itmp[well_start_sp] = mf.mnw2.itmp[0]
+    
     # write input (NAM and MNW2 only)
     mf.write_input(SelPackList=['MNW2'])
 
@@ -204,10 +210,14 @@ for w in range(0,iwel.shape[0], every_n_wells):
     for sp in range(well_start_sp, nper):
         mf.mnw2.mnw[wellid].stress_period_data['qdes'][sp] = 0
         mf.mnw2.stress_period_data[sp]['qdes'][mf.mnw2.stress_period_data[sp]['wellid']==wellid] = 0
-        
+    mf.mnw2.itmp[well_start_sp] = -1
+    
     # copy launch script
     shutil.copy2(os.path.join('modflow', 'HTC', 'Navarro', 'Transient', 'launch_thisRun.sh'),
-            os.path.join(w_model_ws, 'launch_thisRun.sh'))
+                 os.path.join(w_model_ws, 'launch_thisRun.sh'))
+
+    shutil.copy2(os.path.join('modflow', 'HTC', 'Navarro', 'Transient', 'postprocess_thisRun_'+stream_BC+'.py'),
+                 os.path.join(w_model_ws, 'postprocess_thisRun.py'))
 
     # copy namefile from template, which points to input package files in mf0 (no pumping) directory
     path_nam_template = os.path.join('modflow', 'HTC', 'Navarro', 'Transient', stream_BC, modflow_v, modelname+'_Template.nam')

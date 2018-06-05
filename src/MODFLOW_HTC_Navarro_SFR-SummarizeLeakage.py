@@ -19,7 +19,7 @@ dir_runs = os.path.join('modflow', 'HTC', 'Navarro', timeType, stream_BC, modflo
 prefix_runs = 'mf'
 modelname = 'Navarro-'+timeType
 
-## load RIV input
+## load SFR input
 isfr_ReachData = pd.read_table(os.path.join('modflow', 'input', 'isfr_ReachData.txt'), delimiter=' ')
 isfr_SegmentData = pd.read_table(os.path.join('modflow', 'input', 'isfr_SegmentData.txt'), delimiter=' ')
 
