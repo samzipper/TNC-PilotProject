@@ -39,7 +39,7 @@ for time in outputTimes:
     ## summarize by segment number
     iriv_merge['leakage'] = iriv_merge['leakage']*iriv_merge['seg_proportion']        
     iriv_out = iriv_merge.groupby('SegNum', as_index=False).agg({'leakage': 'sum'})
-    iriv_out['Time'] = time
+    iriv_out['Time'] = float(time)
     
     ## calculate net well pumping rate (close, but not identical, to qdes)
     mnwout_data = mnwout.get_data(totim=time, text='MNW2', full3D=False)

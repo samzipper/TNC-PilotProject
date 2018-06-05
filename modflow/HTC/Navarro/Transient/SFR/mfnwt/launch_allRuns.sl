@@ -5,7 +5,7 @@
 #SBATCH --job-name=mf
 #SBATCH --tasks-per-node=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=1200M
+#SBATCH --mem=3500M
 #SBATCH --mail-user=samuelczipper@gmail.com
 #SBATCH --mail-type=END
 #SBATCH --output=mf%a-%j.out
@@ -17,5 +17,5 @@ cd /home/zipper/scratch/TNC-PilotProject/modflow/HTC/Navarro/Transient/SFR/mfnwt
 ./launch_thisRun.sh
 
 # postprocess
-pyenv postprocess_thisRun.py
+/home/zipper/projects/def-tgleeson/zipper/ENV-INSTALL/bin/python postprocess_thisRun.py
 

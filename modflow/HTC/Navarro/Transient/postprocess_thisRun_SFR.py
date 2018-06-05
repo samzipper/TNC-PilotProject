@@ -38,11 +38,10 @@ pump_steps = pd.DataFrame({'kstpkper': list(set(sfr_merge['kstpkper'])), 'MNW_ne
 for k in range(0,pump_steps.shape[0]):
     mnwout_data = mnwout.get_data(kstpkper=pump_steps['kstpkper'][k], text='MNW2', full3D=False)
     pump_steps['MNW_net'][k] = sum(mnwout_data[0]['q'])
-    print('kstpkper ', str(k), ' complete')
 mnwout.close()
 
 # join MNW with sfr data
-sfr_merge = pd.merge(sfr_merge, pump_steps, left_on=['kstpkper'], right_on=['kstpkper'])
+sfr_merge = pd.merge(sfr_merge, pump_steps, left_on=['kstpkper'], right_on=['kstpkper'])[['SFR_NSEG', 'Qaquifer',  'kstpkper', 'MNW_net']]
 
 ## save all output
-sfr_merge.round({'leakage':3, 'MNW_net':3}).to_csv(modelname+'_postprocess.csv', header="SFR_NSEG,leakage,kstpkper,MNW_net", index=False)
+sfr_merge.round({'Qaquifer':3, 'MNW_net':3}).to_csv(modelname+'_postprocess.csv', header="SFR_NSEG,leakage,kstpkper,MNW_net", index=False)
