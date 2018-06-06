@@ -33,6 +33,7 @@ postprocess_thisRun*
 launch_thisRun*
 *_postprocess.csv
 *SummarizeLeakage.csv
+Depletion_MODFLOW.csv
 
 # Image files
 *.png

@@ -8,6 +8,7 @@
 require(lubridate)
 require(magrittr)
 require(dplyr)
+require(stringr)
 
 ## choose stream boundary condition and modflow version
 stream_BC <- "SFR"       # "RIV" or "SFR"
@@ -117,3 +118,5 @@ df.MODFLOW %>%
   subset(is.finite(depletion.prc.modflow) & abs(depletion.prc.modflow) > f.thres) %>% 
   dplyr::select(SegNum, WellNum, Time, Qw_m3.d, depletion_m3.d) %>% 
   write.csv(., file.path(dir.runs, "Depletion_MODFLOW.csv"), row.names=F)
+
+print("all done!")

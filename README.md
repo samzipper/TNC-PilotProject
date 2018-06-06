@@ -42,6 +42,8 @@ Here is an overview of the recommended sequence and relevant scripts:
     created with MODFLOW_HTC_Navarro_SetUpTransientWithPumping.py if there are additional wells you
     want to create and run.
     - MODFLOW_HTC_CheckFailure.py = check whether any models failed to converge.
+    - MODFLOW_HTC_Navarro_TransientSummarizeLeakage.R = combines postprocessed results from individual
+    MODFLOW folders into a single file.
     - MODFLOW_HTC_Navarro_CalculateCaptureFraction.R = Calculate the capture fraction based on the 
     postprocessed output from the HTC runs.
 3. Analytical model
