@@ -88,12 +88,8 @@ df.apportion <- left_join(df.apportion, shp.streams@data[,c("SegNum", "width_m")
 
 ## load analytical depletion apportionment equations
 # this is a different repository (StreamflowDepletionModels) so source them from GitHub
-hunt <- 
-  source_github("https://raw.githubusercontent.com/szipper/StreamflowDepletionModels/master/R/hunt.R")
-streambed_conductance <- 
-  source_github("https://raw.githubusercontent.com/szipper/StreamflowDepletionModels/master/R/streambed_conductance.R")
-glover <- 
-  source_github("https://raw.githubusercontent.com/szipper/StreamflowDepletionModels/master/R/glover.R")
+#devtools::install_github("szipper/streamDepletr")
+require(streamDepletr)
 
 # analytical calculations: continuous pumping -----------------------------------------------------
 
@@ -120,13 +116,16 @@ for (ts in ts.all){
     df.apportion$thickness_m <- abs(df.apportion$wte_m-df.apportion$streambed_elev_m)    # reeves et al- uses vertical distance between top of well screen and streambed 
     df.apportion$thickness_m[df.apportion$thickness_m < screen_length] <- screen_length  # if vertical distance is < screen length, use screen length
     
+    # riverbed thickness - same as script MODFLOW_Navarro-SteadyState.py
+    riverbed_thickness <- 1
+    
     # calculate depletion fraction for each individual segment
     if (analytical=="glover"){
       df.apportion$Qf <- glover(t=(ts-ts.pump.start), d=df.apportion$distToWell.min.m, S=sy, 
                                 Tr=(hk*df.apportion$thickness_m))
     } else if (analytical=="hunt"){
       df.apportion$Qf <- 
-        streambed_conductance(w=df.apportion$width_m, Kriv=vk, briv=abs(df.apportion$ztop_m - df.apportion$streambed_elev_m)) %>% 
+        streambed_conductance(w=df.apportion$width_m, Kriv=vk, briv=riverbed_thickness) %>% 
         hunt(t=(ts-ts.pump.start), d=df.apportion$distToWell.min.m, S=sy, Tr=(hk*df.apportion$thickness_m), lmda=.)
     }
     
@@ -158,17 +157,19 @@ for (ts in ts.all){
 df.out %>% 
   dplyr::select(SegNum, WellNum, Time, analytical, 
                 Qf.InvDist, Qf.InvDistSq, Qf.Web, Qf.WebSq, Qf.TPoly) %>% 
-  write.csv(., file.path("modflow", "HTC", "Navarro", timeType, stream_BC, modflow_v, "Depletion_Analytical.csv"), row.names=F)
+  write.csv(., file.path("results", "Depletion_Analytical_AllMethods+Wells+Reaches.csv"), row.names=F)
 
 ## plot cumulative depletion for each well at each timestep
-df.out %>% 
+df.sum <- 
+  df.out %>% 
   group_by(Time, WellNum, analytical) %>% 
   summarize(Qf.InvDist = sum(Qf.InvDist),
             Qf.InvDistSq = sum(Qf.InvDistSq),
             Qf.Web = sum(Qf.Web),
             Qf.WebSq = sum(Qf.WebSq),
             Qf.TPoly = sum(Qf.TPoly)) %>% 
-  melt(id=c("Time", "WellNum", "analytical")) %>% 
-  ggplot(aes(x=Time, y=value, group=WellNum)) +
+  melt(id=c("Time", "WellNum", "analytical"))
+
+ggplot(df.sum, aes(x=Time, y=value, group=WellNum)) +
   geom_line() +
   facet_grid(variable ~ analytical)
