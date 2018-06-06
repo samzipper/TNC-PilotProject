@@ -1,4 +1,5 @@
 require(streamDepletr)
+require(dplyr)
 
 # depletion apportionment
 apportion.inv.dist(reach=c(1,2,3,4), dist=c(200, 350, 500, 350), w=2)
@@ -15,3 +16,10 @@ round(glover(t=365, d=c(200, 350, 500, 350), S=0.1, Tr=1*50)*apportion.inv.dist(
 round(hunt(t=365, d=c(200, 350, 500, 350), S=0.1, Tr=1*50, 
            lmda = streambed_conductance(w=4, Kriv=0.1, briv=1))*
         apportion.inv.dist(reach=c(1,2,3,4), dist=c(200, 350, 500, 350), w=2)[,2], 3)
+
+# capture fraction
+sum(glover(t=365, d=c(200, 350, 500, 350), S=0.1, Tr=1*50)*apportion.inv.dist(reach=c(1,2,3,4), dist=c(200, 350, 500, 350), w=2)[,2])
+
+sum(hunt(t=365, d=c(200, 350, 500, 350), S=0.1, Tr=1*50, 
+           lmda = streambed_conductance(w=4, Kriv=0.1, briv=1))*
+        apportion.inv.dist(reach=c(1,2,3,4), dist=c(200, 350, 500, 350), w=2)[,2])
