@@ -5,12 +5,15 @@
 #' Note that the output of MODFLOW_HTC_Navarro_***-SummarizeLeakage.py is too big
 #' for GitHub so it is needs to be transferred from the ComputeCanada HTC manually.
 
-source(file.path("src", "paths+packages.R"))
+require(lubridate)
+require(magrittr)
+require(dplyr)
 
 ## choose stream boundary condition and modflow version
-stream_BC <- "RIV"       # "RIV" or "SFR"
+stream_BC <- "SFR"       # "RIV" or "SFR"
 modflow_v <- "mfnwt"     # "mfnwt" or "mf2005"
 timeType  <- "Transient" # "SteadyState" or "Transient"
+run_length_years <- 10    # length of run
 
 ## define which directory you are interested in
 dir.runs <- file.path("modflow", "HTC", "Navarro", timeType, stream_BC, modflow_v)
@@ -35,7 +38,7 @@ if (stream_BC=="SFR"){
   days_in_sp <- 
     seq(1,12) %>% 
     days_in_month() %>% 
-    rep(.,2) %>% 
+    rep(.,run_length_years) %>% 
     as.numeric()
   
   # extract timestep and stress period from kstpkper
@@ -54,16 +57,17 @@ if (stream_BC=="SFR"){
     set_colnames(c("stp", "per", "kstpkper")) %>% 
     transform(Time = NaN)
   
-  get_Time <- function(stp, per, days_in_sp){
+  get_Time <- function(stp, per, days_in_sp, ts_length_days){
+    ts_length <- days_in_sp[per]/round(days_in_sp[per]/ts_length_days, 0)
     if (per==1){
-      Time <- stp
+      Time <- stp*ts_length
     } else {
-      Time <- sum(days_in_sp[1:(per-1)]) +stp
+      Time <- sum(days_in_sp[1:(per-1)]) + stp*ts_length
     }
   }
   
   for (i in 1:length(df.sp$Time)){
-    df.sp$Time[i] <- get_Time(stp=df.sp$stp[i], per=df.sp$per[i], days_in_sp=days_in_sp)
+    df.sp$Time[i] <- get_Time(stp=df.sp$stp[i], per=df.sp$per[i], days_in_sp=days_in_sp, ts_length_days=5)
   }
   
   df.MODFLOW <- 
@@ -113,8 +117,3 @@ df.MODFLOW %>%
   subset(is.finite(depletion.prc.modflow) & abs(depletion.prc.modflow) > f.thres) %>% 
   dplyr::select(SegNum, WellNum, Time, Qw_m3.d, depletion_m3.d) %>% 
   write.csv(., file.path(dir.runs, "Depletion_MODFLOW.csv"), row.names=F)
-
-p.depletion.sum <-
-  ggplot(df.MODFLOW.sum, aes(x=Time, y=depletion.prc.total, group=WellNum)) +
-  geom_line(alpha=0.25) +
-  coord_cartesian(ylim=c(-1,1))
