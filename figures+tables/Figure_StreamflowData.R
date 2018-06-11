@@ -5,9 +5,9 @@
 
 source("src/paths+packages.R")
 
-## get data from USGS
-df <- importDVs(station.outlet, code="00060", stat="00003", sdate="1950-10-01", edate="2017-09-30")
-df.info <- siteInfo(station.outlet)
+## get data from USGS - output from script Navarro_StreamflowData.R
+df <- read.csv(file.path("results", "Navarro_StreamflowData.csv"))
+df.info <- read.csv(file.path("results", "Navarro_StreamflowData_siteInfo.csv"))
 # df colnames:
 #   staid = station (char)
 #   val = discharge [cfs] (numeric)

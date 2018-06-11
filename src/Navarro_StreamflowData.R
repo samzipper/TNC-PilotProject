@@ -4,9 +4,14 @@
 
 source(file.path("src", "paths+packages.R"))
 
-## get data from USGS
-df <- importDVs(station.outlet, code="00060", stat="00003", sdate="1900-01-01", edate="2017-12-31")
-df.info <- siteInfo(station.outlet)
+## get data from USGS - only have to run once
+#df <- importDVs(station.outlet, code="00060", stat="00003", sdate="1900-01-01", edate="2017-12-31")
+#df.info <- siteInfo(station.outlet)
+#write.csv(df, file.path("results", "Navarro_StreamflowData.csv"), row.names=F)
+#write.csv(df.info, file.path("results", "Navarro_StreamflowData_siteInfo.csv"), row.names=F)
+df <- read.csv(file.path("results", "Navarro_StreamflowData.csv"))
+df.info <- read.csv(file.path("results", "Navarro_StreamflowData_siteInfo.csv"))
+df$date <- ymd(df$date)
 # df colnames:
 #   staid = station (char)
 #   val = discharge [cfs] (numeric)
@@ -14,8 +19,6 @@ df.info <- siteInfo(station.outlet)
 #   qualcode = quality code
 
 ## data inspection and cleanup
-plotParam(df)
-cleanUp(df, task = "view")  # appear to be no bad values
 if (df$date[dim(df)[1]] - df$date[1] != dim(df)[1]-1) stop('missing dates')
 if (sum(is.na(df$val))>0) stop(paste0('no data: ', paste(df$dates[is.na(df$val)], collapse=", ")))
 
