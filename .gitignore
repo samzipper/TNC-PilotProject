@@ -34,6 +34,7 @@ launch_thisRun*
 *_postprocess.csv
 *SummarizeLeakage.csv
 Depletion_MODFLOW.csv
+*AllMethods+Wells+Reaches.csv
 
 # Image files
 *.png

@@ -13,6 +13,7 @@
 #' (HUC 1801010804) plus all adjacent HUC12 watersheds.
 
 source(file.path("src", "paths+packages.R"))
+require(streamDepletr)
 
 # Define some parameters --------------------------------------------------------
 ## Make sure these are the same as your MODFLOW script!
@@ -48,10 +49,16 @@ riverbed_thickness <- 1
 
 # Prep input data ---------------------------------------------------------
 
+## what depletion apportionment output do you want?
+#apportionment_name <- "_LocalArea"      # output from Navarro_DepletionApportionment_LocalArea.R
+apportionment_name <- "_AdjacentOnly"   # output from Navarro_DepletionApportionment_AdjacentOnly.R
+#apportionment_name <- "_MaskDryStreams" # output from Navarro_DepletionApportionment_MaskDryStreams.R
+
 ## load depletion apportionment output
 df.apportion <- 
-  read.csv(file.path("results","Navarro_DepletionApportionment_AllMethods+Wells+Reaches.csv"),
-           stringsAsFactors=F)
+  paste0("Navarro_DepletionApportionment", apportionment_name, "_AllMethods+Wells+Reaches.csv") %>% 
+  file.path("results", .) %>% 
+  read.csv(stringsAsFactors=F)
 
 ## load well input data
 df.wel <- read.table(file.path("modflow", "input", "iwel.txt"), sep=" ", header=T)
@@ -86,11 +93,6 @@ segs.navarro <- shp.streams@data$SegNum[shp.streams@data$TerminalPa==outlet.Term
 shp.streams@data$width_m <- WidthFromDA(DA=shp.streams@data$TotDASqKM, w.min=1, w.max=100)
 df.apportion <- left_join(df.apportion, shp.streams@data[,c("SegNum", "width_m")], by="SegNum")
 
-## load analytical depletion apportionment equations
-# this is a different repository (StreamflowDepletionModels) so source them from GitHub
-#devtools::install_github("szipper/streamDepletr")
-require(streamDepletr)
-
 # analytical calculations: continuous pumping -----------------------------------------------------
 
 # get rid of any segments with < 0.0001 depletion apportionment, or
@@ -115,9 +117,6 @@ for (ts in ts.all){
     screen_length <- 50  # [m] - should be same as script MODFLOW_Navarro-SteadyState.py
     df.apportion$thickness_m <- abs(df.apportion$wte_m-df.apportion$streambed_elev_m)    # reeves et al- uses vertical distance between top of well screen and streambed 
     df.apportion$thickness_m[df.apportion$thickness_m < screen_length] <- screen_length  # if vertical distance is < screen length, use screen length
-    
-    # riverbed thickness - same as script MODFLOW_Navarro-SteadyState.py
-    riverbed_thickness <- 1
     
     # calculate depletion fraction for each individual segment
     if (analytical=="glover"){
@@ -157,7 +156,7 @@ for (ts in ts.all){
 df.out %>% 
   dplyr::select(SegNum, WellNum, Time, analytical, 
                 Qf.InvDist, Qf.InvDistSq, Qf.Web, Qf.WebSq, Qf.TPoly) %>% 
-  write.csv(., file.path("results", "Depletion_Analytical_AllMethods+Wells+Reaches.csv"), row.names=F)
+  write.csv(., file.path("results", paste0("Depletion_Analytical", apportionment_name, "_AllMethods+Wells+Reaches.csv")), row.names=F)
 
 ## plot cumulative depletion for each well at each timestep
 df.sum <- 
