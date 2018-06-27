@@ -38,8 +38,8 @@ riverbed_thickness <- 1
 # what wells do you want to plot?
 wells.plot <- c(151)
 
-# Prep input data ---------------------------------------------------------
-## load MODFLOW data
+# MODFLOW data processing -------------------------------------------------
+
 df.MODFLOW.RIV <- 
   file.path("modflow","HTC", "Navarro", "Transient", "RIV", modflow_v, "Depletion_MODFLOW.csv") %>% 
   read.csv(stringsAsFactors=F) %>% 
@@ -50,13 +50,109 @@ df.MODFLOW.RIV <-
 ts.pump.start <- sum(days_in_month(seq(1,4))) + 1
 df.MODFLOW.RIV$Time <- df.MODFLOW.RIV$Time-ts.pump.start
 
-## load depletion apportionment output
-df.apportion <- 
-  read.csv(file.path("results","Navarro_DepletionApportionment_AllMethods+Wells+Reaches.csv"),
-           stringsAsFactors=F)
+# calculate total capture fraction
+df.MODFLOW.sum <- 
+  df.MODFLOW.RIV %>% 
+  group_by(Time, WellNum) %>% 
+  summarize(depletion.prc.max = max(depletion.prc.modflow),
+            depletion.prc.sum = sum(depletion.prc.modflow))
 
-## load well input data
-df.wel <- read.table(file.path("modflow", "input", "iwel.txt"), sep=" ", header=T)
+# Calculate depletion apportionment ---------------------------------------
+
+## load well locations
+df.wel <- 
+  read.table(file.path("modflow", "input", "iwel.txt"), sep=" ", header=T) %>% 
+  subset(WellNum %in% wells.plot)
+
+# make a spatial points data frame
+xy <- df.wel[,c("lon", "lat")]
+spdf.wel <- SpatialPointsDataFrame(coords = xy, data = df.wel,
+                                   proj4string = CRS(crs.MODFLOW))
+
+
+## load stream data - created in MODFLOW_Navarro_InputPrepData.R
+shp.streams <- readOGR(dsn=file.path("modflow", "input"), layer="iriv")
+
+# shapefile shortens names; rename them
+names(shp.streams) <- c("OBJECTID", "REACHCODE", "TerminalPa", "lineLength_m", "TotDASqKM", "StreamOrde", 
+                        "TerminalFl", "SLOPE", "FromNode", "ToNode", "SegNum")
+
+# data frame for ggplots
+df.streams <- tidy(shp.streams, id=SegNum)
+
+# combine into 1 line per stream feature (which is defined by TerminalPa)
+shp.streams.dissolve <- gLineMerge(shp.streams)
+
+## convert stream lines to points
+# define point spacing and figure out how many points to make
+pt.spacing <- 10  # [m]
+n.pts <- round(gLength(shp.streams)/pt.spacing)
+
+# sample points
+shp.streams.pts <- spsample(shp.streams, n=n.pts, type="regular")
+df.streams.pts <- as.data.frame(shp.streams.pts)
+colnames(df.streams.pts) <- c("lon", "lat")
+
+# figure out what SegNum each point corresponds to
+shp.streams.buffer <- buffer(shp.streams, 0.1, dissolve=F)
+int <- intersect(shp.streams.pts, shp.streams.buffer)
+df.streams.pts <- cbind(df.streams.pts, int@data)
+
+# get distance to all stream points
+df.wel.dist <- data.frame(SegNum = df.streams.pts$SegNum,
+                          distToWell.m = round(sqrt((df.streams.pts$lon-df.wel$lon)^2 + (df.streams.pts$lat-df.wel$lat)^2), 2))
+
+# grab the lat/lon for these points
+df.wel.dist$lon <- df.streams.pts$lon
+df.wel.dist$lat <- df.streams.pts$lat
+
+local.area.m <- 5200  # ~based on MODFLOW capture distance
+
+df.wel.dist <- subset(df.wel.dist, distToWell.m <= local.area.m)
+
+# calculate depletion apportionment fractions for different methods
+df.id <- apportion.inv.dist(reach=df.wel.dist$SegNum, 
+                            dist=df.wel.dist$distToWell.m, 
+                            w=1, col.names=c("SegNum", "f.InvDist"))
+
+df.idsq <- apportion.inv.dist(reach=df.wel.dist$SegNum, 
+                              dist=df.wel.dist$distToWell.m, 
+                              w=2, col.names=c("SegNum", "f.InvDistSq"))
+
+df.web <- apportion.web.dist(reach=df.wel.dist$SegNum, 
+                             dist=df.wel.dist$distToWell.m, 
+                             w=1, col.names=c("SegNum", "f.Web"))
+
+df.websq <- apportion.web.dist(reach=df.wel.dist$SegNum, 
+                               dist=df.wel.dist$distToWell.m, 
+                               w=2, col.names=c("SegNum", "f.WebSq"))
+
+df.tpoly <- apportion.tpoly(reach=df.wel.dist$SegNum, 
+                            dist=df.wel.dist$distToWell.m, 
+                            lon=df.wel.dist$lon, 
+                            lat=df.wel.dist$lat, 
+                            wel.lon=df.wel$lon,
+                            wel.lat=df.wel$lat,
+                            wel.num=wells.plot,
+                            local.area.m=local.area.m,
+                            coord.ref=CRS(crs.MODFLOW),
+                            col.names=c("SegNum", "f.TPoly"))
+
+# combine into single data frame
+df.apportion <- 
+  full_join(df.id, df.idsq, by="SegNum") %>% 
+  full_join(x=., y=df.web, by="SegNum") %>% 
+  full_join(x=., y=df.websq, by="SegNum") %>% 
+  full_join(x=., y=df.tpoly, by="SegNum")
+df.apportion$WellNum <- wells.plot
+
+# add column for minimum distance to well from anywhere on this reach
+df.apportion <- 
+  group_by(df.wel.dist, SegNum) %>% 
+  summarize(distToWell.min.m = min(distToWell.m)) %>% 
+  left_join(x=df.apportion, y=., by=c("SegNum"))
+
+# Prep input data ---------------------------------------------------------
 
 ## load output from steady-state, no pumping scenario
 m.wte <- as.matrix(read.csv(file.path("modflow", "Navarro-SteadyState", stream_BC, modflow_v, "wte.csv")), header=F)
@@ -75,16 +171,7 @@ df.apportion <-
             streambed_elev_m = median(elev_m_min)-depth) %>% 
   left_join(df.apportion, ., by=c("SegNum")) 
 
-## stream width needed for conductance
-# load stream shapefile
-shp.streams <- readOGR(dsn=file.path("modflow", "input"), layer="iriv")
-
-# shapefile shortens names; rename them
-names(shp.streams) <- c("OBJECTID", "REACHCODE", "TerminalPa", "lineLength_m", "TotDASqKM", "StreamOrde", 
-                        "TerminalFl", "SLOPE", "FromNode", "ToNode", "SegNum")
-
 # figure out which segments are part of Navarro
-segs.navarro <- shp.streams@data$SegNum[shp.streams@data$TerminalPa==outlet.TerminalPa]
 shp.streams@data$width_m <- WidthFromDA(DA=shp.streams@data$TotDASqKM, w.min=1, w.max=100)
 df.apportion <- left_join(df.apportion, shp.streams@data[,c("SegNum", "width_m")], by="SegNum")
 
@@ -96,7 +183,7 @@ require(streamDepletr)
 # analytical calculations: continuous pumping -----------------------------------------------------
 
 # what timesteps do you want to count?
-ts.all <- unique(c(1:9 %o% 10^(0:8), unique(df.MODFLOW.RIV$Time)))
+ts.all <- unique(c(1:9 %o% 10^(0:8), unique(df.MODFLOW.sum$Time)))
 
 # extract WellNum you want to plot
 df.apportion.wel <- 
@@ -172,27 +259,6 @@ df.fit <-
   summarize(KGE.overall = KGE(depletion.prc.analytical, depletion.prc.modflow),
             RMSE.overall = rmse(depletion.prc.analytical, depletion.prc.modflow))
 
-# MODFLOW data processing ------------------------------------------------
-
-# add distance to well
-df.MODFLOW.RIV <-
-  left_join(df.MODFLOW.RIV, df.apportion.wel[,c("WellNum", "SegNum", "distToWell.min.m")],
-            by=c("WellNum", "SegNum"))
-
-# calculate total capture fraction
-df.MODFLOW.sum <- 
-  df.MODFLOW.RIV %>% 
-  group_by(Time, WellNum) %>% 
-  summarize(depletion.prc.max = max(depletion.prc.modflow),
-            depletion.prc.sum = sum(depletion.prc.modflow))
-
-# calculate furthest well with >= 1% depletion
-df.MODFLOW.dist <- 
-  df.MODFLOW.RIV %>% 
-  subset(depletion.prc.modflow >= 0.01) %>% 
-  group_by(Time, WellNum) %>% 
-  summarize(dist.well.m = max(distToWell.min.m))
-
 # make plots --------------------------------------------------------------
 
 # depletion fraction
@@ -211,7 +277,7 @@ p.TimeToCapture <-
         legend.position=c(0.01,0.99),
         legend.justification=c(0,1),
         legend.background=element_blank()) +
-  ggsave(file.path("results", "Navarro_Analytical_Transient_OneWell_TimeToCapture.png"))
+  ggsave(file.path("results", "Navarro_Analytical_Transient_OneWell_ChangeLocalArea_TimeToCapture.png"))
 
 # fit
 p.KGE <- 
@@ -222,7 +288,7 @@ p.KGE <-
   scale_y_continuous(name="KGE") +
   scale_color_manual(name="Approach", values=c(pal.method.Qf), labels=labs.method, guide=F) +
   labs(title=paste0("Well ", wells.plot)) +
-  ggsave(file.path("results", "Navarro_Analytical_Transient_OneWell_KGE.png"))
+  ggsave(file.path("results", "Navarro_Analytical_Transient_OneWell_ChangeLocalArea_KGE.png"))
 
 p.RMSE <- 
   ggplot() +
@@ -231,17 +297,8 @@ p.RMSE <-
   scale_y_continuous(name="RMSE [pp]") +
   scale_color_manual(name="Approach", values=c(pal.method.Qf), labels=labs.method, guide=F) +
   labs(title=paste0("Well ", wells.plot)) +
-  ggsave(file.path("results", "Navarro_Analytical_Transient_OneWell_RMSE.png"))
+  ggsave(file.path("results", "Navarro_Analytical_Transient_OneWell_ChangeLocalArea_RMSE.png"))
 
-ggsave(file.path("results", "Navarro_Analytical_Transient_OneWell.png"),
+ggsave(file.path("results", "Navarro_Analytical_Transient_OneWell_ChangeLocalArea.png"),
        grid.arrange(p.TimeToCapture, p.RMSE, ncol=2),
        width=8, height=6)
-
-
-# furthest affected MODFLOW well
-ggplot() +
-  geom_line(data=df.MODFLOW.dist, aes(x=Time, y=dist.well.m)) +
-  scale_x_continuous(name="Time [days]") +
-  scale_y_continuous(name="Closest MODFLOW Stream Reach with >= 1% Capture Fraction") +
-  labs(title=paste0("Well ", wells.plot)) +
-  ggsave(file.path("results", "Navarro_Analytical_Transient_OneWell_MODFLOWcaptureDistance.png"))

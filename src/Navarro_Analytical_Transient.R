@@ -112,7 +112,7 @@ for (ts in ts.all){
     df.apportion$analytical <- analytical
     
     # calculate aquifer vertical thickness for transmissivity
-    screen_length = 50  # [m] - should be same as script MODFLOW_Navarro-SteadyState.py
+    screen_length <- 50  # [m] - should be same as script MODFLOW_Navarro-SteadyState.py
     df.apportion$thickness_m <- abs(df.apportion$wte_m-df.apportion$streambed_elev_m)    # reeves et al- uses vertical distance between top of well screen and streambed 
     df.apportion$thickness_m[df.apportion$thickness_m < screen_length] <- screen_length  # if vertical distance is < screen length, use screen length
     
