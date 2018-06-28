@@ -18,9 +18,9 @@ methods.plot <- c("Qf.InvDistSq", "Qf.WebSq", "Qf.TPoly")
 
 ## what depletion apportionment output do you want?
 #apportionment_name <- "_LocalArea"      # output from Navarro_DepletionApportionment_LocalArea.R run through Navarro_Analytical_Transient.R
-apportionment_name <- "_AdjacentOnly"   # output from Navarro_DepletionApportionment_AdjacentOnly.R run through Navarro_Analytical_Transient.R
+#apportionment_name <- "_AdjacentOnly"   # output from Navarro_DepletionApportionment_AdjacentOnly.R run through Navarro_Analytical_Transient.R
 #apportionment_name <- "_MaskDryStreams" # output from Navarro_DepletionApportionment_MaskDryStreams.R run through Navarro_Analytical_Transient.R
-#apportionment_name <- "_Dynamic"        # output from Navarro_DepletionApportionment+Analytical_Transient.R
+apportionment_name <- "_Dynamic"        # output from Navarro_DepletionApportionment+Analytical_Transient.R
 
 #### (0) Prep spatial data
 
@@ -174,16 +174,32 @@ df.most.affected.MODFLOW <-
   summarize(Qf.MODFLOW.max = max(depletion.prc.modflow), 
             Qf.MODFLOW.max.seg = SegNum[which.max(depletion.prc.modflow)])
 
-# melt and combine
+## melt and combine
+# figure out depletion at the most affected MODFLOW reach and compare it
+# to analytical depletion at that same reach
 df.most.affected.prc <- 
-  df.most.affected.analytical %>% 
-  dplyr::select(WellNum, Time, analytical, Qf.InvDistSq.max, 
-                Qf.WebSq.max, Qf.TPoly.max) %>% 
-  melt(id=c("WellNum", "Time", "analytical"),
-       variable.name="method", value.name="depletion.prc") %>% 
-  full_join(., df.most.affected.MODFLOW, by=c("WellNum", "Time")) %>% 
-  subset(!is.na(analytical) & !is.na(stream_BC))
+  df.most.affected.MODFLOW %>% 
+  transform(analytical = "glover")
+tmp <- df.most.affected.prc
+tmp$analytical <- "hunt"  
+df.most.affected.prc <-
+  df.most.affected.prc %>% 
+  rbind(., tmp) %>% 
+  left_join(df.analytical, by=c("Qf.MODFLOW.max.seg"="SegNum", "WellNum", "Time", "analytical")) %>% 
+  melt(id=c("WellNum", "Time", "stream_BC", "Qf.MODFLOW.max.seg", "analytical", "Qf.MODFLOW.max"),
+       variable.name="method", value.name="depletion.prc")
 
+df.most.affected.prc.fit <- 
+  df.most.affected.prc %>% 
+  group_by(stream_BC, analytical, method) %>% 
+  summarize(KGE.overall = KGE(depletion.prc, Qf.MODFLOW.max))
+
+df.most.affected.prc.fit.time <- 
+  df.most.affected.prc %>% 
+  group_by(stream_BC, analytical, method, Time) %>% 
+  summarize(KGE.overall = KGE(depletion.prc, Qf.MODFLOW.max))
+
+# compare the most affected segment for analytical and modflow
 df.most.affected.seg <- 
   df.most.affected.analytical %>% 
   dplyr::select(WellNum, Time, analytical, Qf.InvDistSq.max.seg, 
@@ -305,6 +321,26 @@ p.ts.match.prc <-
   scale_color_manual(name=NULL, values=pal.method.Qf, labels=labs.method) +
   theme(legend.position="bottom") +
   ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment", apportionment_name, "_Transient_p.ts.match.prc.png")),
+         width=8, height=8, units="in")
+
+p.ts.match.depletion.prc <-
+  df.most.affected.prc.fit.time %>% 
+  subset(method %in% methods.plot) %>% 
+  ggplot(aes(x=Time, y=KGE.overall, color=method)) +
+  annotate("rect", 
+           xmin=0, 
+           xmax=sum(days_in_month(seq(1,4))), 
+           ymin=-Inf, 
+           ymax=Inf, 
+           fill=col.gray, alpha=0.5) +
+  geom_line() +
+  facet_grid(stream_BC~analytical, 
+             labeller=as_labeller(c(labs.analytical, labs.stream_BC))) +
+  scale_x_continuous(name="Day of Simulation", expand=c(0,0)) +
+  scale_y_continuous(name="KGE for Depletion in Most-Depleted MODFLOW Segment") +
+  scale_color_manual(name=NULL, values=pal.method.Qf, labels=labs.method) +
+  theme(legend.position="bottom") +
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment", apportionment_name, "_Transient_p.ts.match.depletion.prc.png")),
          width=8, height=8, units="in")
 
 p.ts.MSE <-

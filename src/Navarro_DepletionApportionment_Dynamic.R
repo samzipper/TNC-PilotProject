@@ -31,7 +31,7 @@ modflow_v <- "mfnwt"  # "mfnwt" or "mf2005"
 ts.pump.start <- sum(days_in_month(seq(1,4))) + 1
 
 ## depletion threshold to retain stream reaches?
-Qf.thres <- 0.01   # =0.1%
+Qf.thres <- 0.001   # =0.1%
 
 ## depletion threshold to not save results?
 f.thres <- 0.0001  # =0.01%
