@@ -17,7 +17,7 @@ import platform
 modelname = 'Navarro-Intermittent'
 modelname_transient = 'Navarro-Transient'
 modflow_v = 'mfnwt'  # 'mfnwt' or 'mf2005'
-stream_BC = 'RIV'     # 'RIV' or 'SFR'
+stream_BC = 'SFR'     # 'RIV' or 'SFR'
 
 # which wells to simulate?
 every_n_wells = 7  # if you want all wells, just set this to 1
@@ -70,16 +70,16 @@ namtext = namfile.read()
 namfile.close()
 
 namfile = open(os.path.join(model_ws, modelname+'.nam'), 'w') 
-namtext = namtext.replace(os.path.join('modflow', 'HTC', 'Navarro', 'Transient', stream_BC, modflow_v, model_prefix+'0'), '')  # fix ddn - not sure why this is happening
+namtext = namtext.replace(os.path.join('modflow', 'HTC', 'Navarro', 'Transient', stream_BC, modflow_v, model_prefix+'0', ''), '')  # fix ddn - not sure why this is happening
 namtext = namtext.replace(modelname_transient, modelname)  # fix modelname
 namfile.write(namtext)
 namfile.close()
 
 ## copy launch and postprocessing scripts
-shutil.copy2(os.path.join('modflow', 'HTC', 'Navarro', 'Transient', 'launch_thisRun.sh'), 
+shutil.copy2(os.path.join('modflow', 'HTC', 'Navarro', 'Intermittent', 'launch_thisRun.sh'), 
         os.path.join(model_ws, 'launch_thisRun.sh'))
 
-shutil.copy2(os.path.join('modflow', 'HTC', 'Navarro', 'Transient', 'postprocess_thisRun_'+stream_BC+'.py'), 
+shutil.copy2(os.path.join('modflow', 'HTC', 'Navarro', 'Intermittent', 'postprocess_thisRun_'+stream_BC+'.py'), 
         os.path.join(model_ws, 'postprocess_thisRun.py'))
 
 ### now, go through the pumping well scenarios - 
@@ -104,8 +104,7 @@ well_pump_sp = well_pump_yr*int(nper/12)
 # define pumping rate
 Qw = -6*100*0.00378541  # [m3/d]  6 gal/plant/day*100 plants*0.00378541 m3/gal
 
-for w in range(0,2):
-#for w in range(0,iwel.shape[0], every_n_wells):
+for w in range(0,iwel.shape[0], every_n_wells):
     WellNum = iwel['WellNum'][w]
     wellid = 'Well'+str(WellNum)
 
