@@ -11,7 +11,7 @@
 #SBATCH --output=mf%a-%j.out
 
 # change to directory
-cd /home/zipper/scratch/TNC-PilotProject/modflow/HTC/Navarro/Transient/RIV/mfnwt/mf$SLURM_ARRAY_TASK_ID
+cd /home/zipper/scratch/TNC-PilotProject/modflow/HTC/Navarro/Intermittent/RIV/mfnwt/mf$SLURM_ARRAY_TASK_ID
 
 # launch script in directory
 ./launch_thisRun.sh
