@@ -1,9 +1,12 @@
 ## MODFLOW_HTC_Navarro_SummarizeLeakage.R
 #' This script is intended to calculate summarize output from the postprocess_thisRun.py
 #' scripts into a single file. 
+#' 
+#' You need to delete all of the mf*-*.out files from your directly first
+#' after running MODFLOW_HTC_CheckFailure.py
 
 ## choose stream boundary condition and modflow version
-stream_BC <- "SFR"       # "RIV" or "SFR"
+stream_BC <- "RIV"       # "RIV" or "SFR"
 modflow_v <- "mfnwt"     # "mfnwt" or "mf2005"
 timeType  <- "Transient" # "SteadyState" or "Transient"
 

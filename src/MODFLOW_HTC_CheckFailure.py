@@ -7,7 +7,7 @@ import os, glob
 import numpy as np
 
 # what stream BC and modflow version?
-stream_BC = 'SFR'  # 'RIV' or 'SFR'
+stream_BC = 'RIV'  # 'RIV' or 'SFR'
 modflow_v = 'mfnwt'  # 'mfnwt' or 'mf2005'
 timeType = 'Transient'  # 'SteadyState' or 'Transient'
 
@@ -32,7 +32,7 @@ for f in np.arange(0, len(files)):
 
     # figure out if failed or success
     num_succ = False
-    if "Normal termination of simulation" in lines[-1]:
+    if any("Normal termination of simulation" in l for l in lines):
         num_succ = True
 
     # add to overall output file

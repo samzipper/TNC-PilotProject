@@ -17,7 +17,10 @@ import platform
 modelname = 'Navarro-Transient'
 modelname_NoPump = 'Navarro-Transient-SpinUp'
 modflow_v = 'mfnwt'  # 'mfnwt' or 'mf2005'
-stream_BC = 'RIV'     # 'RIV' or 'SFR'
+stream_BC = 'SFR'     # 'RIV' or 'SFR'
+
+# which wells to simulate?
+every_n_wells = 7  # if you want all wells, just set this to 1
 
 # where is your MODFLOW-2005 executable?
 if (modflow_v=='mf2005'):
@@ -99,7 +102,7 @@ ts_counter = 0
 for sp in range(0,nper):
     for stp in range(0,int(nstp[sp])):
         ts_counter = ts_counter+1
-        if (ts_counter % (5/ts_length_days) == 0): oc_spd[sp,stp] = ['save budget']
+        if (ts_counter % (10/ts_length_days) == 0): oc_spd[sp,stp] = ['save budget']
 oc = flopy.modflow.ModflowOc(mf, stress_period_data=oc_spd, compact=True)
 
 ## update starting conditions from spinup
@@ -183,7 +186,6 @@ well_start_sp = 4
 # define pumping rate
 Qw = -6*100*0.00378541  # [m3/d]  6 gal/plant/day*100 plants*0.00378541 m3/gal
 
-every_n_wells = 25  # if you want all wells, just set this to 1
 for w in range(0,iwel.shape[0], every_n_wells):
 #for w in range(0,3):
     WellNum = iwel['WellNum'][w]

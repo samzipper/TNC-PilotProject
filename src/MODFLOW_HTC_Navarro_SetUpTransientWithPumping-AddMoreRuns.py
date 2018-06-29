@@ -5,7 +5,7 @@
 # It is intended to add additional runs to those already created using 
 # MODFLOW_HTC_Navarro_SetUpTransientWithPumping.py
 #
-# Using default units of ITMUNI=4 (days) and LENUNI=2 (meters)
+# Using default units of ITMUNI=4 (days) and LENUNI=2 (meters):q
 
 import os
 import numpy as np
@@ -16,12 +16,14 @@ import platform
 
 ## which wells do you want to add?
 # note that these are indices within the iwel data frame; the actual WellNum is w+1
-w_to_add = np.arange(10, 787, 25)
+every_5 = np.arange(0,787,5)
+every_25 = np.arange(0,787,25)
+w_to_add = [x for x in every_5 if x not in every_25]
 
 # set up your model
 modelname = 'Navarro-Transient'
 modflow_v = 'mfnwt'  # 'mfnwt' or 'mf2005'
-stream_BC = 'RIV'     # 'RIV' or 'SFR'
+stream_BC = 'SFR'     # 'RIV' or 'SFR'
 
 # where is your MODFLOW-2005 executable?
 if (modflow_v=='mf2005'):
@@ -39,6 +41,9 @@ elif (modflow_v=='mfnwt'):
 model_prefix = 'mf'
 model_ws = os.path.join('modflow', 'HTC', 'Navarro', 'Transient', stream_BC, modflow_v, model_prefix+'0')
 
+print(modelname)
+print(model_ws)
+
 # Assign name and create modflow model object
 mf = flopy.modflow.Modflow.load(modelname+'.nam', 
         exe_name=path2mf, version=modflow_v, model_ws=model_ws)
@@ -47,7 +52,7 @@ mf = flopy.modflow.Modflow.load(modelname+'.nam',
 nper = mf.dis.nper
 
 # set up itmp
-mf.mnw2.itmp[1:(nper-1)] = [-1]*(nper-1)
+mf.mnw2.itmp[1:(nper-1)] = [-1]*(nper-2)
 
 # print info about stream BC package
 print('Using ', stream_BC, ' for stream features')
@@ -66,7 +71,6 @@ well_start_sp = 4
 Qw = -6*100*0.00378541  # [m3/d]  6 gal/plant/day*100 plants*0.00378541 m3/gal
 
 for w in w_to_add:
-#for w in range(0,3):
     WellNum = iwel['WellNum'][w]
     wellid = 'Well'+str(WellNum)
 

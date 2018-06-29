@@ -1,7 +1,7 @@
 #!/bin/bash -l
 #SBATCH --time=0-05:59:59
 #SBATCH --nodes=1
-#SBATCH --array=0,1-776:25
+#SBATCH --array=0,1-787:7
 #SBATCH --job-name=mf
 #SBATCH --tasks-per-node=1
 #SBATCH --cpus-per-task=1
