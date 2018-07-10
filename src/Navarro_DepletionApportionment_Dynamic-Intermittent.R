@@ -1,4 +1,4 @@
-## Navarro_DepletionApportionment+Analytical_Dynamic.R
+## Navarro_DepletionApportionment+Analytical_Dynamic-Intermittent.R
 #' This script is intended to calculate depletion and apportion it
 #' among different stream reaches for a bunch of wells. All of this is
 #' in one script, instead of several, because the steps are interlinked:
@@ -27,8 +27,19 @@ require(streamDepletr)
 stream_BC <- "RIV"    # "RIV" or "SFR"
 modflow_v <- "mfnwt"  # "mfnwt" or "mf2005"
 
-## pumping start time in MODFLOW model?
-ts.pump.start <- sum(days_in_month(seq(1,4))) + 1
+## when is pumping occurring? need starts and stops
+# since we are using 365 day years (ignoring leap years)
+# we just have to figure out June 1 and Nov 1 for first
+# year and then add 365
+ts.pump.starts <- seq(from=(sum(days_in_month(seq(1,5))) + 1),
+                      by=365, 
+                      length.out=10)
+ts.pump.stops <- seq(from=(sum(days_in_month(seq(1,10))) + 1),
+                     by=365, 
+                     length.out=10)
+
+## pumping rate - should be same as MODFLOW
+Qw <- -6*100*0.00378541  # [m3/d]  6 gal/plant/day*100 plants*0.00378541 m3/gal
 
 ## depletion threshold to retain stream reaches?
 Qf.thres <- 0.01   # =1%
@@ -101,13 +112,13 @@ df.stream.elev <-
 
 ## load MODFLOW results
 df.MODFLOW.RIV <- 
-  file.path("modflow","HTC", "Navarro", "Transient", "RIV", modflow_v, "Depletion_MODFLOW.csv") %>% 
+  file.path("modflow","HTC", "Navarro", "Intermittent", "RIV", modflow_v, "Depletion_MODFLOW.csv") %>% 
   read.csv(stringsAsFactors=F) %>% 
   transform(depletion.prc.modflow = depletion_m3.d/Qw_m3.d,
             stream_BC = "RIV")
 
 df.MODFLOW.SFR <- 
-  file.path("modflow","HTC", "Navarro", "Transient", "SFR", modflow_v, "Depletion_MODFLOW.csv") %>% 
+  file.path("modflow","HTC", "Navarro", "Intermittent", "SFR", modflow_v, "Depletion_MODFLOW.csv") %>% 
   read.csv(stringsAsFactors=F) %>% 
   transform(depletion.prc.modflow = depletion_m3.d/Qw_m3.d,
             stream_BC = "SFR")
@@ -116,7 +127,6 @@ df.MODFLOW.SFR <-
 df.MODFLOW <- rbind(df.MODFLOW.RIV, df.MODFLOW.SFR)
 
 # convert Time to time since pumping started
-df.MODFLOW$Time <- df.MODFLOW$Time - ts.pump.start
 df.MODFLOW$Time <- round(df.MODFLOW$Time, 1)
 
 ## load output from steady-state, no pumping scenario - this is used to define the screen interval
@@ -130,6 +140,7 @@ df.wel$wte_m <- m.wte[as.matrix(df.wel[,c("row", "col")])+1]
 # figure out wells and timesteps
 wells.all <- sort(unique(df.MODFLOW$WellNum))
 times.all <- sort(unique(df.MODFLOW$Time))
+times.all <- times.all[times.all > min(ts.pump.starts)]
 
 start.flag <- T
 for (wel in wells.all){
@@ -168,6 +179,7 @@ for (wel in wells.all){
                               coord.ref=CRS(crs.MODFLOW),
                               col.names=c("SegNum", "f.TPoly"))
   
+  start.wel <- T
   for (t in times.all){
     for (analytical in c("glover", "hunt")){
       ## figure out the maximum distance at which depletion > Qf.thres would occur
@@ -177,7 +189,7 @@ for (wel in wells.all){
       max.dist <- depletion_max_distance(Qf_thres = Qf.thres,
                                          d_max    = 10000,
                                          method   = analytical,
-                                         t  = t,
+                                         t  = (t-min(ts.pump.starts)),
                                          S  = sy,
                                          Tr = hk*closest.thickness,
                                          lmda = min(df.wel.dist$lmda))  # lmda will be ignored if analytical==glover
@@ -232,47 +244,74 @@ for (wel in wells.all){
                     lmda.min = min(lmda)) %>% 
           left_join(x=df.apportion.wel.t, y=., by=c("SegNum"))
         
-        #### (4) Calculate analytical depletion and distribute using apportionment output
-        if (analytical=="glover"){
-          df.apportion.wel.t$Qf <- glover(t  = t, 
-                                          d  = df.apportion.wel.t$distToWell.min.m, 
-                                          S  = sy, 
-                                          Tr = (hk*df.apportion.wel.t$thickness.max.m))
-          df.apportion.wel.t$analytical <- analytical
-          
-        } else if (analytical=="hunt"){
-          df.apportion.wel.t$Qf <- hunt(t  = t, 
-                                        d  = df.apportion.wel.t$distToWell.min.m, 
-                                        S  = sy, 
-                                        Tr = (hk*df.apportion.wel.t$thickness.max.m),
-                                        lmda = df.apportion.wel.t$lmda.min)
-          df.apportion.wel.t$analytical <- analytical
-        }
-        
-        # weight segments using depletion apportionment fractions
-        df.apportion.wel.t$Qf.InvDist   <- df.apportion.wel.t$Qf*df.apportion.wel.t$f.InvDist
-        df.apportion.wel.t$Qf.InvDistSq <- df.apportion.wel.t$Qf*df.apportion.wel.t$f.InvDistSq
-        df.apportion.wel.t$Qf.Web       <- df.apportion.wel.t$Qf*df.apportion.wel.t$f.Web
-        df.apportion.wel.t$Qf.WebSq     <- df.apportion.wel.t$Qf*df.apportion.wel.t$f.WebSq
-        df.apportion.wel.t$Qf.TPoly     <- df.apportion.wel.t$Qf*df.apportion.wel.t$f.TPoly
+        # add analytical method
+        df.apportion.wel.t$analytical <- analytical
         
         # add to overall data frame
-        if (start.flag){
-          df.out <- subset(df.apportion.wel.t, Qf.InvDist > f.thres | Qf.InvDistSq > f.thres |
-                             Qf.Web > f.thres | Qf.WebSq > f.thres | Qf.TPoly > f.thres)
-          start.flag <- F
+        if (start.wel){
+          df.apportion <- subset(df.apportion.wel.t, f.InvDist > f.thres | f.InvDistSq > f.thres |
+                                   f.Web > f.thres | f.WebSq > f.thres | f.TPoly > f.thres)
+          start.wel <- F
         } else {
-          df.out <- rbind(df.out, 
-                          subset(df.apportion.wel.t, Qf.InvDist > f.thres | Qf.InvDistSq > f.thres |
-                                   Qf.Web > f.thres | Qf.WebSq > f.thres | Qf.TPoly > f.thres))
+          df.apportion <- rbind(df.apportion, 
+                                subset(df.apportion.wel.t, f.InvDist > f.thres | f.InvDistSq > f.thres |
+                                         f.Web > f.thres | f.WebSq > f.thres | f.TPoly > f.thres))
         }  # end of start.flag check
       }  # end of dist check
     }  # end of analytical loop
     
     # status update
-    print(paste0("well ", wel, ", time ", t, " complete, ", Sys.time()))
+    print(paste0("max dist well ", wel, ", time ", t, " complete, ", Sys.time()))
     
   }  # end of t loop
+  
+  ## now: for each well-seg-analytical combo, run intermittent_pumping for all timesteps
+  well.seg.analytical.all <- unique(df.apportion[,c("SegNum", "WellNum", "analytical", "distToWell.min.m", "thickness.max.m", "lmda.min")])
+  
+  for (i in 1:dim(well.seg.analytical.all)[1]){
+    
+    # extract all timesteps
+    df.apportion.wel.t.all <- subset(df.apportion, 
+                                     SegNum == well.seg.analytical.all$SegNum[i] &
+                                       WellNum == well.seg.analytical.all$WellNum[i] &
+                                       analytical == well.seg.analytical.all$analytical[i])
+    
+    # calculate depletion fraction for each individual segment
+    df.apportion.wel.t.all$Qs <- intermittent_pumping(t = unique(df.apportion.wel.t.all$Time), 
+                                                      starts = ts.pump.starts, 
+                                                      stops = ts.pump.stops, 
+                                                      rates = rep(Qw, length(ts.pump.starts)),
+                                                      method = well.seg.analytical.all$analytical[i], 
+                                                      d = well.seg.analytical.all$distToWell.min.m[i], 
+                                                      S = sy,
+                                                      Tr = (hk*well.seg.analytical.all$thickness.max.m[i]),
+                                                      lmda = well.seg.analytical.all$lmda.min[i])
+    
+    df.apportion.wel.t.all$Qf <- df.apportion.wel.t.all$Qs/Qw
+    
+    # weight segments using depletion apportionment fractions
+    df.apportion.wel.t.all$Qf.InvDist   <- df.apportion.wel.t.all$Qf*df.apportion.wel.t.all$f.InvDist
+    df.apportion.wel.t.all$Qf.InvDistSq <- df.apportion.wel.t.all$Qf*df.apportion.wel.t.all$f.InvDistSq
+    df.apportion.wel.t.all$Qf.Web       <- df.apportion.wel.t.all$Qf*df.apportion.wel.t.all$f.Web
+    df.apportion.wel.t.all$Qf.WebSq     <- df.apportion.wel.t.all$Qf*df.apportion.wel.t.all$f.WebSq
+    df.apportion.wel.t.all$Qf.TPoly     <- df.apportion.wel.t.all$Qf*df.apportion.wel.t.all$f.TPoly
+    
+    # add to overall data frame
+    if (start.flag){
+      df.out <- subset(df.apportion.wel.t.all, abs(Qf.InvDist) > f.thres | abs(Qf.InvDistSq) > f.thres |
+                         abs(Qf.Web) > f.thres | abs(Qf.WebSq) > f.thres | abs(Qf.TPoly) > f.thres)
+      start.flag <- F
+    } else {
+      df.out <- rbind(df.out, 
+                      subset(df.apportion.wel.t.all, abs(Qf.InvDist) > f.thres | abs(Qf.InvDistSq) > f.thres |
+                               abs(Qf.Web) > f.thres | abs(Qf.WebSq) > f.thres | abs(Qf.TPoly) > f.thres))
+    }
+    
+    # status update
+    print(paste0("Qs ", i, " of ", dim(well.seg.analytical.all)[1], " complete"))
+    
+  } # end of i loop
+  
 }  # end of wel loop
 
 ## save output
@@ -290,11 +329,8 @@ df.out$Qf.Web <- round(df.out$Qf.Web, 5)
 df.out$Qf.WebSq <- round(df.out$Qf.WebSq, 5)
 df.out$Qf.TPoly <- round(df.out$Qf.TPoly, 5)
 
-# convert Time back to model time
-df.out$Time <- df.out$Time + ts.pump.start
-
 df.out %>% 
   dplyr::select(SegNum, WellNum, Time, analytical, 
                 f.InvDist, f.InvDistSq, f.Web, f.WebSq, f.TPoly, 
                 Qf.InvDist, Qf.InvDistSq, Qf.Web, Qf.WebSq, Qf.TPoly) %>% 
-  write.csv(., file.path("results", "Depletion_Analytical_Dynamic_AllMethods+Wells+Reaches.csv"), row.names=F)
+  write.csv(., file.path("results", "Depletion_Analytical_Intermittent_Dynamic_AllMethods+Wells+Reaches.csv"), row.names=F)

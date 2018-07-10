@@ -19,9 +19,6 @@ modelname_transient = 'Navarro-Transient'
 modflow_v = 'mfnwt'  # 'mfnwt' or 'mf2005'
 stream_BC = 'SFR'     # 'RIV' or 'SFR'
 
-# which wells to simulate?
-every_n_wells = 7  # if you want all wells, just set this to 1
-
 # which wells to simulate? there are 787 total
 every_n_wells = 7  # if you want all wells, just set this to 1
 
