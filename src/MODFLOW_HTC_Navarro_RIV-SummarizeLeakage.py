@@ -11,7 +11,7 @@ import glob
 # what stream BC and modflow version?
 stream_BC = 'RIV'  # 'RIV' or 'SFR'
 modflow_v = 'mfnwt'  # 'mfnwt' or 'mf2005'
-timeType = 'Transient'  # 'SteadyState' or 'Transient'
+timeType = 'Intermittent'  # 'SteadyState' or 'Transient' or 'Intermittent'
 
 # define the folder and the prefix
 dir_runs = os.path.join('modflow', 'HTC', 'Navarro', timeType, stream_BC, modflow_v)

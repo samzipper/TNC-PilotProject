@@ -13,7 +13,7 @@ require(stringr)
 ## choose stream boundary condition and modflow version
 stream_BC <- "RIV"       # "RIV" or "SFR"
 modflow_v <- "mfnwt"     # "mfnwt" or "mf2005"
-timeType  <- "Transient" # "SteadyState" or "Transient"
+timeType  <- "Intermittent" # "SteadyState" or "Transient" or "Intermittent"
 run_length_years <- 10    # length of run
 
 ## define which directory you are interested in
