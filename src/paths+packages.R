@@ -250,8 +250,19 @@ R2 <- function(sim, obs) {
             ((sum((obs-mean(obs))^2)^0.5)*(sum((sim-mean(sim))^2)^0.5)))^2)
 }
 
+# KGE which returns NaN if < a certain number of data points
+KGE_minpts <- function(sim, obs, minpts=3, ...){
+  # this is the same as KGE from the hydroGOF package, except it adds the input minpts
+  # if length(sim) < minpts, it will return NaN
+  
+  if (length(sim) < minpts){
+    return(KGE(sim, obs))
+  } else {
+    return(NaN)
+  }
+}
 
-# apportionment functions: inverse distance
+## apportionment functions: inverse distance
 apportion.inv.dist <- function(reach, dist, w, col.names=c("reach", "frac.depletion")){
   # function to calculate inverse distance weighting
   #

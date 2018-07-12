@@ -12,15 +12,16 @@ Qw <- -6*100*0.00378541  # [m3/d]
 modflow_v <- "mfnwt"  # "mfnwt" or "mf2005"
 masked <- F           # use masked depletion apportionment? should only be T for SFR
 stream_BC <- "RIV"    # stream boundary condition to use for setting steady-state head (screen interval)
+timeType  <- "Transient" # "Transient" or "Intermittent"
 
 # which methods to analyze?
 methods.plot <- c("Qf.InvDistSq", "Qf.WebSq", "Qf.TPoly")
 
 ## what depletion apportionment output do you want?
-#apportionment_name <- "_LocalArea"      # output from Navarro_DepletionApportionment_LocalArea.R run through Navarro_Analytical_Transient.R
+apportionment_name <- "_LocalArea"      # output from Navarro_DepletionApportionment_LocalArea.R run through Navarro_Analytical_Transient.R
 #apportionment_name <- "_AdjacentOnly"   # output from Navarro_DepletionApportionment_AdjacentOnly.R run through Navarro_Analytical_Transient.R
 #apportionment_name <- "_MaskDryStreams" # output from Navarro_DepletionApportionment_MaskDryStreams.R run through Navarro_Analytical_Transient.R
-apportionment_name <- "_Dynamic"        # output from Navarro_DepletionApportionment+Analytical_Transient.R
+#apportionment_name <- "_Dynamic"        # output from Navarro_DepletionApportionment+Analytical_Transient.R
 
 #### (0) Prep spatial data
 
@@ -38,7 +39,6 @@ df.wel$wte_m <- m.wte[as.matrix(df.wel[,c("row", "col")])+1]
 xy <- df.wel[,c("lon", "lat")]
 spdf.wel <- SpatialPointsDataFrame(coords = xy, data = df.wel,
                                    proj4string = CRS(crs.MODFLOW))
-
 
 ## load stream data - created in MODFLOW_Navarro_InputPrepData.R
 shp.streams <- readOGR(dsn=file.path("modflow", "input"), layer="iriv")
@@ -62,13 +62,13 @@ df.riv <- tidy(shp.streams)
 #### (1) Load MODFLOW results and figure out timesteps and wells for comparison 
 ####     (MODFLOW_HTC_Navarro_CalculateCaptureFraction.R)
 df.MODFLOW.RIV <- 
-  file.path("modflow","HTC", "Navarro", "Transient", "RIV", modflow_v, "Depletion_MODFLOW.csv") %>% 
+  file.path("modflow","HTC", "Navarro", timeType, "RIV", modflow_v, "Depletion_MODFLOW.csv") %>% 
   read.csv(stringsAsFactors=F) %>% 
   transform(depletion.prc.modflow = depletion_m3.d/Qw_m3.d,
             stream_BC = "RIV")
 
 df.MODFLOW.SFR <- 
-  file.path("modflow","HTC", "Navarro", "Transient", "SFR", modflow_v, "Depletion_MODFLOW.csv") %>% 
+  file.path("modflow","HTC", "Navarro", timeType, "SFR", modflow_v, "Depletion_MODFLOW.csv") %>% 
   read.csv(stringsAsFactors=F) %>% 
   transform(depletion.prc.modflow = depletion_m3.d/Qw_m3.d,
             stream_BC = "SFR")
@@ -81,7 +81,7 @@ df.MODFLOW <- rbind(df.MODFLOW.RIV, df.MODFLOW.SFR)
 # remember: this has been trimmed to only stream segments in Navarro,
 # and any segments with depletion <= 0.0001 (0.01%) have been removed
 df.analytical <- 
-    paste0("Depletion_Analytical", apportionment_name, "_AllMethods+Wells+Reaches.csv") %>% 
+    paste0("Depletion_Analytical_", timeType, apportionment_name, "_AllMethods+Wells+Reaches.csv") %>% 
     file.path("results", .) %>% 
     read.csv(stringsAsFactors=F) %>% 
     dplyr::select(c("SegNum", "WellNum", "analytical", "Time", methods.plot))
@@ -91,7 +91,7 @@ df.MODFLOW$Time <- round(df.MODFLOW$Time, 1)
 df.analytical$Time <- round(df.analytical$Time, 1)
 
 ## combine MODFLOW with analytical
-# remove analytical results with depletion <= f.thres (should be same as Navarro_Analytical_Transient.R)
+# remove results with depletion <= f.thres (should be same as Navarro_Analytical_Transient.R)
 f.thres <- 0.0001  # =0.01%
 df <- 
   full_join(df.analytical, df.MODFLOW[,c("stream_BC", "SegNum", "WellNum", "Time", "depletion.prc.modflow")], by=c("SegNum", "WellNum", "Time")) %>% 
@@ -114,8 +114,18 @@ df <- rbind(df, tmp)
 df$stream_BC[is.na(df$stream_BC)] <- "SFR"
 
 #### (3) Calculate derived statistics e.g. fit
+## FIT BY AQUIFER
+df.nreach <- 
+  df %>% 
+  group_by(stream_BC, analytical, method, Time) %>% 
+  summarize(n.reach = sum(is.finite(depletion.prc))) %>% 
+  subset(n.reach >= 3) %>% 
+  transform(groups = paste(stream_BC, analytical, method, Time, sep="_"))  # need to combine these to a single string for subsetting
+
 df.fit <- 
   df %>% 
+  transform(groups = paste(stream_BC, analytical, method, Time, sep="_")) %>% 
+  subset(groups %in% df.nreach$groups) %>% 
   group_by(stream_BC, analytical, method, Time) %>% 
   summarize(n.reach = sum(is.finite(depletion.prc)),
             cor = cor(depletion.prc, depletion.prc.modflow, method="pearson"),
@@ -131,9 +141,10 @@ df.fit <-
             KGE.overall = KGE(depletion.prc, depletion.prc.modflow, method="2012"))
 
 # only points with >5% depletion in either MODFLOW or analytical
+f.thres.big <- 0.05
 df.nreach.big <- 
   df %>% 
-  subset(depletion.prc > 0.05 | depletion.prc.modflow > 0.05) %>% 
+  subset(depletion.prc > f.thres.big | depletion.prc.modflow > f.thres.big) %>% 
   group_by(stream_BC, analytical, method, Time) %>% 
   summarize(n.reach = sum(is.finite(depletion.prc))) %>% 
   subset(n.reach >= 3) %>% 
@@ -157,6 +168,46 @@ df.fit.big <-
             MSE.overall = MSE(depletion.prc, depletion.prc.modflow),
             KGE.overall = KGE(depletion.prc, depletion.prc.modflow, method="2012"))
 
+## calculate sum of depletion.prc for each well/timestep/method
+df.sum <-
+  df %>% 
+  group_by(stream_BC, Time, WellNum, analytical, method) %>% 
+  summarize(Qf.MODFLOW = sum(depletion.prc.modflow),
+            Qf.analytical = sum(depletion.prc))
+
+df.fit.sum <- 
+  df.sum %>% 
+  group_by(stream_BC, analytical, method) %>% 
+  summarize(n.reach = sum(is.finite(Qf.analytical)),
+            cor = cor(Qf.analytical, Qf.MODFLOW, method="pearson"),
+            bias = pbias(Qf.analytical, Qf.MODFLOW),
+            R2 = R2(Qf.analytical, Qf.MODFLOW),
+            MSE.bias = MSE.bias(Qf.analytical, Qf.MODFLOW),
+            MSE.var = MSE.var(Qf.analytical, Qf.MODFLOW),
+            MSE.cor = MSE.cor(Qf.analytical, Qf.MODFLOW),
+            MSE.bias.norm = MSE.bias.norm(Qf.analytical, Qf.MODFLOW),
+            MSE.var.norm = MSE.var.norm(Qf.analytical, Qf.MODFLOW),
+            MSE.cor.norm = MSE.cor.norm(Qf.analytical, Qf.MODFLOW),
+            MSE.overall = MSE(Qf.analytical, Qf.MODFLOW),
+            KGE.overall = KGE(Qf.analytical, Qf.MODFLOW, method="2012"))
+
+df.fit.sum.WellNum <- 
+  df.sum %>% 
+  group_by(stream_BC, analytical, method, WellNum) %>% 
+  summarize(n.reach = sum(is.finite(Qf.analytical)),
+            cor = cor(Qf.analytical, Qf.MODFLOW, method="pearson"),
+            bias = pbias(Qf.analytical, Qf.MODFLOW),
+            R2 = R2(Qf.analytical, Qf.MODFLOW),
+            MSE.bias = MSE.bias(Qf.analytical, Qf.MODFLOW),
+            MSE.var = MSE.var(Qf.analytical, Qf.MODFLOW),
+            MSE.cor = MSE.cor(Qf.analytical, Qf.MODFLOW),
+            MSE.bias.norm = MSE.bias.norm(Qf.analytical, Qf.MODFLOW),
+            MSE.var.norm = MSE.var.norm(Qf.analytical, Qf.MODFLOW),
+            MSE.cor.norm = MSE.cor.norm(Qf.analytical, Qf.MODFLOW),
+            MSE.overall = MSE(Qf.analytical, Qf.MODFLOW),
+            KGE.overall = KGE(Qf.analytical, Qf.MODFLOW, method="2012"))
+
+## FIT BY WELL
 ## for each timestep: what % of wells does analytical correctly identify the most affected reach?
 df.most.affected.analytical <- 
   df.analytical %>% 
@@ -174,7 +225,7 @@ df.most.affected.MODFLOW <-
   summarize(Qf.MODFLOW.max = max(depletion.prc.modflow), 
             Qf.MODFLOW.max.seg = SegNum[which.max(depletion.prc.modflow)])
 
-## melt and combine
+# melt and combine
 # figure out depletion at the most affected MODFLOW reach and compare it
 # to analytical depletion at that same reach
 df.most.affected.prc <- 
@@ -217,7 +268,7 @@ df.most.affected.seg.match <-
             n.match = sum(analytical.max.seg==Qf.MODFLOW.max.seg)) %>% 
   transform(match.prc = n.match/n.well)
 
-## fit by well
+# fit statistics by well
 df.fit.well <- 
   df %>% 
   group_by(stream_BC, analytical, method, WellNum) %>% 
@@ -235,48 +286,62 @@ df.fit.well <-
             KGE.overall = KGE(depletion.prc, depletion.prc.modflow, method="2012")) %>% 
   left_join(df.wel, by="WellNum")
 
-## calculate sum of depletion.prc for each well/timestep/method
-df.sum <-
-  df %>% 
-  group_by(stream_BC, Time, WellNum, analytical, method) %>% 
-  summarize(Qf.MODFLOW = sum(depletion.prc.modflow),
-            Qf.analytical = sum(depletion.prc))
+## FIT BY STREAM
+## for each stream, what % of the wells causing > 5% depletion 
+## does each method identify as having > 5% depletion?
 
-df.fit.sum <- 
-  df.sum %>% 
-  group_by(stream_BC, analytical, method) %>% 
-  summarize(n.reach = sum(is.finite(Qf.analytical)),
-            cor = cor(Qf.analytical, Qf.MODFLOW, method="pearson"),
-            bias = pbias(Qf.analytical, Qf.MODFLOW),
-            R2 = R2(Qf.analytical, Qf.MODFLOW),
-            MSE.bias = MSE.bias(Qf.analytical, Qf.MODFLOW),
-            MSE.var = MSE.var(Qf.analytical, Qf.MODFLOW),
-            MSE.cor = MSE.cor(Qf.analytical, Qf.MODFLOW),
-            MSE.bias.norm = MSE.bias.norm(Qf.analytical, Qf.MODFLOW),
-            MSE.var.norm = MSE.var.norm(Qf.analytical, Qf.MODFLOW),
-            MSE.cor.norm = MSE.cor.norm(Qf.analytical, Qf.MODFLOW),
-            MSE.overall = MSE(Qf.analytical, Qf.MODFLOW),
-            KGE.overall = KGE(Qf.analytical, Qf.MODFLOW, method="2012"))
+# what threshold to use?
+prc.thres <- 0.05
 
-df.fit.sum.WellNum <- 
-  df.sum %>% 
-  group_by(stream_BC, analytical, method, WellNum) %>% 
-  summarize(n.reach = sum(is.finite(Qf.analytical)),
-            cor = cor(Qf.analytical, Qf.MODFLOW, method="pearson"),
-            bias = pbias(Qf.analytical, Qf.MODFLOW),
-            R2 = R2(Qf.analytical, Qf.MODFLOW),
-            MSE.bias = MSE.bias(Qf.analytical, Qf.MODFLOW),
-            MSE.var = MSE.var(Qf.analytical, Qf.MODFLOW),
-            MSE.cor = MSE.cor(Qf.analytical, Qf.MODFLOW),
-            MSE.bias.norm = MSE.bias.norm(Qf.analytical, Qf.MODFLOW),
-            MSE.var.norm = MSE.var.norm(Qf.analytical, Qf.MODFLOW),
-            MSE.cor.norm = MSE.cor.norm(Qf.analytical, Qf.MODFLOW),
-            MSE.overall = MSE(Qf.analytical, Qf.MODFLOW),
-            KGE.overall = KGE(Qf.analytical, Qf.MODFLOW, method="2012"))
+# subset MODFLOW data to only depletion > 5%
+df.MODFLOW.gt.thres <- 
+  df.MODFLOW %>% 
+  subset(depletion.prc.modflow > prc.thres)
+
+# melt and subset analytical to only depletion > 5%
+df.analytical.gt.thres <-
+  df.analytical %>% 
+  melt(id=c("SegNum", "WellNum", "analytical", "Time"),
+       value.name="depletion.prc", variable.name="method") %>% 
+  subset(depletion.prc > prc.thres)
+
+# join - keep all MODFLOWs
+df.gt.thres <-
+  left_join(df.MODFLOW.gt.thres, df.analytical.gt.thres, by=c("SegNum", "WellNum", "Time"))
+
+# for any missing analytical: need to duplicate lines for all analytical and method
+tmp <- subset(df.gt.thres, is.na(analytical))
+for (analytical in c("glover", "hunt")){
+  for (method in methods.plot){
+    tmp$method <- method
+    tmp$analytical <- analytical
+    
+    # add to output
+    df.gt.thres <- rbind(df.gt.thres, tmp)
+  }
+}
+df.gt.thres <- subset(df.gt.thres, !(is.na(df.gt.thres$analytical)))
+
+# for each timestep, analytical model, stream_BC, method, stream, calculate the % of NAs
+df.gt.thres.fit <-
+  df.gt.thres %>% 
+  group_by(SegNum, Time, stream_BC, analytical, method) %>% 
+  summarize(n.reach.MODFLOW = sum(is.finite(depletion.prc.modflow)),
+            n.reach.analytical = sum(is.finite(depletion.prc)),
+            prc.reach.analytical = n.reach.analytical/n.reach.MODFLOW)
 
 #### (4) make plots
 # some lines/annotations
-ts.pump.start <- sum(days_in_month(seq(1,4))) + 1
+ts.pump.start <- sum(days_in_month(seq(1,4))) + 1 # for Transient continuous pumping
+
+# for transient intermittent pumping
+ts.pump.starts <- seq(from=(sum(days_in_month(seq(1,5))) + 1),
+                      by=365, 
+                      length.out=10)
+ts.pump.stops <- seq(from=(sum(days_in_month(seq(1,10))) + 1),
+                     by=365, 
+                     length.out=10)
+
 ts.all <- unique(df$Time)
 ts.plot <- ts.all[c(6, 73, 365)]
 
@@ -285,12 +350,16 @@ p.ts.KGE <-
   subset(method %in% methods.plot) %>% 
   ggplot(aes(x=Time, y=KGE.overall, color=method)) +
   geom_hline(yintercept=0, color=col.gray) +
-  annotate("rect", 
-           xmin=0, 
-           xmax=sum(days_in_month(seq(1,4))), 
-           ymin=-Inf, 
-           ymax=Inf, 
-           fill=col.gray, alpha=0.5) +
+  {if(timeType=="Transient")annotate("rect", 
+                                     xmin=0, 
+                                     xmax=ts.pump.start, 
+                                     ymin=-Inf, ymax=Inf, 
+                                     fill=col.gray, alpha=0.5)} +
+                                     {if(timeType=="Intermittent")annotate("rect", 
+                                                                           xmin=c(0, ts.pump.stops), 
+                                                                           xmax=c(ts.pump.starts-1, 3650), 
+                                                                           ymin=-Inf, ymax=Inf, 
+                                                                           fill=col.gray, alpha=0.5)} +
   geom_line() +
   facet_grid(stream_BC~analytical, 
              labeller=as_labeller(c(labs.analytical, labs.stream_BC))) +
@@ -298,7 +367,7 @@ p.ts.KGE <-
   scale_y_continuous(name="Kling-Gupta Efficiency") +
   scale_color_manual(name=NULL, values=pal.method.Qf, labels=labs.method) +
   theme(legend.position="bottom") +
-  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment", apportionment_name, "_Transient_p.ts.KGE.png")),
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_", timeType, apportionment_name, "_p.ts.KGE.png")),
          width=8, height=8, units="in")
 
 p.ts.match.prc <-
@@ -306,12 +375,16 @@ p.ts.match.prc <-
   transform(method = gsub(".max.seg", "", method)) %>% 
   subset(method %in% methods.plot) %>% 
   ggplot(aes(x=Time, y=match.prc, color=method)) +
-  annotate("rect", 
-           xmin=0, 
-           xmax=sum(days_in_month(seq(1,4))), 
-           ymin=-Inf, 
-           ymax=Inf, 
-           fill=col.gray, alpha=0.5) +
+  {if(timeType=="Transient")annotate("rect", 
+                                     xmin=0, 
+                                     xmax=ts.pump.start, 
+                                     ymin=-Inf, ymax=Inf, 
+                                     fill=col.gray, alpha=0.5)} +
+                                     {if(timeType=="Intermittent")annotate("rect", 
+                                                                           xmin=c(0, ts.pump.stops), 
+                                                                           xmax=c(ts.pump.starts-1, 3650), 
+                                                                           ymin=-Inf, ymax=Inf, 
+                                                                           fill=col.gray, alpha=0.5)} +
   geom_line() +
   facet_grid(stream_BC~analytical, 
              labeller=as_labeller(c(labs.analytical, labs.stream_BC))) +
@@ -320,19 +393,23 @@ p.ts.match.prc <-
                      labels = scales::percent, limits=c(0,1), expand=c(0,0)) +
   scale_color_manual(name=NULL, values=pal.method.Qf, labels=labs.method) +
   theme(legend.position="bottom") +
-  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment", apportionment_name, "_Transient_p.ts.match.prc.png")),
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_", timeType, apportionment_name, "_p.ts.match.prc.png")),
          width=8, height=8, units="in")
 
 p.ts.match.depletion.prc <-
   df.most.affected.prc.fit.time %>% 
   subset(method %in% methods.plot) %>% 
   ggplot(aes(x=Time, y=KGE.overall, color=method)) +
-  annotate("rect", 
-           xmin=0, 
-           xmax=sum(days_in_month(seq(1,4))), 
-           ymin=-Inf, 
-           ymax=Inf, 
-           fill=col.gray, alpha=0.5) +
+  {if(timeType=="Transient")annotate("rect", 
+                                     xmin=0, 
+                                     xmax=ts.pump.start, 
+                                     ymin=-Inf, ymax=Inf, 
+                                     fill=col.gray, alpha=0.5)} +
+                                     {if(timeType=="Intermittent")annotate("rect", 
+                                                                           xmin=c(0, ts.pump.stops), 
+                                                                           xmax=c(ts.pump.starts-1, 3650), 
+                                                                           ymin=-Inf, ymax=Inf, 
+                                                                           fill=col.gray, alpha=0.5)} +
   geom_line() +
   facet_grid(stream_BC~analytical, 
              labeller=as_labeller(c(labs.analytical, labs.stream_BC))) +
@@ -340,19 +417,23 @@ p.ts.match.depletion.prc <-
   scale_y_continuous(name="KGE for Depletion in Most-Depleted MODFLOW Segment") +
   scale_color_manual(name=NULL, values=pal.method.Qf, labels=labs.method) +
   theme(legend.position="bottom") +
-  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment", apportionment_name, "_Transient_p.ts.match.depletion.prc.png")),
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_", timeType, apportionment_name, "_p.ts.match.depletion.prc.png")),
          width=8, height=8, units="in")
 
 p.ts.MSE <-
   df.fit %>% 
   subset(method %in% methods.plot) %>% 
   ggplot(aes(x=Time, y=MSE.overall, color=method)) +
-  annotate("rect", 
-           xmin=0, 
-           xmax=sum(days_in_month(seq(1,4))), 
-           ymin=-Inf, 
-           ymax=Inf, 
-           fill=col.gray, alpha=0.5) +
+  {if(timeType=="Transient")annotate("rect", 
+                                     xmin=0, 
+                                     xmax=ts.pump.start, 
+                                     ymin=-Inf, ymax=Inf, 
+                                     fill=col.gray, alpha=0.5)} +
+                                     {if(timeType=="Intermittent")annotate("rect", 
+                                                                           xmin=c(0, ts.pump.stops), 
+                                                                           xmax=c(ts.pump.starts-1, 3650), 
+                                                                           ymin=-Inf, ymax=Inf, 
+                                                                           fill=col.gray, alpha=0.5)} +
   geom_line() +
   facet_grid(stream_BC~analytical, 
              labeller=as_labeller(c(labs.analytical, labs.stream_BC))) +
@@ -360,7 +441,7 @@ p.ts.MSE <-
   scale_y_continuous(name="Mean Squared Error", labels=scales::percent) +
   scale_color_manual(name=NULL, values=pal.method.Qf, labels=labs.method) +
   theme(legend.position="bottom") +
-  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment", apportionment_name, "_Transient_p.ts.MSE.png")),
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_", timeType, apportionment_name, "_p.ts.MSE.png")),
          width=8, height=8, units="in")
 
 p.ts.bias <-
@@ -368,12 +449,16 @@ p.ts.bias <-
   subset(method %in% methods.plot) %>% 
   ggplot(aes(x=Time, y=bias, color=method)) +
   geom_hline(yintercept=0, color=col.gray) +
-  annotate("rect", 
-           xmin=0, 
-           xmax=sum(days_in_month(seq(1,4))), 
-           ymin=-Inf, 
-           ymax=Inf, 
-           fill=col.gray, alpha=0.5) +
+  {if(timeType=="Transient")annotate("rect", 
+                                     xmin=0, 
+                                     xmax=ts.pump.start, 
+                                     ymin=-Inf, ymax=Inf, 
+                                     fill=col.gray, alpha=0.5)} +
+                                     {if(timeType=="Intermittent")annotate("rect", 
+                                                                           xmin=c(0, ts.pump.stops), 
+                                                                           xmax=c(ts.pump.starts-1, 3650), 
+                                                                           ymin=-Inf, ymax=Inf, 
+                                                                           fill=col.gray, alpha=0.5)} +
   geom_line() +
   facet_grid(stream_BC~analytical, 
              labeller=as_labeller(c(labs.analytical, labs.stream_BC))) +
@@ -381,19 +466,23 @@ p.ts.bias <-
   scale_y_continuous(name="Percent Bias") +
   scale_color_manual(name=NULL, values=pal.method.Qf, labels=labs.method) +
   theme(legend.position="bottom") +
-  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment", apportionment_name, "_Transient_p.ts.bias.png")),
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_", timeType, apportionment_name, "_p.ts.bias.png")),
          width=8, height=8, units="in")
 
 p.ts.cor <-
   df.fit %>% 
   subset(method %in% methods.plot) %>% 
   ggplot(aes(x=Time, y=cor, color=method)) +
-  annotate("rect", 
-           xmin=0, 
-           xmax=sum(days_in_month(seq(1,4))), 
-           ymin=-Inf, 
-           ymax=Inf, 
-           fill=col.gray, alpha=0.5) +
+  {if(timeType=="Transient")annotate("rect", 
+                                     xmin=0, 
+                                     xmax=ts.pump.start, 
+                                     ymin=-Inf, ymax=Inf, 
+                                     fill=col.gray, alpha=0.5)} +
+                                     {if(timeType=="Intermittent")annotate("rect", 
+                                                                           xmin=c(0, ts.pump.stops), 
+                                                                           xmax=c(ts.pump.starts-1, 3650), 
+                                                                           ymin=-Inf, ymax=Inf, 
+                                                                           fill=col.gray, alpha=0.5)} +
   geom_line() +
   facet_grid(stream_BC~analytical, 
              labeller=as_labeller(c(labs.analytical, labs.stream_BC))) +
@@ -401,7 +490,7 @@ p.ts.cor <-
   scale_y_continuous(name="Correlation") +
   scale_color_manual(name=NULL, values=pal.method.Qf, labels=labs.method) +
   theme(legend.position="bottom") +
-  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment", apportionment_name, "_Transient_p.ts.cor.png")),
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_", timeType, apportionment_name, "_p.ts.cor.png")),
          width=8, height=8, units="in")
 
 ## scatterplots at different timesteps
@@ -415,7 +504,7 @@ p.depletion.scatter <-
   facet_grid(Time ~ stream_BC+analytical) +
   scale_color_manual(name=NULL, values=pal.method.Qf, labels=labs.method) +
   theme(legend.position="bottom") +
-  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment", apportionment_name, "_Transient_p.depletion.scatter.png")),
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_", timeType, apportionment_name, "_p.depletion.scatter.png")),
          width=8, height=8, units="in")
 
 p.depletion.scatter.limits <-
@@ -430,7 +519,7 @@ p.depletion.scatter.limits <-
   scale_y_continuous(name="MODFLOW Depletion Fraction", limits=c(0,1)) +
   scale_color_manual(name=NULL, values=pal.method.Qf, labels=labs.method) +
   theme(legend.position="bottom") +
-  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment", apportionment_name, "_Transient_p.depletion.scatter.limits.png")),
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_", timeType, apportionment_name, "_p.depletion.scatter.limits.png")),
          width=8, height=8, units="in")
 
 p.match.scatter <- 
@@ -446,7 +535,7 @@ p.match.scatter <-
   scale_color_manual(name=NULL, values=pal.method.Qf, labels=labs.method) +
   theme(legend.position="bottom") + 
   guides(color = guide_legend(override.aes = list(alpha = 1))) +
-  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment", apportionment_name, "_Transient_p.match.scatter.png")),
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_", timeType, apportionment_name, "_p.match.scatter.png")),
          width=8, height=8, units="in")
 
 # capture fraction is independent of depletion apportionment equation so only plot one
@@ -462,7 +551,7 @@ p.sum.scatter <-
   scale_y_continuous(name="MODFLOW Capture Fraction") +
   scale_color_continuous(name="Time Since Start\nOf Pumping [days]") +
   theme(legend.position="bottom") +
-  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment", apportionment_name, "_Transient_p.sum.scatter.png")),
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_", timeType, apportionment_name, "_p.sum.scatter.png")),
          width=6, height=6, units="in")
 
 p.sum.scatter.limits <-
@@ -477,7 +566,7 @@ p.sum.scatter.limits <-
   scale_y_continuous(name="MODFLOW Capture Fraction", limits=c(0,1)) +
   scale_color_continuous(name="Time Since Start\nOf Pumping [days]") +
   theme(legend.position="bottom") +
-  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment", apportionment_name, "_Transient_p.sum.scatter.limits.png")),
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_", timeType, apportionment_name, "_p.sum.scatter.limits.png")),
          width=6, height=6, units="in")
 
 # only points with depletion > 5% (big)
@@ -486,12 +575,16 @@ p.ts.big.KGE <-
   subset(method %in% methods.plot) %>% 
   ggplot(aes(x=Time, y=KGE.overall, color=method)) +
   geom_hline(yintercept=0, color=col.gray) +
-  annotate("rect", 
-           xmin=0, 
-           xmax=sum(days_in_month(seq(1,4))), 
-           ymin=-Inf, 
-           ymax=Inf, 
-           fill=col.gray, alpha=0.5) +
+  {if(timeType=="Transient")annotate("rect", 
+                                     xmin=0, 
+                                     xmax=ts.pump.start, 
+                                     ymin=-Inf, ymax=Inf, 
+                                     fill=col.gray, alpha=0.5)} +
+                                     {if(timeType=="Intermittent")annotate("rect", 
+                                                                           xmin=c(0, ts.pump.stops), 
+                                                                           xmax=c(ts.pump.starts-1, 3650), 
+                                                                           ymin=-Inf, ymax=Inf, 
+                                                                           fill=col.gray, alpha=0.5)} +
   geom_line() +
   facet_grid(stream_BC~analytical, 
              labeller=as_labeller(c(labs.analytical, labs.stream_BC))) +
@@ -499,19 +592,23 @@ p.ts.big.KGE <-
   scale_y_continuous(name="Kling-Gupta Efficiency") +
   scale_color_manual(name=NULL, values=pal.method.Qf, labels=labs.method) +
   theme(legend.position="bottom") +
-  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment", apportionment_name, "_Transient_p.ts.big.KGE.png")),
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_", timeType, apportionment_name, "_p.ts.big.KGE.png")),
          width=8, height=8, units="in")
 
 p.ts.big.MSE <-
   df.fit.big %>% 
   subset(method %in% methods.plot) %>% 
   ggplot(aes(x=Time, y=MSE.overall, color=method)) +
-  annotate("rect", 
-           xmin=0, 
-           xmax=sum(days_in_month(seq(1,4))), 
-           ymin=-Inf, 
-           ymax=Inf, 
-           fill=col.gray, alpha=0.5) +
+  {if(timeType=="Transient")annotate("rect", 
+                                     xmin=0, 
+                                     xmax=ts.pump.start, 
+                                     ymin=-Inf, ymax=Inf, 
+                                     fill=col.gray, alpha=0.5)} +
+                                     {if(timeType=="Intermittent")annotate("rect", 
+                                                                           xmin=c(0, ts.pump.stops), 
+                                                                           xmax=c(ts.pump.starts-1, 3650), 
+                                                                           ymin=-Inf, ymax=Inf, 
+                                                                           fill=col.gray, alpha=0.5)} +
   geom_line() +
   facet_grid(stream_BC~analytical, 
              labeller=as_labeller(c(labs.analytical, labs.stream_BC))) +
@@ -519,7 +616,7 @@ p.ts.big.MSE <-
   scale_y_continuous(name="Mean Squared Error", labels=scales::percent) +
   scale_color_manual(name=NULL, values=pal.method.Qf, labels=labs.method) +
   theme(legend.position="bottom") +
-  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment", apportionment_name, "_Transient_p.ts.big.MSE.png")),
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_", timeType, apportionment_name, "_p.ts.big.MSE.png")),
          width=8, height=8, units="in")
 
 p.ts.big.bias <-
@@ -527,12 +624,16 @@ p.ts.big.bias <-
   subset(method %in% methods.plot) %>% 
   ggplot(aes(x=Time, y=bias, color=method)) +
   geom_hline(yintercept=0, color=col.gray) +
-  annotate("rect", 
-           xmin=0, 
-           xmax=sum(days_in_month(seq(1,4))), 
-           ymin=-Inf, 
-           ymax=Inf, 
-           fill=col.gray, alpha=0.5) +
+  {if(timeType=="Transient")annotate("rect", 
+                                     xmin=0, 
+                                     xmax=ts.pump.start, 
+                                     ymin=-Inf, ymax=Inf, 
+                                     fill=col.gray, alpha=0.5)} +
+                                     {if(timeType=="Intermittent")annotate("rect", 
+                                                                           xmin=c(0, ts.pump.stops), 
+                                                                           xmax=c(ts.pump.starts-1, 3650), 
+                                                                           ymin=-Inf, ymax=Inf, 
+                                                                           fill=col.gray, alpha=0.5)} +
   geom_line() +
   facet_grid(stream_BC~analytical, 
              labeller=as_labeller(c(labs.analytical, labs.stream_BC))) +
@@ -540,19 +641,23 @@ p.ts.big.bias <-
   scale_y_continuous(name="Percent Bias") +
   scale_color_manual(name=NULL, values=pal.method.Qf, labels=labs.method) +
   theme(legend.position="bottom") +
-  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment", apportionment_name, "_Transient_p.ts.big.bias.png")),
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_", timeType, apportionment_name, "_p.ts.big.bias.png")),
          width=8, height=8, units="in")
 
 p.ts.big.cor <-
   df.fit.big %>% 
   subset(method %in% methods.plot) %>% 
   ggplot(aes(x=Time, y=cor, color=method)) +
-  annotate("rect", 
-           xmin=0, 
-           xmax=sum(days_in_month(seq(1,4))), 
-           ymin=-Inf, 
-           ymax=Inf, 
-           fill=col.gray, alpha=0.5) +
+  {if(timeType=="Transient")annotate("rect", 
+                                     xmin=0, 
+                                     xmax=ts.pump.start, 
+                                     ymin=-Inf, ymax=Inf, 
+                                     fill=col.gray, alpha=0.5)} +
+                                     {if(timeType=="Intermittent")annotate("rect", 
+                                                                           xmin=c(0, ts.pump.stops), 
+                                                                           xmax=c(ts.pump.starts-1, 3650), 
+                                                                           ymin=-Inf, ymax=Inf, 
+                                                                           fill=col.gray, alpha=0.5)} +
   geom_line() +
   facet_grid(stream_BC~analytical, 
              labeller=as_labeller(c(labs.analytical, labs.stream_BC))) +
@@ -560,7 +665,7 @@ p.ts.big.cor <-
   scale_y_continuous(name="Correlation") +
   scale_color_manual(name=NULL, values=pal.method.Qf, labels=labs.method) +
   theme(legend.position="bottom") +
-  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment", apportionment_name, "_Transient_p.ts.big.cor.png")),
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_", timeType, apportionment_name, "_p.ts.big.cor.png")),
          width=8, height=8, units="in")
 
 
@@ -577,7 +682,7 @@ p.well.map.KGE <-
   scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
   coord_equal() +
   theme(axis.text.y=element_text(angle=90, hjust=0.5)) +
-  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment", apportionment_name, "_Transient_p.well.map.KGE.png")),
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_", timeType, apportionment_name, "_p.well.map.KGE.png")),
          width=8, height=8, units="in")
 
 p.well.map.MSE <-
@@ -592,7 +697,7 @@ p.well.map.MSE <-
   scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
   coord_equal() +
   theme(axis.text.y=element_text(angle=90, hjust=0.5)) +
-  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment", apportionment_name, "_Transient_p.well.map.MSE.png")),
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_", timeType, apportionment_name, "_p.well.map.MSE.png")),
          width=8, height=8, units="in")
 
 # error scatterplots
@@ -607,7 +712,7 @@ p.well.scatter.elev <-
   scale_y_continuous(name="Well KGE") +
   scale_color_manual(name=NULL, values=pal.method.Qf, labels=labs.method) +
   theme(legend.position="bottom") +
-  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment", apportionment_name, "_Transient_p.well.scatter.elev.png")),
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_", timeType, apportionment_name, "_p.well.scatter.elev.png")),
          width=8, height=8, units="in")
 
 p.well.scatter.WTD <-
@@ -621,7 +726,7 @@ p.well.scatter.WTD <-
   scale_y_continuous(name="Well KGE") +
   scale_color_manual(name=NULL, values=pal.method.Qf, labels=labs.method) +
   theme(legend.position="bottom") +
-  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment", apportionment_name, "_Transient_p.well.scatter.WTD.png")),
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_", timeType, apportionment_name, "_p.well.scatter.WTD.png")),
          width=8, height=8, units="in")
 
 ### some RIV only plots for presentation
@@ -638,7 +743,7 @@ p.depletion.scatter.limits <-
   scale_y_continuous(name="MODFLOW Depletion Fraction", limits=c(0,1)) +
   scale_color_manual(name=NULL, values=pal.method.Qf, labels=labs.method) +
   theme(legend.position="bottom") +
-  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment", apportionment_name, "_Transient_p.depletion.scatter.limits_RIV.png")),
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_", timeType, apportionment_name, "_p.depletion.scatter.limits_RIV.png")),
          width=8, height=6, units="in")
 
 p.sum.scatter.limits <-
@@ -654,24 +759,5 @@ p.sum.scatter.limits <-
   scale_y_continuous(name="MODFLOW Capture Fraction", limits=c(0,1)) +
   scale_color_continuous(name="Time Since Start\nOf Pumping [days]") +
   theme(legend.position="bottom") +
-  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment", apportionment_name, "_Transient_p.sum.scatter.limits_RIV.png")),
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_", timeType, apportionment_name, "_p.sum.scatter.limits_RIV.png")),
          width=6, height=4, units="in")
-
-df %>% 
-  subset(Time %in% ts.plot & 
-           method %in% methods.plot & 
-           stream_BC=="RIV" &
-           analytical=="glover") %>% 
-  group_by(stream_BC, analytical, Time, method) %>% 
-  summarize(n.reach = sum(is.finite(depletion.prc)),
-            cor = cor(depletion.prc, depletion.prc.modflow, method="pearson"),
-            bias = pbias(depletion.prc, depletion.prc.modflow),
-            R2 = R2(depletion.prc, depletion.prc.modflow),
-            #MSE.bias = MSE.bias(depletion.prc, depletion.prc.modflow),
-            #MSE.var = MSE.var(depletion.prc, depletion.prc.modflow),
-            #MSE.cor = MSE.cor(depletion.prc, depletion.prc.modflow),
-            MSE.bias.norm = MSE.bias.norm(depletion.prc, depletion.prc.modflow),
-            MSE.var.norm = MSE.var.norm(depletion.prc, depletion.prc.modflow),
-            MSE.cor.norm = MSE.cor.norm(depletion.prc, depletion.prc.modflow),
-            MSE.overall = MSE(depletion.prc, depletion.prc.modflow),
-            KGE.overall = KGE(depletion.prc, depletion.prc.modflow, method="2012"))

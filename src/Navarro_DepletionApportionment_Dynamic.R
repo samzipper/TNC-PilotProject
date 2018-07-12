@@ -297,4 +297,4 @@ df.out %>%
   dplyr::select(SegNum, WellNum, Time, analytical, 
                 f.InvDist, f.InvDistSq, f.Web, f.WebSq, f.TPoly, 
                 Qf.InvDist, Qf.InvDistSq, Qf.Web, Qf.WebSq, Qf.TPoly) %>% 
-  write.csv(., file.path("results", "Depletion_Analytical_Dynamic_AllMethods+Wells+Reaches.csv"), row.names=F)
+  write.csv(., file.path("results", "Depletion_Analytical_Transient_Dynamic_AllMethods+Wells+Reaches.csv"), row.names=F)

@@ -16,9 +16,18 @@ source(file.path("src", "paths+packages.R"))
 require(streamDepletr)
 
 # Define some parameters --------------------------------------------------------
+
+## what depletion apportionment output do you want?
+apportionment_name <- "_LocalArea"      # output from Navarro_DepletionApportionment_LocalArea.R
+#apportionment_name <- "_AdjacentOnly"   # output from Navarro_DepletionApportionment_AdjacentOnly.R
+#apportionment_name <- "_MaskDryStreams" # output from Navarro_DepletionApportionment_MaskDryStreams.R
+
 ## Make sure these are the same as your MODFLOW script!
 
-## choose stream boundary condition and modflow version
+## choose stream boundary condition and modflow version - 
+## this is just used to get the well numbers that were run,
+## so as long as SFR and RIV have the same wells pumped it
+## doesn't matter which you use
 stream_BC <- "RIV"    # "RIV" or "SFR"
 modflow_v <- "mfnwt"  # "mfnwt" or "mf2005"
 timeType  <- "Transient" # "SteadyState" or "Transient"
@@ -48,11 +57,6 @@ riverbed_K <- hk/10
 riverbed_thickness <- 1
 
 # Prep input data ---------------------------------------------------------
-
-## what depletion apportionment output do you want?
-#apportionment_name <- "_LocalArea"      # output from Navarro_DepletionApportionment_LocalArea.R
-apportionment_name <- "_AdjacentOnly"   # output from Navarro_DepletionApportionment_AdjacentOnly.R
-#apportionment_name <- "_MaskDryStreams" # output from Navarro_DepletionApportionment_MaskDryStreams.R
 
 ## load depletion apportionment output
 df.apportion <- 
@@ -156,7 +160,7 @@ for (ts in ts.all){
 df.out %>% 
   dplyr::select(SegNum, WellNum, Time, analytical, 
                 Qf.InvDist, Qf.InvDistSq, Qf.Web, Qf.WebSq, Qf.TPoly) %>% 
-  write.csv(., file.path("results", paste0("Depletion_Analytical", apportionment_name, "_AllMethods+Wells+Reaches.csv")), row.names=F)
+  write.csv(., file.path("results", paste0("Depletion_Analytical_", timeType, apportionment_name, "_AllMethods+Wells+Reaches.csv")), row.names=F)
 
 ## plot cumulative depletion for each well at each timestep
 df.sum <- 

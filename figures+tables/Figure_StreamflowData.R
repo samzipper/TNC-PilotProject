@@ -58,6 +58,7 @@ df.mo <-
 df.DOY <- summarize(group_by(df, DOY),
                     discharge.mm_d.mean = mean(discharge.mm_d, na.rm=T),
                     baseflow.mm_d.mean = mean(baseflow.mm_d, na.rm=T))
+df.DOY$baseflow.cfs.mean <- df.DOY$baseflow.mm_d.mean/cfs.to.mm
 
 ## plots
 # mean annual hydrograph
