@@ -98,10 +98,18 @@ df.MODFLOW$depletion_m3.d <- df.MODFLOW$leakage_NoPump - df.MODFLOW$leakage
 
 ## two approaches to calculating modflow depletion:
 # (1) calculate depletion.prc as percentage of pumping rate (this is the definition of capture fraction from Leake et al., 2010)
-df.MODFLOW$depletion.prc.modflow <- df.MODFLOW$depletion_m3.d/df.MODFLOW$Qw_m3.d
+# original approach:
+#df.MODFLOW$depletion.prc.modflow <- df.MODFLOW$depletion_m3.d/df.MODFLOW$Qw_m3.d
+#
+# new approach:
+#   since pumping does not occur at all timesteps, depletion.prc based on MODFLOW net pumping rate 
+#   at that particular timestep is not reliable when wells are turned off
+#   therefore we will calculate it based on Qw, the pumping rate used to drive the model
+Qw <- -6*100*0.00378541  # [m3/d]  6 gal/plant/day*100 plants*0.00378541 m3/gal
 
 # # (2) calculate depletion.prc as percentage of all changes in leakage (this forces range 0-1)
 # df.MODFLOW$depletion.prc.modflow <- df.MODFLOW$depletion_m3.d/df.MODFLOW$depletion.sum
+df.MODFLOW$depletion.prc.modflow <- df.MODFLOW$depletion_m3.d/Qw
 
 ## check if depletion.prc.modflow sums to 0
 df.MODFLOW.sum <-
@@ -115,7 +123,8 @@ df.MODFLOW.sum <-
 f.thres <- 0.0001  # =0.01%
 df.MODFLOW[,c("Qw_m3.d", "depletion_m3.d")] <- signif(df.MODFLOW[,c("Qw_m3.d", "depletion_m3.d")], 4)
 df.MODFLOW %>% 
-  subset(is.finite(depletion.prc.modflow) & abs(depletion.prc.modflow) > f.thres) %>% 
+  subset(is.finite(depletion.prc.modflow) & 
+           abs(depletion.prc.modflow) > f.thres) %>% 
   dplyr::select(SegNum, WellNum, Time, Qw_m3.d, depletion_m3.d) %>% 
   write.csv(., file.path(dir.runs, "Depletion_MODFLOW.csv"), row.names=F)
 
