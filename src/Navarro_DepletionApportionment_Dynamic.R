@@ -74,10 +74,11 @@ shp.streams.dissolve <- gLineMerge(shp.streams)
 
 ## convert stream lines to points
 # define point spacing and figure out how many points to make
-pt.spacing <- 10  # [m]
+pt.spacing <- 5  # [m]
 n.pts <- round(gLength(shp.streams)/pt.spacing)
 
 # sample points
+set.seed(1)
 shp.streams.pts <- spsample(shp.streams, n=n.pts, type="regular")
 df.streams.pts <- as.data.frame(shp.streams.pts)
 colnames(df.streams.pts) <- c("lon", "lat")
@@ -157,16 +158,17 @@ for (wel in wells.all){
   df.wel.dist$thickness_m[df.wel.dist$thickness_m < screen_length] <- screen_length   # if vertical distance is < screen length, use screen length
   
   ## Thiessen Polygon apportionment method is not distance-based so it just has one result
-  df.tpoly <- apportion.tpoly(reach=df.wel.dist$SegNum, 
-                              dist=df.wel.dist$distToWell.m, 
-                              lon=df.wel.dist$lon, 
-                              lat=df.wel.dist$lat, 
-                              wel.lon=df.wel$lon[i.wel],
-                              wel.lat=df.wel$lat[i.wel],
-                              wel.num=wel,
-                              local.area.m=10000,
-                              coord.ref=CRS(crs.MODFLOW),
-                              col.names=c("SegNum", "f.TPoly"))
+  rdll <- data.frame(reach = df.wel.dist$SegNum, 
+                     dist = df.wel.dist$distToWell.m,
+                     lon = df.wel.dist$lon,
+                     lat = df.wel.dist$lat)
+  
+  df.tpoly <- apportion_polygon(reach_dist_lon_lat = rdll,
+                                wel_lon  = df.wel$lon[i.wel],
+                                wel_lat  = df.wel$lat[i.wel],
+                                max_dist = 10000,
+                                crs = CRS(crs.MODFLOW)) %>% 
+    set_colnames(c("SegNum", "f.TPoly"))
   
   for (t in times.all){
     for (analytical in c("glover", "hunt")){

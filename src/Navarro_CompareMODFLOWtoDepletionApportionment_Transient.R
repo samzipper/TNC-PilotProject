@@ -64,13 +64,15 @@ df.riv <- tidy(shp.streams)
 df.MODFLOW.RIV <- 
   file.path("modflow","HTC", "Navarro", timeType, "RIV", modflow_v, "Depletion_MODFLOW.csv") %>% 
   read.csv(stringsAsFactors=F) %>% 
-  transform(depletion.prc.modflow = depletion_m3.d/Qw_m3.d,
+  #  transform(depletion.prc.modflow = depletion_m3.d/Qw_m3.d,  # use net pumping rate from MODFLOW
+  transform(depletion.prc.modflow = depletion_m3.d/Qw,          # use prescribed pumping rate
             stream_BC = "RIV")
 
 df.MODFLOW.SFR <- 
   file.path("modflow","HTC", "Navarro", timeType, "SFR", modflow_v, "Depletion_MODFLOW.csv") %>% 
   read.csv(stringsAsFactors=F) %>% 
-  transform(depletion.prc.modflow = depletion_m3.d/Qw_m3.d,
+  #  transform(depletion.prc.modflow = depletion_m3.d/Qw_m3.d,  # use net pumping rate from MODFLOW
+  transform(depletion.prc.modflow = depletion_m3.d/Qw,          # use prescribed pumping rate
             stream_BC = "SFR")
 
 df.MODFLOW <- rbind(df.MODFLOW.RIV, df.MODFLOW.SFR)
@@ -97,7 +99,7 @@ df <-
   full_join(df.analytical, df.MODFLOW[,c("stream_BC", "SegNum", "WellNum", "Time", "depletion.prc.modflow")], by=c("SegNum", "WellNum", "Time")) %>% 
   melt(id=c("stream_BC", "SegNum", "WellNum", "Time", "analytical", "depletion.prc.modflow"),
        value.name="depletion.prc", variable.name="method") %>% 
-  subset(is.na(depletion.prc) | depletion.prc > f.thres)
+  subset(depletion.prc.modflow > f.thres | depletion.prc > f.thres)
 
 # missing values should be 0 (0s were filtered out in previous scripts)
 df$depletion.prc.modflow[is.na(df$depletion.prc.modflow)] <- 0
@@ -152,6 +154,7 @@ df.nreach.big <-
 
 df.fit.big <-
   df %>% 
+  subset(depletion.prc > f.thres.big | depletion.prc.modflow > f.thres.big) %>% 
   transform(groups = paste(stream_BC, analytical, method, Time, sep="_")) %>% 
   subset(groups %in% df.nreach.big$groups) %>% 
   group_by(stream_BC, analytical, method, Time) %>% 

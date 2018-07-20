@@ -75,14 +75,15 @@ local.area.m <- local.area.m*5
 # Convert stream lines to points ------------------------------------------
 
 # define point spacing and figure out how many points to make
-pt.spacing <- 10  # [m]
+pt.spacing <- 5  # [m]
 n.pts <- round(gLength(shp.streams)/pt.spacing)
 
 # sample points
+set.seed(1)
 shp.streams.pts <- spsample(shp.streams, n=n.pts, type="regular")
 df.streams.pts <- as.data.frame(shp.streams.pts)
 colnames(df.streams.pts) <- c("lon", "lat")
-  
+
 # figure out what SegNum each point corresponds to
 shp.streams.buffer <- buffer(shp.streams, 0.1, dissolve=F)
 int <- intersect(shp.streams.pts, shp.streams.buffer)
@@ -112,22 +113,23 @@ for (wel in df.wel$WellNum){
                                 lat <= (df.wel$lat[i.wel]+local.area.m))
   
   ## calculate depletion apportionment fractions for different methods
+  rdll <- data.frame(reach = df.wel.dist.local$SegNum, 
+                     dist = df.wel.dist.local$distToWell.m,
+                     lon = df.wel.dist.local$lon,
+                     lat = df.wel.dist.local$lat)
+  
   # for now: we will use TPoly to define the adjacent catchments
-  df.tpoly <- apportion.tpoly(reach=df.wel.dist.local$SegNum, 
-                              dist=df.wel.dist.local$distToWell.m, 
-                              lon=df.wel.dist.local$lon, 
-                              lat=df.wel.dist.local$lat, 
-                              wel.lon=df.wel$lon[i.wel],
-                              wel.lat=df.wel$lat[i.wel],
-                              wel.num=wel,
-                              local.area.m=local.area.m,
-                              coord.ref=CRS(crs.MODFLOW),
-                              col.names=c("SegNum", "f.TPoly"))
+  df.tpoly <- 
+    apportion_polygon(reach_dist_lon_lat = rdll,
+                      wel_lon = df.wel$lon[i.wel],
+                      wel_lat = df.wel$lat[i.wel],
+                      max_dist = local.area.m,
+                      crs = CRS(crs.MODFLOW)) %>% 
+    set_colnames(c("SegNum", "f.TPoly"))
   
   # create reach_dist data frame with adjacent catchments only
   SegNum.adj <- df.tpoly$SegNum
-  reach_dist <- data.frame(reach = df.wel.dist.local$SegNum[df.wel.dist.local$SegNum %in% SegNum.adj], 
-                           dist = df.wel.dist.local$distToWell.m[df.wel.dist.local$SegNum %in% SegNum.adj])
+  reach_dist <- subset(rdll, reach %in% SegNum.adj)
   
   df.id <- 
     apportion_inverse(reach_dist = reach_dist, w=1) %>% 

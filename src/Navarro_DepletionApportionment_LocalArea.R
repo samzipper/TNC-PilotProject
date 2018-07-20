@@ -11,6 +11,7 @@
 #' (HUC 1801010804) plus all adjacent HUC12 watersheds.
 
 source(file.path("src", "paths+packages.R"))
+require(streamDepletr)
 
 # Prep input data ---------------------------------------------------------
 
@@ -54,12 +55,15 @@ shp.streams.dissolve <- gLineMerge(shp.streams)
 # # calculate distance to nearest stream feature
 # spdf.ibound$distToStream <- gDistance(spdf.ibound, shp.streams.dissolve, byid=T)[1,]
 # 
-# # calculate local area (95th percentile) [m]
-# local.area.m <- quantile(spdf.ibound$distToStream, 0.95)
-local.area.m <- 4616.931  # for 100 m resolution
+# # calculate local area [m]
+# #  Feinstein uses 95th percentile of distance from all land points to stream
+# quantile(spdf.ibound$distToStream, 0.95)  # = 2401.421
+# #  some other potential metrics
+# quantile(spdf.ibound$distToStream, 0.99)  # 99th percentile = 3227.792
+# max(spdf.ibound$distToStream)  # max distance = 4028.279
 
-# increase local area by 5x to include streams several catchments distant
-local.area.m <- local.area.m*5
+# make your choice:
+local.area.m <- 4028.279*2  # double the max distance so all wells have at least 2 potential streams
 
 # # diagnostic plots to make sure things worked...
 # ggplot() +
@@ -73,14 +77,15 @@ local.area.m <- local.area.m*5
 # Convert stream lines to points ------------------------------------------
 
 # define point spacing and figure out how many points to make
-pt.spacing <- 10  # [m]
+pt.spacing <- 5  # [m]
 n.pts <- round(gLength(shp.streams)/pt.spacing)
 
 # sample points
+set.seed(1)
 shp.streams.pts <- spsample(shp.streams, n=n.pts, type="regular")
 df.streams.pts <- as.data.frame(shp.streams.pts)
 colnames(df.streams.pts) <- c("lon", "lat")
-  
+
 # figure out what SegNum each point corresponds to
 shp.streams.buffer <- buffer(shp.streams, 0.1, dissolve=F)
 int <- intersect(shp.streams.pts, shp.streams.buffer)
@@ -102,40 +107,41 @@ for (wel in df.wel$WellNum){
   df.wel.dist$lon <- df.streams.pts$lon
   df.wel.dist$lat <- df.streams.pts$lat
   
-  # subset to only points within local area
+  # subset to only points within square defined by local area
   df.wel.dist.local <- subset(df.wel.dist, 
                               lon >= (df.wel$lon[i.wel]-local.area.m) &
                                 lon <= (df.wel$lon[i.wel]+local.area.m) &
                                 lat >= (df.wel$lat[i.wel]-local.area.m) &
                                 lat <= (df.wel$lat[i.wel]+local.area.m))
   
+  # set up reach dist data frame
+  rdll <- data.frame(reach = df.wel.dist.local$SegNum, 
+                     dist = df.wel.dist.local$distToWell.m,
+                     lon = df.wel.dist.local$lon,
+                     lat = df.wel.dist.local$lat)
+  
   # calculate depletion apportionment fractions for different methods
-  df.id <- apportion.inv.dist(reach=df.wel.dist.local$SegNum, 
-                              dist=df.wel.dist.local$distToWell.m, 
-                              w=1, col.names=c("SegNum", "f.InvDist"))
+  df.id <- 
+    apportion_inverse(reach_dist=rdll, w=1) %>% 
+    set_colnames(c("SegNum", "f.InvDist"))
   
-  df.idsq <- apportion.inv.dist(reach=df.wel.dist.local$SegNum, 
-                                dist=df.wel.dist.local$distToWell.m, 
-                                w=2, col.names=c("SegNum", "f.InvDistSq"))
+  df.idsq <- 
+    apportion_inverse(reach_dist=rdll, w=2) %>% 
+    set_colnames(c("SegNum", "f.InvDistSq"))
   
-  df.web <- apportion.web.dist(reach=df.wel.dist.local$SegNum, 
-                               dist=df.wel.dist.local$distToWell.m, 
-                               w=1, col.names=c("SegNum", "f.Web"))
+  df.web <- apportion_web(reach_dist=rdll, w=1) %>% 
+    set_colnames(c("SegNum", "f.Web"))
   
-  df.websq <- apportion.web.dist(reach=df.wel.dist.local$SegNum, 
-                                 dist=df.wel.dist.local$distToWell.m, 
-                                 w=2, col.names=c("SegNum", "f.WebSq"))
+  df.websq <- apportion_web(reach_dist=rdll, w=2) %>% 
+    set_colnames(c("SegNum", "f.WebSq"))
   
-  df.tpoly <- apportion.tpoly(reach=df.wel.dist.local$SegNum, 
-                              dist=df.wel.dist.local$distToWell.m, 
-                              lon=df.wel.dist.local$lon, 
-                              lat=df.wel.dist.local$lat, 
-                              wel.lon=df.wel$lon[i.wel],
-                              wel.lat=df.wel$lat[i.wel],
-                              wel.num=wel,
-                              local.area.m=local.area.m,
-                              coord.ref=CRS(crs.MODFLOW),
-                              col.names=c("SegNum", "f.TPoly"))
+  df.tpoly <- 
+    apportion_polygon(reach_dist_lon_lat = rdll,
+                      wel_lon = df.wel$lon[i.wel],
+                      wel_lat = df.wel$lat[i.wel],
+                      max_dist = local.area.m,
+                      crs = CRS(crs.MODFLOW)) %>% 
+    set_colnames(c("SegNum", "f.TPoly"))
   
   # combine into single data frame
   df.apportion <- 
