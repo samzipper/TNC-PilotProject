@@ -18,8 +18,9 @@ require(streamDepletr)
 # Define some parameters --------------------------------------------------------
 
 ## what depletion apportionment output do you want?
-apportionment_name <- "_LocalArea"      # output from Navarro_DepletionApportionment_LocalArea.R
+#apportionment_name <- "_LocalArea"      # output from Navarro_DepletionApportionment_LocalArea.R
 #apportionment_name <- "_AdjacentOnly"   # output from Navarro_DepletionApportionment_AdjacentOnly.R
+apportionment_name <- "_WholeDomain"   # output from Navarro_DepletionApportionment_WholeDomain.R
 #apportionment_name <- "_MaskDryStreams" # output from Navarro_DepletionApportionment_MaskDryStreams.R
 
 ## Make sure these are the same as your MODFLOW script!

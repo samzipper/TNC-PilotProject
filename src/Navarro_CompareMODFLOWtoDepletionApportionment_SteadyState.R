@@ -14,7 +14,8 @@ modflow_v <- "mfnwt"
 ## what is the pumping rate?
 Qw <- -6*100*0.00378541  # [m3/d]
 
-f.thres <- 0.0001  # threshold for analysis
+## threshold for analysis
+f.thres <- 0.001
 
 ## load stream shapefile
 shp.streams <- readOGR(dsn=file.path("modflow", "input"), layer="iriv")
@@ -94,7 +95,7 @@ df_dyn <-
   transform(apportionment = "Dynamic")
 df_dyn[is.na(df_dyn)] <- 0
 
-# Dynamic - use 'Transient' glover model at end of simulation
+# WholeDomain
 df_whl <- 
   file.path("results", "Navarro_DepletionApportionment_WholeDomain_AllMethods+Wells+Reaches.csv") %>% 
   read.csv(stringsAsFactors = F) %>% 

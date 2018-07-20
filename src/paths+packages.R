@@ -27,6 +27,7 @@ require(dismo)
 require(hydroGOF)
 require(RCurl)
 require(SPEI)
+require(tidyr)
 
 ## metadata about watershed
 station.outlet <- "11468000"  # USGS gage station number for outlet gauge
@@ -133,8 +134,9 @@ col.cat.red <- "#e6194b"   # red
 col.cat.blu <- "#0082c8"   # blue
 col.gray <- "gray65"       # gray for annotation lines, etc
 pal.method <- c("f.TPoly"=col.cat.grn, "f.InvDist"=col.cat.yel, "f.InvDistSq"=col.cat.org, "f.Web"=col.cat.red, "f.WebSq"=col.cat.blu)
-pal.method.Qf <- c("Qf.TPoly"=col.cat.grn, "Qf.InvDist"=col.cat.yel, "Qf.InvDistSq"=col.cat.org, "Qf.Web"=col.cat.red, "Qf.WebSq"=col.cat.blu)
+pal.method.Qf <- c("Qf.TPoly"=col.cat.grn, "Qf.InvDist"=col.cat.yel, "Qf.InvDistSq"=col.cat.org, "Qf.Web"=col.cat.red, "Qf.WebSq"=col.cat.blu, "Qf.NoApport"="black")
 labels.method <- c("f.TPoly"="Thiessen", "f.InvDist"="Inverse", "f.InvDistSq"="Inverse\nSquared", "f.Web"="Web", "f.WebSq"="Web\nSquared")
+labels.method.Qf <- c("Qf.TPoly"="Thiessen", "Qf.InvDist"="Inverse", "Qf.InvDistSq"="Inverse\nSquared", "Qf.Web"="Web", "Qf.WebSq"="Web\nSquared", "Qf.NoApport"="No\nApportionment")
 labels.apportionment <- c("WholeDomain"="Whole Domain", "AdjacentOnly"="Adjacent", "LocalArea"="Local Area", "Dynamic"="Dynamic (10 yrs)")
 
 # NLCD color palette
