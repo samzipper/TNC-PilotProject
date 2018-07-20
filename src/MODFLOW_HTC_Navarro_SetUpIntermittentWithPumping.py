@@ -91,6 +91,16 @@ nper = mf.dis.nper
 # read in well data
 iwel = pd.read_table(os.path.join('modflow', 'input', 'iwel.txt'), delimiter=' ')
 
+# number of wells
+itmp = mf.mnw2.itmp.copy()
+nwel = itmp[0]
+
+# node data
+mnw_node_data = mf.mnw2.node_data.copy()
+
+# set up no pumping stress period data
+mnw_sp_NoPump  = mf.mnw2.stress_period_data[0].copy()
+
 # which stress periods should pumping occur? (index; 0-based indexing)
 well_pump_mo = [6, 7, 8, 9, 10]
 well_pump_yr = [False]*12
@@ -109,30 +119,43 @@ for w in range(0,iwel.shape[0], every_n_wells):
     w_model_ws = os.path.join('modflow', 'HTC', 'Navarro', 'Intermittent', stream_BC, modflow_v, model_prefix+str(WellNum))
     if not os.path.isdir(w_model_ws):
         os.makedirs(w_model_ws)
-        mf.model_ws = w_model_ws
+    
+    # update workspacp in range(0, nper):
+    mf.model_ws = w_model_ws
 
-    # update pumping rate for this well stress period data; 
+    # set up pumping rate stress period
+    mnw_sp_Pump = mnw_sp_NoPump.copy()
+    mnw_sp_Pump['qdes'][mnw_sp_Pump['wellid']==wellid] = Qw
+    
+    # update stress period data for this well
+    mnw_spd = {}
     for sp in range(0, nper):
         if well_pump_sp[sp]:
-            mf.mnw2.mnw[wellid].stress_period_data['qdes'][sp] = Qw
-            mf.mnw2.stress_period_data[sp]['qdes'][mf.mnw2.stress_period_data[sp]['wellid']==wellid] = Qw
-        
+            mnw_spd[sp] = mnw_sp_Pump
+        else:
+            mnw_spd[sp] = mnw_sp_NoPump
+            
         # update itmp
         if (sp==0):
-            mf.mnw2.itmp[sp] = mf.mnw2.itmp[0]
+            itmp[sp] = nwel
         elif (well_pump_sp[sp]==well_pump_sp[sp-1]):
-            mf.mnw2.itmp[sp] = -1
+            itmp[sp] = -1
         else:
-            mf.mnw2.itmp[sp] = mf.mnw2.itmp[0]
+            itmp[sp] = nwel
+            
+    mnw2 = flopy.modflow.ModflowMnw2(model=mf, mnwmax=nwel, 
+            node_data=mnw_node_data,
+            stress_period_data=mnw_spd,
+            itmp=itmp, ipakcb=71,
+            filenames=[modelname+'.mnw2', modelname+'.mnw2.out'])
     
+    # for some reason, MNW2 package reverses node data when a model is loaded and rewritten
+    # need to flip node_data so that topmost node is listed first
+    mf.mnw2.node_data = np.flipud(mf.mnw2.node_data)
+
     # write input (NAM and MNW2 only)
     mf.write_input(SelPackList=['MNW2'])
 
-    # turn off this well
-    for sp in range(0, nper):
-        mf.mnw2.mnw[wellid].stress_period_data['qdes'][sp] = 0
-        mf.mnw2.stress_period_data[sp]['qdes'][mf.mnw2.stress_period_data[sp]['wellid']==wellid] = 0
-    
     # copy launch script
     shutil.copy2(os.path.join('modflow', 'HTC', 'Navarro', 'Intermittent', 'launch_thisRun.sh'),
                  os.path.join(w_model_ws, 'launch_thisRun.sh'))
