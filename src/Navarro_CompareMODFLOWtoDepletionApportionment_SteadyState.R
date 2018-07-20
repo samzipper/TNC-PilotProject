@@ -4,17 +4,17 @@
 #' and geometric depletion apportionment methods.
 
 source(file.path("src", "paths+packages.R"))
+require(streamDepletr)
+
+#### First: process steady-state MODFLOW data
+## MODFLOW - steady state results
+stream_BC <- "RIV"
+modflow_v <- "mfnwt"
 
 ## what is the pumping rate?
 Qw <- -6*100*0.00378541  # [m3/d]
 
-## choose stream boundary condition and modflow version
-stream_BC <- "SFR"    # "RIV" or "SFR"
-modflow_v <- "mfnwt"  # "mfnwt" or "mf2005"
-masked <- T           # use masked depletion apportionment? should only be T for SFR
-if (stream_BC != "SFR" & masked){
-  stop("Error: Using masked depletion apportionment results with RIV MODFLOW output")
-}
+f.thres <- 0.0001  # threshold for analysis
 
 ## load stream shapefile
 shp.streams <- readOGR(dsn=file.path("modflow", "input"), layer="iriv")
@@ -26,95 +26,104 @@ names(shp.streams) <- c("OBJECTID", "REACHCODE", "TerminalPa", "lineLength_m", "
 # figure out which segments are part of Navarro
 segs.navarro <- shp.streams@data$SegNum[shp.streams@data$TerminalPa==outlet.TerminalPa]
 
-## load geometric data (from script Navarro_DepletionApportionment.R)
-if (masked){
-  df.apportion <- 
-    read.csv(file.path("results","Navarro_DepletionApportionment_MaskDryStreams_AllMethods+Wells+Reaches.csv"),
-             stringsAsFactors=F) %>% 
-    subset(SegNum %in% segs.navarro)
-  
-} else {
-  df.apportion <- 
-    read.csv(file.path("results","Navarro_DepletionApportionment_AllMethods+Wells+Reaches.csv"),
-             stringsAsFactors=F) %>% 
-    subset(SegNum %in% segs.navarro)
-}
-
-## load MODFLOW output
 # leakage
-df.MODFLOW <- 
+df_MODFLOW <- 
   file.path("modflow","HTC", "Navarro", "SteadyState", stream_BC, modflow_v, paste0(stream_BC, "-SummarizeLeakage.csv")) %>% 
   read.csv(stringsAsFactors=F)
 
 ## if it's SFR: need to get SegNum
 if (stream_BC=="SFR"){
-  df.MODFLOW <- 
+  df_MODFLOW <- 
     read.table(file.path("modflow", "input", "isfr_SegmentData.txt"), 
                stringsAsFactors=F, header=T) %>% 
-    left_join(df.MODFLOW, ., by="SFR_NSEG")
+    left_join(df_MODFLOW, ., by="SFR_NSEG")
   
 }
 
 ## calculate MODFLOW depletion
 # make separate column for no pumping depletion
-df.MODFLOW<- 
-  df.MODFLOW %>% 
+df_MODFLOW<- 
+  df_MODFLOW %>% 
   subset(WellNum==0, select=c("SegNum", "leakage", "MNW_net")) %>% 
   set_colnames(c("SegNum", "leakage_NoPump", "MNW_NoPump")) %>% 
-  left_join(subset(df.MODFLOW, WellNum != 0), ., by=c("SegNum")) %>% 
+  left_join(subset(df_MODFLOW, WellNum != 0), ., by=c("SegNum")) %>% 
   arrange(WellNum, SegNum) %>% 
   subset(SegNum %in% segs.navarro)
 
 # calculate change in leakage and MNW
 # convention: negative value means flow out of aquifer (gaining stream, pumping well)
 # so if (leakage_NoPump - leakage) < 0, stream is depleted due to pumping
-df.MODFLOW$Qw_m3.d <- df.MODFLOW$MNW_net - df.MODFLOW$MNW_NoPump
-df.MODFLOW$depletion_m3.d <- df.MODFLOW$leakage_NoPump - df.MODFLOW$leakage
+df_MODFLOW$Qw_m3.d <- df_MODFLOW$MNW_net - df_MODFLOW$MNW_NoPump
+df_MODFLOW$depletion_m3.d <- df_MODFLOW$leakage_NoPump - df_MODFLOW$leakage
 
-## two approaches to calculating modflow depletion:
-# (1) calculate depletion.prc as percentage of pumping rate (this is the definition of capture fraction from Leake et al., 2010)
-df.MODFLOW$depletion.prc.modflow <- df.MODFLOW$depletion_m3.d/df.MODFLOW$Qw_m3.d
+## calculate MODFLOW depletion
+#df_MODFLOW$depletion.prc.modflow <- df_MODFLOW$depletion_m3.d/df_MODFLOW$Qw_m3.d
+df_MODFLOW$depletion.prc.modflow <- df_MODFLOW$depletion_m3.d/Qw
 
-# # (2) calculate depletion.prc as percentage of all changes in leakage (this forces range 0-1)
-# df.MODFLOW$depletion.prc.modflow <- df.MODFLOW$depletion_m3.d/df.MODFLOW$depletion.sum
-# 
-# ggplot(df.MODFLOW, aes(x=depletion.prc.modflow.1, y=depletion.prc.modflow.2)) + 
-#   geom_abline(intercept=0, slope=1, color="gray65") + 
-#   geom_point() + 
-#   stat_smooth(method="lm")
+df_MODFLOW <- subset(df_MODFLOW, depletion.prc.modflow > f.thres)
 
-## combine MODFLOW with analytical
+#### load depletion apportionment output
+# AdjacentOnly
+df_adj <- 
+  file.path("results", "Navarro_DepletionApportionment_AdjacentOnly_AllMethods+Wells+Reaches.csv") %>% 
+  read.csv(stringsAsFactors = F) %>% 
+  dplyr::select(WellNum, SegNum, f.InvDistSq, f.WebSq, f.TPoly) %>% 
+  full_join(df_MODFLOW[,c("SegNum", "WellNum", "depletion.prc.modflow")],
+            by=c("SegNum", "WellNum")) %>% 
+  transform(apportionment = "AdjacentOnly")
+df_adj[is.na(df_adj)] <- 0
+
+# LocalArea
+df_loc <- 
+  file.path("results", "Navarro_DepletionApportionment_LocalArea_AllMethods+Wells+Reaches.csv") %>% 
+  read.csv(stringsAsFactors = F) %>% 
+  dplyr::select(WellNum, SegNum, f.InvDistSq, f.WebSq, f.TPoly) %>% 
+  full_join(df_MODFLOW[,c("SegNum", "WellNum", "depletion.prc.modflow")],
+            by=c("SegNum", "WellNum")) %>% 
+  transform(apportionment = "LocalArea")
+df_loc[is.na(df_loc)] <- 0
+
+# Dynamic - use 'Transient' glover model at end of simulation
+df_dyn <- 
+  file.path("results", "Depletion_Analytical_Transient_Dynamic_AllMethods+Wells+Reaches.csv") %>% 
+  read.csv(stringsAsFactors = F) %>% 
+  subset(Time==max(Time) & analytical=="glover") %>% 
+  dplyr::select(WellNum, SegNum, f.InvDistSq, f.WebSq, f.TPoly) %>% 
+  full_join(df_MODFLOW[,c("SegNum", "WellNum", "depletion.prc.modflow")],
+            by=c("SegNum", "WellNum")) %>% 
+  transform(apportionment = "Dynamic")
+df_dyn[is.na(df_dyn)] <- 0
+
+# Dynamic - use 'Transient' glover model at end of simulation
+df_whl <- 
+  file.path("results", "Navarro_DepletionApportionment_WholeDomain_AllMethods+Wells+Reaches.csv") %>% 
+  read.csv(stringsAsFactors = F) %>% 
+  dplyr::select(WellNum, SegNum, f.InvDistSq, f.WebSq, f.TPoly) %>% 
+  full_join(df_MODFLOW[,c("SegNum", "WellNum", "depletion.prc.modflow")],
+            by=c("SegNum", "WellNum")) %>% 
+  transform(apportionment = "WholeDomain")
+df_whl[is.na(df_whl)] <- 0
+
+## combine into single melted data frame
 df <- 
-  left_join(df.apportion, df.MODFLOW[,c("SegNum", "WellNum", "depletion.prc.modflow")], by=c("SegNum", "WellNum"), all.x=T, all.y=T) %>% 
-  subset(is.finite(depletion.prc.modflow)) %>% 
-  melt(id=c("SegNum", "WellNum", "distToWell.min.m", "depletion.prc.modflow"),
+  rbind(df_adj, df_dyn, df_loc, df_whl) %>% 
+  melt(id=c("WellNum", "SegNum", "depletion.prc.modflow", "apportionment"),
        value.name="depletion.prc", variable.name="method")
 
-## make plots
-# figure out limits
-min.depletion <- min(c(min(df$depletion.prc.modflow), min(df$depletion.prc), 0))
-max.depletion <- max(c(max(df$depletion.prc.modflow), max(df$depletion.prc), 1))
+# check for NAs
+sum(is.na(df))
 
-p.depletion <-
-  ggplot(df, aes(x=depletion.prc, y=depletion.prc.modflow)) +
-  geom_abline(intercept=0, slope=1, color="gray65") +
-  geom_point(shape=21) +
-  stat_smooth(method="lm") +
-  facet_wrap(~method, labeller=as_labeller(labels.method)) +
-  labs(title="Comparison of Depletion Apportionment Equations to Steady-State MODFLOW",
-       subtitle=paste0("MODFLOW: ", modflow_v, "; Stream BC: ", stream_BC, "; Mask: ", masked, "; 1 dot = 1 stream segment response to 1 pumping well")) +
-  scale_x_continuous(name="Analytical Depletion Fraction", 
-                     limits=c(0,1), breaks=seq(0,1,0.25), expand=c(0,0)) +
-  scale_y_continuous(name="MODFLOW Depletion Fraction", 
-                     limits=c(min.depletion,max.depletion), expand=c(0,0))
-#p.depletion
-ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_p.depletion_", stream_BC, "_", modflow_v, "_mask", masked, ".png")),
-       p.depletion, width=8, height=6, units="in")
+# get rid of reaches with no depletion
+df <- subset(df, depletion.prc.modflow > f.thres | depletion.prc > f.thres)
+
+# check to make sure TPoly works: these should be the same
+sum(df$method=="f.TPoly" & df$apportionment=="AdjacentOnly")
+sum(df$method=="f.TPoly" & df$apportionment=="WholeDomain")
 
 # calculate fit statistics
 df.fit <- 
   df %>% 
-  group_by(method) %>% 
+  group_by(method, apportionment) %>% 
   summarize(n.reach = sum(is.finite(depletion.prc)),
             cor = cor(depletion.prc, depletion.prc.modflow, method="pearson"),
             bias = pbias(depletion.prc, depletion.prc.modflow),
@@ -128,7 +137,134 @@ df.fit <-
             MSE.overall = MSE(depletion.prc, depletion.prc.modflow),
             KGE.overall = KGE(depletion.prc, depletion.prc.modflow, method="2012"))
 
-# print to screen
-df.fit[,c("method", "KGE.overall")]
+df.fit.big <- 
+  df %>% 
+  subset(depletion.prc > 0.05 | depletion.prc.modflow > 0.05) %>% 
+  group_by(method, apportionment) %>% 
+  summarize(n.reach = sum(is.finite(depletion.prc)),
+            cor = cor(depletion.prc, depletion.prc.modflow, method="pearson"),
+            bias = pbias(depletion.prc, depletion.prc.modflow),
+            R2 = R2(depletion.prc, depletion.prc.modflow),
+            MSE.bias = MSE.bias(depletion.prc, depletion.prc.modflow),
+            MSE.var = MSE.var(depletion.prc, depletion.prc.modflow),
+            MSE.cor = MSE.cor(depletion.prc, depletion.prc.modflow),
+            MSE.bias.norm = MSE.bias.norm(depletion.prc, depletion.prc.modflow),
+            MSE.var.norm = MSE.var.norm(depletion.prc, depletion.prc.modflow),
+            MSE.cor.norm = MSE.cor.norm(depletion.prc, depletion.prc.modflow),
+            MSE.overall = MSE(depletion.prc, depletion.prc.modflow),
+            KGE.overall = KGE(depletion.prc, depletion.prc.modflow, method="2012"))
 
-df.fit[,c("method", "MSE.bias.norm", "MSE.var.norm", "MSE.cor.norm")]
+## make plots
+# fit bar plot
+df.fit %>% 
+  ggplot(aes(x=method, y=KGE.overall)) +
+  geom_bar(stat="identity") +
+  facet_grid(~apportionment) +
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_SteadyState_FitKGE_", stream_BC, "_", modflow_v, ".png")),
+         width=8, height=8, units="in")
+
+df.fit %>% 
+  ggplot(aes(x=method, y=MSE.overall)) +
+  geom_bar(stat="identity") +
+  facet_grid(~apportionment) +
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_SteadyState_FitMSE_", stream_BC, "_", modflow_v, ".png")),
+         width=8, height=8, units="in")
+
+df.fit.big %>% 
+  ggplot(aes(x=method, y=KGE.overall)) +
+  geom_bar(stat="identity") +
+  facet_grid(~apportionment) +
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_SteadyState_FitBigKGE_", stream_BC, "_", modflow_v, ".png")),
+         width=8, height=8, units="in")
+
+df.fit.big %>% 
+  ggplot(aes(x=method, y=MSE.overall)) +
+  geom_bar(stat="identity") +
+  facet_grid(~apportionment) +
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_SteadyState_FitBigMSE_", stream_BC, "_", modflow_v, ".png")),
+         width=8, height=8, units="in")
+
+# figure out limits
+min.depletion <- min(c(min(df$depletion.prc.modflow), min(df$depletion.prc), 0))
+max.depletion <- max(c(max(df$depletion.prc.modflow), max(df$depletion.prc), 1))
+
+df %>% 
+  ggplot(aes(x=depletion.prc, y=depletion.prc.modflow)) +
+  geom_abline(intercept=0, slope=1, color="gray65") +
+  geom_point(shape=21) +
+  stat_smooth(method="lm") +
+  facet_grid(method~apportionment, labeller=as_labeller(c(labels.method, labels.apportionment))) +
+  labs(title="Comparison of Depletion Apportionment Equations to Steady-State MODFLOW",
+       subtitle=paste0("MODFLOW: ", modflow_v, "; Stream BC: ", stream_BC, "; 1 dot = 1 stream segment response to 1 pumping well")) +
+  scale_x_continuous(name="Analytical Depletion Fraction", 
+                     limits=c(0,1), breaks=seq(0,1,0.25), expand=c(0,0)) +
+  scale_y_continuous(name="MODFLOW Depletion Fraction", 
+                     limits=c(min.depletion,max.depletion), expand=c(0,0)) +
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_SteadyState_FitScatters_", stream_BC, "_", modflow_v, ".png")),
+         width=10, height=8, units="in")
+
+df %>% 
+  subset(depletion.prc > 0.05 | depletion.prc.modflow > 0.05) %>% 
+  ggplot(aes(x=depletion.prc, y=depletion.prc.modflow)) +
+  geom_abline(intercept=0, slope=1, color="gray65") +
+  geom_point(shape=21) +
+  stat_smooth(method="lm") +
+  facet_grid(method~apportionment, labeller=as_labeller(c(labels.method, labels.apportionment))) +
+  labs(title="Comparison of Depletion Apportionment Equations to Steady-State MODFLOW",
+       subtitle=paste0("MODFLOW: ", modflow_v, "; Stream BC: ", stream_BC, "; 1 dot = 1 stream segment response to 1 pumping well")) +
+  scale_x_continuous(name="Analytical Depletion Fraction", 
+                     limits=c(0,1), breaks=seq(0,1,0.25), expand=c(0,0)) +
+  scale_y_continuous(name="MODFLOW Depletion Fraction", 
+                     limits=c(min.depletion,max.depletion), expand=c(0,0)) +
+  ggsave(file.path("results", paste0("Navarro_CompareMODFLOWtoDepletionApportionment_SteadyState_FitBigScatters_", stream_BC, "_", modflow_v, ".png")),
+         width=10, height=8, units="in")
+
+#### plots comparing among depletion apportionment (no MODFLOW)
+df_TPoly <- 
+  full_join(subset(df_adj[,c("WellNum", "SegNum", "f.TPoly")], f.TPoly != 0),
+            subset(df_loc[,c("WellNum", "SegNum", "f.TPoly")], f.TPoly != 0),
+            by=c("WellNum", "SegNum")) %>% 
+  full_join(subset(df_dyn[,c("WellNum", "SegNum", "f.TPoly")], f.TPoly != 0),
+            by=c("WellNum", "SegNum")) %>% 
+  full_join(subset(df_whl[,c("WellNum", "SegNum", "f.TPoly")], f.TPoly != 0),
+            by=c("WellNum", "SegNum")) %>% 
+  set_colnames(c("WellNum", "SegNum", "AdjacentOnly", "LocalArea", "Dynamic", "WholeDomain")) %>% 
+  subset(WellNum %in% df_dyn$WellNum)
+df_TPoly[is.na(df_TPoly)] <- 0
+
+ggplot(df_TPoly, aes(x=WholeDomain, y=LocalArea)) +
+  geom_point() +
+  geom_abline(intercept=0, slope=1, color="red")
+
+ggplot(df_TPoly, aes(x=WholeDomain, y=AdjacentOnly)) +
+  geom_point() +
+  geom_abline(intercept=0, slope=1, color="red")
+
+ggplot(df_TPoly, aes(x=WholeDomain, y=Dynamic)) +
+  geom_point() +
+  geom_abline(intercept=0, slope=1, color="red")
+
+## compare web squared
+df_WebSq <- 
+  full_join(subset(df_adj[,c("WellNum", "SegNum", "f.WebSq")], f.WebSq != 0),
+            subset(df_loc[,c("WellNum", "SegNum", "f.WebSq")], f.WebSq != 0),
+            by=c("WellNum", "SegNum")) %>% 
+  full_join(subset(df_dyn[,c("WellNum", "SegNum", "f.WebSq")], f.WebSq != 0),
+            by=c("WellNum", "SegNum")) %>% 
+  full_join(subset(df_whl[,c("WellNum", "SegNum", "f.WebSq")], f.WebSq != 0),
+            by=c("WellNum", "SegNum")) %>% 
+  set_colnames(c("WellNum", "SegNum", "AdjacentOnly", "LocalArea", "Dynamic", "WholeDomain")) %>% 
+  subset(WellNum %in% df_dyn$WellNum)
+df_WebSq[is.na(df_WebSq)] <- 0
+
+ggplot(df_WebSq, aes(x=WholeDomain, y=LocalArea)) +
+  geom_point() +
+  geom_abline(intercept=0, slope=1, color="red")
+
+ggplot(df_WebSq, aes(x=WholeDomain, y=AdjacentOnly)) +
+  geom_point() +
+  geom_abline(intercept=0, slope=1, color="red")
+
+ggplot(df_WebSq, aes(x=WholeDomain, y=Dynamic)) +
+  geom_point() +
+  geom_abline(intercept=0, slope=1, color="red")

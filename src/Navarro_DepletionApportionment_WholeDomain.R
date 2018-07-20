@@ -1,4 +1,4 @@
-## Navarro_DepletionApportionment_AdjacentOnly.R
+## Navarro_DepletionApportionment_WholeDomain.R
 #' This script is intended to calculate depletion apportionment
 #' among different well reaches for a bunch of stream reaches
 #' using only adjacent catchments to the well.
@@ -86,24 +86,20 @@ for (wel in df.wel$WellNum){
                       crs = CRS(crs.MODFLOW)) %>% 
     set_colnames(c("SegNum", "f.TPoly"))
   
-  # create reach_dist data frame with adjacent catchments only
-  SegNum.adj <- df.tpoly$SegNum
-  reach_dist <- subset(rdll, reach %in% SegNum.adj)
-  
   df.id <- 
-    apportion_inverse(reach_dist = reach_dist, w=1) %>% 
+    apportion_inverse(reach_dist = rdll, w=1) %>% 
     set_colnames(c("SegNum", "f.InvDist"))
   
   df.idsq <- 
-    apportion_inverse(reach_dist = reach_dist, w=2) %>% 
+    apportion_inverse(reach_dist = rdll, w=2) %>% 
     set_colnames(c("SegNum", "f.InvDistSq"))
   
   df.web <-
-    apportion_web(reach_dist = reach_dist, w=1) %>% 
+    apportion_web(reach_dist = rdll, w=1) %>% 
     set_colnames(c("SegNum", "f.Web"))
   
   df.websq <-
-    apportion_web(reach_dist = reach_dist, w=2) %>% 
+    apportion_web(reach_dist = rdll, w=2) %>% 
     set_colnames(c("SegNum", "f.WebSq"))
   
   # combine into single data frame
@@ -161,5 +157,5 @@ df.apportion.all$f.WebSq <- round(df.apportion.all$f.WebSq, 5)
 df.apportion.all$f.TPoly <- round(df.apportion.all$f.TPoly, 5)
 
 write.csv(df.apportion.all, 
-          file.path("results","Navarro_DepletionApportionment_AdjacentOnly_AllMethods+Wells+Reaches.csv"), 
+          file.path("results","Navarro_DepletionApportionment_WholeDomain_AllMethods+Wells+Reaches.csv"), 
           row.names=F)

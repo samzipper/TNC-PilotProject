@@ -135,6 +135,7 @@ col.gray <- "gray65"       # gray for annotation lines, etc
 pal.method <- c("f.TPoly"=col.cat.grn, "f.InvDist"=col.cat.yel, "f.InvDistSq"=col.cat.org, "f.Web"=col.cat.red, "f.WebSq"=col.cat.blu)
 pal.method.Qf <- c("Qf.TPoly"=col.cat.grn, "Qf.InvDist"=col.cat.yel, "Qf.InvDistSq"=col.cat.org, "Qf.Web"=col.cat.red, "Qf.WebSq"=col.cat.blu)
 labels.method <- c("f.TPoly"="Thiessen", "f.InvDist"="Inverse", "f.InvDistSq"="Inverse\nSquared", "f.Web"="Web", "f.WebSq"="Web\nSquared")
+labels.apportionment <- c("WholeDomain"="Whole Domain", "AdjacentOnly"="Adjacent", "LocalArea"="Local Area", "Dynamic"="Dynamic (10 yrs)")
 
 # NLCD color palette
 pal.NLCD <- c("11"="#5475A8", 
