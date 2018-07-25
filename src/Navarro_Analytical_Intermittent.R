@@ -63,8 +63,9 @@ riverbed_thickness <- 1
 # Prep input data ---------------------------------------------------------
 
 ## what depletion apportionment output do you want?
-apportionment_name <- "_LocalArea"      # output from Navarro_DepletionApportionment_LocalArea.R
+#apportionment_name <- "_LocalArea"      # output from Navarro_DepletionApportionment_LocalArea.R
 #apportionment_name <- "_AdjacentOnly"   # output from Navarro_DepletionApportionment_AdjacentOnly.R
+apportionment_name <- "_WholeDomain"   # output from Navarro_DepletionApportionment_WholeDomain.R
 #apportionment_name <- "_MaskDryStreams" # output from Navarro_DepletionApportionment_MaskDryStreams.R
 
 ## load depletion apportionment output
@@ -106,7 +107,7 @@ segs.navarro <- shp.streams@data$SegNum[shp.streams@data$TerminalPa==outlet.Term
 shp.streams@data$width_m <- WidthFromDA(DA=shp.streams@data$TotDASqKM, w.min=1, w.max=100)
 df.apportion <- left_join(df.apportion, shp.streams@data[,c("SegNum", "width_m")], by="SegNum")
 
-# analytical calculations: continuous pumping -----------------------------------------------------
+# analytical calculations: intermittent pumping -----------------------------------------------------
 
 # get rid of any segments with < 0.0001 depletion apportionment, or
 # WellNum that you don't have MODFLOW results for
@@ -175,7 +176,7 @@ for (i in 1:dim(df.apportion)[1]){
     }
     
     # status update
-    print(paste0(analytical, " ", i, " complete"))
+    print(paste0(analytical, " ", i, " of ", dim(df.apportion)[1], " complete"))
     
   } # end of analytical loop
 } # end of i loop

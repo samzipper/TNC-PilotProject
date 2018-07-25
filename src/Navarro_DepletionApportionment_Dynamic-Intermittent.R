@@ -85,10 +85,11 @@ shp.streams.dissolve <- gLineMerge(shp.streams)
 
 ## convert stream lines to points
 # define point spacing and figure out how many points to make
-pt.spacing <- 10  # [m]
+pt.spacing <- 5  # [m]
 n.pts <- round(gLength(shp.streams)/pt.spacing)
 
 # sample points
+set.seed(1)
 shp.streams.pts <- spsample(shp.streams, n=n.pts, type="regular")
 df.streams.pts <- as.data.frame(shp.streams.pts)
 colnames(df.streams.pts) <- c("lon", "lat")
@@ -142,7 +143,7 @@ wells.all <- sort(unique(df.MODFLOW$WellNum))
 times.all <- sort(unique(df.MODFLOW$Time))
 times.all <- times.all[times.all > min(ts.pump.starts)]
 
-start.flag <- T
+start.wel <- T
 for (wel in wells.all){
   ## for a given well, calculate the distance to each point
   i.wel <- which(df.wel$WellNum==wel)
@@ -168,18 +169,18 @@ for (wel in wells.all){
   df.wel.dist$thickness_m[df.wel.dist$thickness_m < screen_length] <- screen_length   # if vertical distance is < screen length, use screen length
   
   ## Thiessen Polygon apportionment method is not distance-based so it just has one result
-  df.tpoly <- apportion.tpoly(reach=df.wel.dist$SegNum, 
-                              dist=df.wel.dist$distToWell.m, 
-                              lon=df.wel.dist$lon, 
-                              lat=df.wel.dist$lat, 
-                              wel.lon=df.wel$lon[i.wel],
-                              wel.lat=df.wel$lat[i.wel],
-                              wel.num=wel,
-                              local.area.m=10000,
-                              coord.ref=CRS(crs.MODFLOW),
-                              col.names=c("SegNum", "f.TPoly"))
+  rdll <- data.frame(reach = df.wel.dist$SegNum, 
+                     dist = df.wel.dist$distToWell.m,
+                     lon = df.wel.dist$lon,
+                     lat = df.wel.dist$lat)
   
-  start.wel <- T
+  df.tpoly <- apportion_polygon(reach_dist_lon_lat = rdll,
+                                wel_lon  = df.wel$lon[i.wel],
+                                wel_lat  = df.wel$lat[i.wel],
+                                max_dist = 10000,
+                                crs = CRS(crs.MODFLOW)) %>% 
+    set_colnames(c("SegNum", "f.TPoly"))
+  
   for (t in times.all){
     for (analytical in c("glover", "hunt")){
       ## figure out the maximum distance at which depletion > Qf.thres would occur
@@ -264,55 +265,55 @@ for (wel in wells.all){
     print(paste0("max dist well ", wel, ", time ", t, " complete, ", Sys.time()))
     
   }  # end of t loop
-  
-  ## now: for each well-seg-analytical combo, run intermittent_pumping for all timesteps
-  well.seg.analytical.all <- unique(df.apportion[,c("SegNum", "WellNum", "analytical", "distToWell.min.m", "thickness.max.m", "lmda.min")])
-  
-  for (i in 1:dim(well.seg.analytical.all)[1]){
-    
-    # extract all timesteps
-    df.apportion.wel.t.all <- subset(df.apportion, 
-                                     SegNum == well.seg.analytical.all$SegNum[i] &
-                                       WellNum == well.seg.analytical.all$WellNum[i] &
-                                       analytical == well.seg.analytical.all$analytical[i])
-    
-    # calculate depletion fraction for each individual segment
-    df.apportion.wel.t.all$Qs <- intermittent_pumping(t = unique(df.apportion.wel.t.all$Time), 
-                                                      starts = ts.pump.starts, 
-                                                      stops = ts.pump.stops, 
-                                                      rates = rep(Qw, length(ts.pump.starts)),
-                                                      method = well.seg.analytical.all$analytical[i], 
-                                                      d = well.seg.analytical.all$distToWell.min.m[i], 
-                                                      S = sy,
-                                                      Tr = (hk*well.seg.analytical.all$thickness.max.m[i]),
-                                                      lmda = well.seg.analytical.all$lmda.min[i])
-    
-    df.apportion.wel.t.all$Qf <- df.apportion.wel.t.all$Qs/Qw
-    
-    # weight segments using depletion apportionment fractions
-    df.apportion.wel.t.all$Qf.InvDist   <- df.apportion.wel.t.all$Qf*df.apportion.wel.t.all$f.InvDist
-    df.apportion.wel.t.all$Qf.InvDistSq <- df.apportion.wel.t.all$Qf*df.apportion.wel.t.all$f.InvDistSq
-    df.apportion.wel.t.all$Qf.Web       <- df.apportion.wel.t.all$Qf*df.apportion.wel.t.all$f.Web
-    df.apportion.wel.t.all$Qf.WebSq     <- df.apportion.wel.t.all$Qf*df.apportion.wel.t.all$f.WebSq
-    df.apportion.wel.t.all$Qf.TPoly     <- df.apportion.wel.t.all$Qf*df.apportion.wel.t.all$f.TPoly
-    
-    # add to overall data frame
-    if (start.flag){
-      df.out <- subset(df.apportion.wel.t.all, abs(Qf.InvDist) > f.thres | abs(Qf.InvDistSq) > f.thres |
-                         abs(Qf.Web) > f.thres | abs(Qf.WebSq) > f.thres | abs(Qf.TPoly) > f.thres)
-      start.flag <- F
-    } else {
-      df.out <- rbind(df.out, 
-                      subset(df.apportion.wel.t.all, abs(Qf.InvDist) > f.thres | abs(Qf.InvDistSq) > f.thres |
-                               abs(Qf.Web) > f.thres | abs(Qf.WebSq) > f.thres | abs(Qf.TPoly) > f.thres))
-    }
-    
-    # status update
-    print(paste0("Qs ", i, " of ", dim(well.seg.analytical.all)[1], " complete"))
-    
-  } # end of i loop
-  
 }  # end of wel loop
+
+## now: for each well-seg-analytical combo, run intermittent_pumping for all timesteps
+well.seg.analytical.all <- unique(df.apportion[,c("SegNum", "WellNum", "analytical", "distToWell.min.m", "thickness.max.m", "lmda.min")])
+
+start.flag <- T
+for (i in 1:dim(well.seg.analytical.all)[1]){
+  
+  # extract all timesteps
+  df.apportion.wel.t.all <- subset(df.apportion, 
+                                   SegNum == well.seg.analytical.all$SegNum[i] &
+                                     WellNum == well.seg.analytical.all$WellNum[i] &
+                                     analytical == well.seg.analytical.all$analytical[i])
+  
+  # calculate depletion fraction for each individual segment
+  df.apportion.wel.t.all$Qs <- intermittent_pumping(t = unique(df.apportion.wel.t.all$Time), 
+                                                    starts = ts.pump.starts, 
+                                                    stops = ts.pump.stops, 
+                                                    rates = rep(Qw, length(ts.pump.starts)),
+                                                    method = well.seg.analytical.all$analytical[i], 
+                                                    d = well.seg.analytical.all$distToWell.min.m[i], 
+                                                    S = sy,
+                                                    Tr = (hk*well.seg.analytical.all$thickness.max.m[i]),
+                                                    lmda = well.seg.analytical.all$lmda.min[i])
+  
+  df.apportion.wel.t.all$Qf <- df.apportion.wel.t.all$Qs/Qw
+  
+  # weight segments using depletion apportionment fractions
+  df.apportion.wel.t.all$Qf.InvDist   <- df.apportion.wel.t.all$Qf*df.apportion.wel.t.all$f.InvDist
+  df.apportion.wel.t.all$Qf.InvDistSq <- df.apportion.wel.t.all$Qf*df.apportion.wel.t.all$f.InvDistSq
+  df.apportion.wel.t.all$Qf.Web       <- df.apportion.wel.t.all$Qf*df.apportion.wel.t.all$f.Web
+  df.apportion.wel.t.all$Qf.WebSq     <- df.apportion.wel.t.all$Qf*df.apportion.wel.t.all$f.WebSq
+  df.apportion.wel.t.all$Qf.TPoly     <- df.apportion.wel.t.all$Qf*df.apportion.wel.t.all$f.TPoly
+  
+  # add to overall data frame
+  if (start.flag){
+    df.out <- subset(df.apportion.wel.t.all, abs(Qf.InvDist) > f.thres | abs(Qf.InvDistSq) > f.thres |
+                       abs(Qf.Web) > f.thres | abs(Qf.WebSq) > f.thres | abs(Qf.TPoly) > f.thres)
+    start.flag <- F
+  } else {
+    df.out <- rbind(df.out, 
+                    subset(df.apportion.wel.t.all, abs(Qf.InvDist) > f.thres | abs(Qf.InvDistSq) > f.thres |
+                             abs(Qf.Web) > f.thres | abs(Qf.WebSq) > f.thres | abs(Qf.TPoly) > f.thres))
+  }
+  
+  # status update
+  print(paste0("Qs ", i, " of ", dim(well.seg.analytical.all)[1], " complete"))
+  
+} # end of i loop
 
 ## save output
 # round to 5 digits to reduce file size

@@ -12,16 +12,17 @@ Qw <- -6*100*0.00378541  # [m3/d]
 modflow_v <- "mfnwt"  # "mfnwt" or "mf2005"
 masked <- F           # use masked depletion apportionment? should only be T for SFR
 stream_BC <- "RIV"    # stream boundary condition to use for setting steady-state head (screen interval)
-timeType  <- "Transient" # "Transient" or "Intermittent"
+timeType  <- "Intermittent" # "Transient" or "Intermittent"
 
 # which methods to analyze?
 methods.plot <- c("Qf.InvDistSq", "Qf.WebSq", "Qf.TPoly")
 
 ## what depletion apportionment output do you want?
-apportionment_name <- "_LocalArea"      # output from Navarro_DepletionApportionment_LocalArea.R run through Navarro_Analytical_Transient.R
+#apportionment_name <- "_LocalArea"      # output from Navarro_DepletionApportionment_LocalArea.R run through Navarro_Analytical_Transient.R
 #apportionment_name <- "_AdjacentOnly"   # output from Navarro_DepletionApportionment_AdjacentOnly.R run through Navarro_Analytical_Transient.R
-#apportionment_name <- "_MaskDryStreams" # output from Navarro_DepletionApportionment_MaskDryStreams.R run through Navarro_Analytical_Transient.R
+apportionment_name <- "_WholeDomain"   # output from Navarro_DepletionApportionment_AdjacentOnly.R run through Navarro_Analytical_Transient.R
 #apportionment_name <- "_Dynamic"        # output from Navarro_DepletionApportionment+Analytical_Transient.R
+#apportionment_name <- "_MaskDryStreams" # output from Navarro_DepletionApportionment_MaskDryStreams.R run through Navarro_Analytical_Transient.R
 
 #### (0) Prep spatial data
 
