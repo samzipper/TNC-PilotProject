@@ -108,7 +108,7 @@ theme_scz <- function(...){
   theme_bw(base_size=10, base_family="Arial") + 
     theme(
       text=element_text(color="black"),
-      plot.title=element_text(size=rel(1), hjust=0.5),
+      plot.title=element_text(face="bold", size=rel(1)),
       axis.title=element_text(face="bold", size=rel(1)),
       axis.text=element_text(size=rel(1)),
       strip.text=element_text(size=rel(1)),

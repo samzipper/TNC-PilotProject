@@ -7,6 +7,11 @@
 source(file.path("src", "paths+packages.R"))
 require(streamDepletr)
 
+## what depletion apportionment output do you want?
+apportionment_name <- "_LocalArea"      # output from Navarro_DepletionApportionment_LocalArea.R
+#apportionment_name <- "_AdjacentOnly"   # output from Navarro_DepletionApportionment_AdjacentOnly.R
+#apportionment_name <- "_WholeDomain"   # output from Navarro_DepletionApportionment_WholeDomain.R
+
 #### First: process steady-state MODFLOW data
 ## MODFLOW - steady state results
 stream_BC <- "RIV"
@@ -67,7 +72,7 @@ df_MODFLOW <- subset(df_MODFLOW, depletion.prc.modflow > f.thres)
 #### load depletion apportionment output
 # choose your apportionment method - LocalArea and WholeDomain have best performance for SS comparison
 df.apportionment <- 
-  file.path("results", "Navarro_DepletionApportionment_LocalArea_AllMethods+Wells+Reaches.csv") %>% 
+  file.path("results", paste0("Navarro_DepletionApportionment", apportionment_name, "_AllMethods+Wells+Reaches.csv")) %>% 
   read.csv(stringsAsFactors = F) %>% 
   dplyr::select(WellNum, SegNum, distToWell.min.m, f.InvDistSq, f.WebSq, f.TPoly) %>% 
   full_join(df_MODFLOW[,c("SegNum", "WellNum", "depletion.prc.modflow")],
@@ -203,6 +208,8 @@ df.fit.transient <-
 
 ## plot
 ggplot(df.fit.transient, aes(x=time, y=KGE.overall, color=method)) +
+  annotate("rect", ymin=-Inf, ymax=Inf, xmin=min(df.fit.transient$time), xmax=3650, 
+           fill=col.gray, alpha=0.25) +
   geom_hline(yintercept=df.fit.SS$KGE.overall[df.fit.SS$method=="f.InvDistSq"], 
              linetype="dashed", color=pal.method["f.InvDistSq"]) +
   geom_hline(yintercept=df.fit.SS$KGE.overall[df.fit.SS$method=="f.WebSq"], 
@@ -210,6 +217,15 @@ ggplot(df.fit.transient, aes(x=time, y=KGE.overall, color=method)) +
   geom_hline(yintercept=df.fit.SS$KGE.overall[df.fit.SS$method=="f.TPoly"], 
              linetype="dashed", color=pal.method["f.TPoly"]) +
   geom_line() +
-  scale_color_manual(values=pal.method.Qf) +
-  scale_x_log10()
-  
+  scale_color_manual(name="Depletion\nApportionment", 
+                     values=pal.method.Qf, labels=labels.method.Qf) +
+  scale_x_log10(name="Analytical Timestep [days]", expand=c(0,0)) +
+  annotation_logticks(sides = "b") +
+  scale_y_continuous(name="KGE") +
+  #labs(title="Comparing Steady-State MODFLOW to Transient Analytical (Glover)", 
+  #     subtitle="Dashed Line = KGE for Depletion Apportionment Only, no analytical") +
+  theme(legend.position=c(0.99,0.01),
+        legend.justification=c(1,0),
+        plot.margin=unit(c(1,5,1,1), "mm")) +
+  ggsave(file.path("results", "Navarro_CompareMODFLOWtoDepletionApportionment_SteadyStateMODFLOWtoTransientAnalytical.png"),
+         width=190, height=120, units="mm")
