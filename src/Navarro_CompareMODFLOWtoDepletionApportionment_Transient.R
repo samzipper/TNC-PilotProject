@@ -90,7 +90,6 @@ df.analytical <-
     dplyr::select(c("SegNum", "WellNum", "analytical", "Time", methods.plot))
 
 ## Time has long decimals; round before merging to ensure time match
-df.MODFLOW$Time <- round(df.MODFLOW$Time, 1)
 df.analytical$Time <- round(df.analytical$Time, 1)
 
 ## combine MODFLOW with analytical
