@@ -25,7 +25,7 @@ df.fit.match <-
   read.csv(file.path("results", "Navarro_DecideBestMethod_01_CompareDepletionApportionment_fit-Match.csv"),
            stringsAsFactors=F) %>% 
   subset(method %in% methods.plot)
-df.fit.match$apportionment <- factor(df.fit.match$apportionment, levels=c("AdjacentOnly", "LocalArea", "WholeDomain", "Dynamic"))
+df.fit.match$apportionment <- factor(df.fit.match$apportionment, levels=c("AdjacentOnly", "LocalArea", "WholeDomain", "Dynamic", "Adjacent+Dynamic"))
 
 ## plots
 stream_BC_plot <- c("RIV")
@@ -82,7 +82,7 @@ df.fit.match %>%
 #   df.MODFLOW <- rbind(df.MODFLOW.RIV, df.MODFLOW.SFR)
 #   df.MODFLOW$Time <- round(df.MODFLOW$Time, 1)
 #   
-#   for (apportionment_name in c("LocalArea", "AdjacentOnly", "WholeDomain", "Dynamic")) {
+#   for (apportionment_name in c("AdjacentOnly", "LocalArea", "WholeDomain", "Dynamic", "Adjacent+Dynamic")) {
 #     ## load analytical output
 #     df.analytical <- 
 #       paste0("Depletion_Analytical_", timeType, "_", apportionment_name, "_AllMethods+Wells+Reaches.csv") %>% 
@@ -141,7 +141,7 @@ df.fit.match %>%
 ## read in fit statistics
 df.fit.sum <- read.csv(file.path("results", "Navarro_DecideBestMethod_02_CompareAnalytical_fit-Sum.csv"),
                        stringsAsFactors=F)
-df.fit.sum$apportionment <- factor(df.fit.sum$apportionment, levels=c("AdjacentOnly", "LocalArea", "WholeDomain", "Dynamic"))
+df.fit.sum$apportionment <- factor(df.fit.sum$apportionment, levels=c("AdjacentOnly", "LocalArea", "WholeDomain", "Dynamic", "Adjacent+Dynamic"))
 
 ## plots
 stream_BC_plot <- c("RIV")

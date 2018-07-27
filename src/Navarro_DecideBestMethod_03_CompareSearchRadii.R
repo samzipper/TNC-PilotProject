@@ -48,7 +48,7 @@ f.thres <- 0.001  # 0.1%
 #     subset(depletion.prc.modflow > f.thres)
 #   df.MODFLOW$Time <- round(df.MODFLOW$Time, 1)
 # 
-#   for (apportionment_name in c("AdjacentOnly", "LocalArea", "WholeDomain", "Dynamic")) {
+#   for (apportionment_name in c("AdjacentOnly", "LocalArea", "WholeDomain", "Dynamic", "Adjacent+Dynamic")) {
 #     ## load analytical output
 #     df.analytical <-
 #       paste0("Depletion_Analytical_", timeType, "_", apportionment_name, "_AllMethods+Wells+Reaches.csv") %>%
@@ -104,7 +104,7 @@ f.thres <- 0.001  # 0.1%
 ## read in fit statistics
 df.fit.all <- read.csv(file.path("results", "Navarro_DecideBestMethod_03_CompareSearchRadii_fit-All.csv"),
                        stringsAsFactors=F)
-df.fit.all$apportionment <- factor(df.fit.all$apportionment, levels=c("AdjacentOnly", "LocalArea", "WholeDomain", "Dynamic"))
+df.fit.all$apportionment <- factor(df.fit.all$apportionment, levels=c("AdjacentOnly", "LocalArea", "WholeDomain", "Dynamic", "Adjacent+Dynamic"))
 
 ## plots
 stream_BC_plot <- c("RIV")

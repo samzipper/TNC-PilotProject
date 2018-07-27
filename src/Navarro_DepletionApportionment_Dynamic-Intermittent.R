@@ -23,6 +23,9 @@ require(streamDepletr)
 #### (0) Define some parameters
 ## Make sure these are the same as your MODFLOW script!
 
+## should you always include adjacent catchments?
+adj <- T  # T/F - if T, output apportionment_name = Adjacent+Dynamic
+
 ## choose stream boundary condition and modflow version
 stream_BC <- "RIV"    # "RIV" or "SFR"
 modflow_v <- "mfnwt"  # "mfnwt" or "mf2005"
@@ -196,8 +199,12 @@ for (wel in wells.all){
                                          lmda = min(df.wel.dist$lmda))  # lmda will be ignored if analytical==glover
       
       #### (3) Calculate depletion apportionment using only stream reaches within that distance
-      # subset to stream reaches within that distance
-      df.wel.dist.t <- subset(df.wel.dist, distToWell.m <= max.dist)
+      ####       if adj=T, adjacent catchments will always be included
+      if (adj) {
+        df.wel.dist.t <- subset(df.wel.dist, (distToWell.m <= max.dist) | SegNum %in% df.tpoly$SegNum)
+      } else {
+        df.wel.dist.t <- subset(df.wel.dist, (distToWell.m <= max.dist))
+      }
       
       # if there are any streams within that distance, apportion using distance-based methods
       if (dim(df.wel.dist.t)[1] > 0){
@@ -330,8 +337,16 @@ df.out$Qf.Web <- round(df.out$Qf.Web, 5)
 df.out$Qf.WebSq <- round(df.out$Qf.WebSq, 5)
 df.out$Qf.TPoly <- round(df.out$Qf.TPoly, 5)
 
+if (adj) {
+  path.out <- 
+    file.path("results", "Depletion_Analytical_Intermittent_Adjacent+Dynamic_AllMethods+Wells+Reaches.csv")
+} else {
+  path.out <- 
+    file.path("results", "Depletion_Analytical_Intermittent_Dynamic_AllMethods+Wells+Reaches.csv")
+}
+
 df.out %>% 
   dplyr::select(SegNum, WellNum, Time, analytical, 
                 f.InvDist, f.InvDistSq, f.Web, f.WebSq, f.TPoly, 
                 Qf.InvDist, Qf.InvDistSq, Qf.Web, Qf.WebSq, Qf.TPoly) %>% 
-  write.csv(., file.path("results", "Depletion_Analytical_Intermittent_Dynamic_AllMethods+Wells+Reaches.csv"), row.names=F)
+  write.csv(., path.out, row.names=F)

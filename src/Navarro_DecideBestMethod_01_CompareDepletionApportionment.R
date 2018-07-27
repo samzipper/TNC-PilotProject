@@ -283,7 +283,7 @@ df.fit.SS %>%
 #     group_by(stream_BC, WellNum, Time) %>%
 #     filter(depletion.prc.modflow==max(depletion.prc.modflow))
 # 
-#   for (apportionment_name in c("LocalArea", "AdjacentOnly", "WholeDomain", "Dynamic")) {
+#   for (apportionment_name in c("AdjacentOnly", "LocalArea", "WholeDomain", "Dynamic", "Adjacent+Dynamic")) {
 #     ## load analytical output
 #     df.analytical <-
 #       paste0("Depletion_Analytical_", timeType, "_", apportionment_name, "_AllMethods+Wells+Reaches.csv") %>%
