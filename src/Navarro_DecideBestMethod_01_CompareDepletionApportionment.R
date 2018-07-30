@@ -354,7 +354,8 @@ df.fit.SS %>%
 df.fit.match <- 
   read.csv(file.path("results", "Navarro_DecideBestMethod_01_CompareDepletionApportionment_fit-Match.csv"),
            stringsAsFactors=F)
-df.fit.match$apportionment <- factor(df.fit.match$apportionment, levels=c("AdjacentOnly", "LocalArea", "WholeDomain", "Dynamic"))
+df.fit.match$apportionment <- factor(df.fit.match$apportionment, 
+                                     levels=c("AdjacentOnly", "LocalArea", "WholeDomain", "Dynamic", "Adjacent+Dynamic"))
 
 ## plots
 stream_BC_plot <- c("RIV")

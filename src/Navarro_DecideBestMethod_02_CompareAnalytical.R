@@ -25,7 +25,8 @@ df.fit.match <-
   read.csv(file.path("results", "Navarro_DecideBestMethod_01_CompareDepletionApportionment_fit-Match.csv"),
            stringsAsFactors=F) %>% 
   subset(method %in% methods.plot)
-df.fit.match$apportionment <- factor(df.fit.match$apportionment, levels=c("AdjacentOnly", "LocalArea", "WholeDomain", "Dynamic", "Adjacent+Dynamic"))
+df.fit.match$apportionment <- factor(df.fit.match$apportionment, 
+                                     levels=c("AdjacentOnly", "LocalArea", "WholeDomain", "Dynamic", "Adjacent+Dynamic"))
 
 ## plots
 stream_BC_plot <- c("RIV")
@@ -57,70 +58,70 @@ df.fit.match %>%
 ### only have to run this once:
 # start.flag <- T
 # for (timeType in c("Transient", "Intermittent")) {
-#   
+# 
 #   ## open MODFLOW results
-#   df.MODFLOW.RIV <- 
-#     file.path("modflow","HTC", "Navarro", timeType, "RIV", modflow_v, "Depletion_MODFLOW.csv") %>% 
-#     read.csv(stringsAsFactors=F) %>% 
+#   df.MODFLOW.RIV <-
+#     file.path("modflow","HTC", "Navarro", timeType, "RIV", modflow_v, "Depletion_MODFLOW.csv") %>%
+#     read.csv(stringsAsFactors=F) %>%
 #     #  transform(depletion.prc.modflow = depletion_m3.d/Qw_m3.d,  # use net pumping rate from MODFLOW
 #     transform(depletion.prc.modflow = depletion_m3.d/Qw,          # use prescribed pumping rate
 #               stream_BC = "RIV",
-#               stringsAsFactors=F) %>% 
-#     group_by(WellNum, Time, stream_BC) %>% 
+#               stringsAsFactors=F) %>%
+#     group_by(WellNum, Time, stream_BC) %>%
 #     summarize(Qf.total.modflow = sum(depletion.prc.modflow))
-#   
-#   df.MODFLOW.SFR <- 
-#     file.path("modflow","HTC", "Navarro", timeType, "SFR", modflow_v, "Depletion_MODFLOW.csv") %>% 
-#     read.csv(stringsAsFactors=F) %>% 
+# 
+#   df.MODFLOW.SFR <-
+#     file.path("modflow","HTC", "Navarro", timeType, "SFR", modflow_v, "Depletion_MODFLOW.csv") %>%
+#     read.csv(stringsAsFactors=F) %>%
 #     #  transform(depletion.prc.modflow = depletion_m3.d/Qw_m3.d,  # use net pumping rate from MODFLOW
 #     transform(depletion.prc.modflow = depletion_m3.d/Qw,          # use prescribed pumping rate
 #               stream_BC = "SFR",
-#               stringsAsFactors=F) %>% 
-#     group_by(WellNum, Time, stream_BC) %>% 
+#               stringsAsFactors=F) %>%
+#     group_by(WellNum, Time, stream_BC) %>%
 #     summarize(Qf.total.modflow = sum(depletion.prc.modflow))
-#   
+# 
 #   df.MODFLOW <- rbind(df.MODFLOW.RIV, df.MODFLOW.SFR)
 #   df.MODFLOW$Time <- round(df.MODFLOW$Time, 1)
-#   
+# 
 #   for (apportionment_name in c("AdjacentOnly", "LocalArea", "WholeDomain", "Dynamic", "Adjacent+Dynamic")) {
 #     ## load analytical output
-#     df.analytical <- 
-#       paste0("Depletion_Analytical_", timeType, "_", apportionment_name, "_AllMethods+Wells+Reaches.csv") %>% 
-#       file.path("results", .) %>% 
-#       read.csv(stringsAsFactors=F) %>% 
-#       dplyr::select(c("SegNum", "WellNum", "Time", "analytical", methods.plot)) %>% 
+#     df.analytical <-
+#       paste0("Depletion_Analytical_", timeType, "_", apportionment_name, "_AllMethods+Wells+Reaches.csv") %>%
+#       file.path("results", .) %>%
+#       read.csv(stringsAsFactors=F) %>%
+#       dplyr::select(c("SegNum", "WellNum", "Time", "analytical", methods.plot)) %>%
 #       melt(id=c("SegNum", "WellNum", "Time", "analytical"),
-#            value.name="depletion.prc", variable.name="method") %>% 
-#       group_by(WellNum, Time, analytical, method) %>% 
+#            value.name="depletion.prc", variable.name="method") %>%
+#       group_by(WellNum, Time, analytical, method) %>%
 #       summarize(Qf.total.analytical = sum(depletion.prc))
-#     
+# 
 #     ## Time has long decimals; round before merging to ensure time match
 #     df.analytical$Time <- round(df.analytical$Time, 1)
-#     
+# 
 #     for (BC in c("SFR", "RIV")) {
 #       for (m in unique(df.analytical$method)) {
 #         for (a in unique(df.analytical$analytical)) {
 #           # combine
-#           df.sum <- 
-#             df.MODFLOW %>% 
-#             subset(stream_BC == BC) %>% 
-#             left_join(subset(df.analytical, method==m & analytical==a), 
-#                       by=c("WellNum", "Time")) %>% 
-#             replace_na(list("analytical"=a, "method"=m, "stream_BC"=BC, "Qf.total.analytical"=0, "Qf.total.modflow" = 0)) %>% 
+#           df.sum <-
+#             df.MODFLOW %>%
+#             subset(stream_BC == BC) %>%
+#             left_join(subset(df.analytical, method==m & analytical==a),
+#                       by=c("WellNum", "Time")) %>%
+#             replace_na(list("analytical"=a, "method"=m, "stream_BC"=BC, "Qf.total.analytical"=0, "Qf.total.modflow" = 0)) %>%
 #             transform(apportionment = apportionment_name,
 #                       pump = timeType,
 #                       stringsAsFactors=F)
-#           
+# 
 #           if (start.flag) {
 #             df.sum.all <- df.sum
 #             start.flag <- F
 #           } else {
 #             df.sum.all <- rbind(df.sum.all, df.sum)
 #           }
-#           
+# 
 #           # status update
 #           print(paste(timeType, apportionment_name, BC, m, a, "complete"))
-#           
+# 
 #         }  # end of a loop
 #       }  # end of m loop
 #     }  # end of BC loop
@@ -129,8 +130,8 @@ df.fit.match %>%
 # 
 # ## calculate fit statistics
 # df.fit.sum <-
-#   df.sum.all %>% 
-#   group_by(stream_BC, pump, analytical, apportionment, method, Time) %>% 
+#   df.sum.all %>%
+#   group_by(stream_BC, pump, analytical, apportionment, method, Time) %>%
 #   summarize(MSE.sum = MSE(Qf.total.analytical, Qf.total.modflow),
 #             KGE.sum = KGE(Qf.total.analytical, Qf.total.modflow, method="2012"))
 # 
