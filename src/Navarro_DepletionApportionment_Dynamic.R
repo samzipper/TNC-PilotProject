@@ -179,7 +179,7 @@ for (wel in wells.all){
       # (this is bounded to not be less than screen_length so typically that's what it is)
       closest.thickness <- df.wel.dist$thickness_m[min(which.min(df.wel.dist$distToWell.m))]
       max.dist <- depletion_max_distance(Qf_thres = Qf.thres,
-                                         d_max    = 10000,
+                                         d_max    = Inf,
                                          method   = analytical,
                                          t  = t,
                                          S  = sy,

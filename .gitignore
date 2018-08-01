@@ -35,6 +35,7 @@ launch_thisRun*
 *SummarizeLeakage.csv
 Depletion_MODFLOW.csv
 *AllMethods+Wells+Reaches.csv
+results/Navarro_DecideBestMethod_04_*
 
 # Image files
 *.png

@@ -180,7 +180,6 @@ for (wel in wells.all){
   df.tpoly <- apportion_polygon(reach_dist_lon_lat = rdll,
                                 wel_lon  = df.wel$lon[i.wel],
                                 wel_lat  = df.wel$lat[i.wel],
-                                max_dist = 10000,
                                 crs = CRS(crs.MODFLOW)) %>% 
     set_colnames(c("SegNum", "f.TPoly"))
   
@@ -191,7 +190,7 @@ for (wel in wells.all){
       # (this is bounded to not be less than screen_length so typically that's what it is)
       closest.thickness <- df.wel.dist$thickness_m[min(which.min(df.wel.dist$distToWell.m))]
       max.dist <- depletion_max_distance(Qf_thres = Qf.thres,
-                                         d_max    = 10000,
+                                         d_max    = Inf,
                                          method   = analytical,
                                          t  = (t-min(ts.pump.starts)),
                                          S  = sy,
