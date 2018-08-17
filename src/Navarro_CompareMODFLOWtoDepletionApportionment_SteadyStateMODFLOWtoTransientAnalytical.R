@@ -8,9 +8,9 @@ source(file.path("src", "paths+packages.R"))
 require(streamDepletr)
 
 ## what depletion apportionment output do you want?
-apportionment_name <- "_LocalArea"      # output from Navarro_DepletionApportionment_LocalArea.R
+#apportionment_name <- "_LocalArea"      # output from Navarro_DepletionApportionment_LocalArea.R
 #apportionment_name <- "_AdjacentOnly"   # output from Navarro_DepletionApportionment_AdjacentOnly.R
-#apportionment_name <- "_WholeDomain"   # output from Navarro_DepletionApportionment_WholeDomain.R
+apportionment_name <- "_WholeDomain"   # output from Navarro_DepletionApportionment_WholeDomain.R
 
 #### First: process steady-state MODFLOW data
 ## MODFLOW - steady state results
@@ -74,7 +74,7 @@ df_MODFLOW <- subset(df_MODFLOW, depletion.prc.modflow > f.thres)
 df.apportionment <- 
   file.path("results", paste0("Navarro_DepletionApportionment", apportionment_name, "_AllMethods+Wells+Reaches.csv")) %>% 
   read.csv(stringsAsFactors = F) %>% 
-  dplyr::select(WellNum, SegNum, distToWell.min.m, f.InvDistSq, f.WebSq, f.TPoly) %>% 
+  dplyr::select(WellNum, SegNum, distToWell.min.m, f.InvDist, f.InvDistSq, f.Web, f.WebSq, f.TPoly) %>% 
   full_join(df_MODFLOW[,c("SegNum", "WellNum", "depletion.prc.modflow")],
             by=c("SegNum", "WellNum"))
 df.apportionment[is.na(df.apportionment)] <- 0
@@ -158,7 +158,9 @@ for (ts in ts.all){
     df.transient <- data.frame(time = ts,
                                WellNum = df.apportionment$WellNum,
                                SegNum = df.apportionment$SegNum,
+                               f.InvDist = df.apportionment$f.InvDist,
                                f.InvDistSq = df.apportionment$f.InvDistSq,
+                               f.Web = df.apportionment$f.Web,
                                f.WebSq = df.apportionment$f.WebSq,
                                f.TPoly = df.apportionment$f.TPoly,
                                Qf = Qf)
@@ -168,7 +170,9 @@ for (ts in ts.all){
                           data.frame(time = ts,
                                      WellNum = df.apportionment$WellNum,
                                      SegNum = df.apportionment$SegNum,
+                                     f.InvDist = df.apportionment$f.InvDist,
                                      f.InvDistSq = df.apportionment$f.InvDistSq,
+                                     f.Web = df.apportionment$f.Web,
                                      f.WebSq = df.apportionment$f.WebSq,
                                      f.TPoly = df.apportionment$f.TPoly,
                                      Qf = Qf))
@@ -180,10 +184,12 @@ for (ts in ts.all){
 # combine transient with MODFLOW
 df.transient.modflow <- 
   full_join(df.transient, df_MODFLOW[,c("WellNum", "SegNum", "depletion.prc.modflow")], by=c("WellNum", "SegNum")) %>% 
-  transform(Qf.InvDistSq = Qf*f.InvDistSq,
+  transform(Qf.InvDist = Qf*f.InvDist,
+            Qf.InvDistSq = Qf*f.InvDistSq,
+            Qf.Web = Qf*f.Web,
             Qf.WebSq = Qf*f.WebSq,
             Qf.TPoly = Qf*f.TPoly) %>% 
-  dplyr::select(time, WellNum, SegNum, Qf.InvDistSq, Qf.WebSq, Qf.TPoly, depletion.prc.modflow) %>% 
+  dplyr::select(time, WellNum, SegNum, Qf.InvDist, Qf.InvDistSq, Qf.Web, Qf.WebSq, Qf.TPoly, depletion.prc.modflow) %>% 
   melt(id=c("time", "WellNum", "SegNum", "depletion.prc.modflow"),
        value.name = "depletion.prc", variable.name="method") %>% 
   replace_na(list(depletion.prc = 0, depletion.prc.modflow = 0)) %>% 
@@ -210,8 +216,12 @@ df.fit.transient <-
 ggplot(df.fit.transient, aes(x=time, y=KGE.overall, color=method)) +
   annotate("rect", ymin=-Inf, ymax=Inf, xmin=min(df.fit.transient$time), xmax=3650, 
            fill=col.gray, alpha=0.25) +
+  geom_hline(yintercept=df.fit.SS$KGE.overall[df.fit.SS$method=="f.InvDist"], 
+             linetype="dashed", color=pal.method["f.InvDist"]) +
   geom_hline(yintercept=df.fit.SS$KGE.overall[df.fit.SS$method=="f.InvDistSq"], 
              linetype="dashed", color=pal.method["f.InvDistSq"]) +
+  geom_hline(yintercept=df.fit.SS$KGE.overall[df.fit.SS$method=="f.Web"], 
+             linetype="dashed", color=pal.method["f.Web"]) +
   geom_hline(yintercept=df.fit.SS$KGE.overall[df.fit.SS$method=="f.WebSq"], 
              linetype="dashed", color=pal.method["f.WebSq"]) +
   geom_hline(yintercept=df.fit.SS$KGE.overall[df.fit.SS$method=="f.TPoly"], 
