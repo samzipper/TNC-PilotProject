@@ -93,8 +93,6 @@ shp.streams <- readOGR(dsn=file.path("modflow", "input"), layer="iriv")
 names(shp.streams) <- c("OBJECTID", "REACHCODE", "TerminalPa", "lineLength_m", "TotDASqKM", "StreamOrde", 
                         "TerminalFl", "SLOPE", "FromNode", "ToNode", "SegNum")
 
-# figure out which segments are part of Navarro
-segs.navarro <- shp.streams@data$SegNum[shp.streams@data$TerminalPa==outlet.TerminalPa]
 shp.streams@data$width_m <- WidthFromDA(DA=shp.streams@data$TotDASqKM, w.min=1, w.max=100)
 df.apportion <- left_join(df.apportion, shp.streams@data[,c("SegNum", "width_m")], by="SegNum")
 
@@ -102,13 +100,12 @@ df.apportion <- left_join(df.apportion, shp.streams@data[,c("SegNum", "width_m")
 
 # get rid of any segments with < 0.0001 depletion apportionment, or
 # WellNum that you don't have MODFLOW results for
-f.thres <- 0.0001  # =0.01%
+f.thres <- 0.001  # =0.1%
 df.apportion <- 
   subset(df.apportion, 
          (f.InvDist > f.thres | f.InvDistSq > f.thres |
             f.Web > f.thres | f.WebSq > f.thres | f.TPoly > f.thres) &
-           WellNum %in% unique(df.MODFLOW$WellNum) & 
-           SegNum %in% segs.navarro)
+           WellNum %in% unique(df.MODFLOW$WellNum))
 
 # loop through timesteps
 start.flag <- T

@@ -63,9 +63,9 @@ riverbed_thickness <- 1
 # Prep input data ---------------------------------------------------------
 
 ## what depletion apportionment output do you want?
-#apportionment_name <- "_LocalArea"      # output from Navarro_DepletionApportionment_LocalArea.R
+apportionment_name <- "_LocalArea"      # output from Navarro_DepletionApportionment_LocalArea.R
 #apportionment_name <- "_AdjacentOnly"   # output from Navarro_DepletionApportionment_AdjacentOnly.R
-apportionment_name <- "_WholeDomain"   # output from Navarro_DepletionApportionment_WholeDomain.R
+#apportionment_name <- "_WholeDomain"   # output from Navarro_DepletionApportionment_WholeDomain.R
 #apportionment_name <- "_MaskDryStreams" # output from Navarro_DepletionApportionment_MaskDryStreams.R
 
 ## load depletion apportionment output
@@ -111,13 +111,12 @@ df.apportion <- left_join(df.apportion, shp.streams@data[,c("SegNum", "width_m")
 
 # get rid of any segments with < 0.0001 depletion apportionment, or
 # WellNum that you don't have MODFLOW results for
-f.thres <- 0.0001  # =0.01%
+f.thres <- 0.001  # =0.01%
 df.apportion <- 
   subset(df.apportion, 
          (f.InvDist > f.thres | f.InvDistSq > f.thres |
             f.Web > f.thres | f.WebSq > f.thres | f.TPoly > f.thres) &
-           WellNum %in% unique(df.MODFLOW$WellNum) & 
-           SegNum %in% segs.navarro)
+           WellNum %in% unique(df.MODFLOW$WellNum))
 
 # loop through well-seg-analytical combos
 start.flag <- T

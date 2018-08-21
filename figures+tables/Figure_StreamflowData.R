@@ -72,7 +72,10 @@ p.Q.DOY <-
   annotate("text", x=60, y=0.3, label="Mean Annual\nBaseflow Hydrograph", color=col.cat.blu) +
   scale_y_continuous(name="Discharge [mm/d]", trans="log10", breaks=(10^seq(-3,2)), labels=c("0.001", "0.01", "0.1", "1", "10", "100")) +
   scale_x_continuous(name="Day of Year", limits=c(0,366), breaks=seq(0,360,90), expand=c(0,0))
+ggsave(file.path("figures+tables", "Figure_StreamflowData.png"),
+       p.Q.DOY, width=190, height=65, units="mm")
 
+### mean monthly trends - don't need for first paper
 ## mean monthly trends
 # mean month trends table
 df.mo.trend <- data.frame(month=seq(1,12),
