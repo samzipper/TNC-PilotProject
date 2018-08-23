@@ -2,6 +2,7 @@
 # This script holds packages, paths, color schemes, etc which are shared among scripts.
 
 ## packages
+require(cowplot)
 require(ggtern)
 require(ggplot2)
 require(dplyr)

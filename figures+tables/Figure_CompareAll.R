@@ -1,6 +1,5 @@
-## Figure_CompareApportionment.R
-#' This figure compares the different depletion apportionment equations.
-#' It requires output from Navarro_DecideBestMethod_01_CompareDepletionApportionment.R
+## Figure_CompareAll.R
+#' This figure compares all analytical depletion functions.
 
 source(file.path("src", "paths+packages.R"))
 
@@ -16,9 +15,9 @@ modflow_v <- "mfnwt"
 stream_BC_plot <- c("RIV")
 
 ## which conditions to plot
-analytical_plot <- "hunt"
+analytical_plot <- c("glover", "hunt")
 method_plot <- c("Qf.Web", "Qf.WebSq", "Qf.InvDist", "Qf.InvDistSq", "Qf.TPoly")
-domain_plot <- "Adjacent+Dynamic"
+domain_plot <- c("AdjacentOnly", "LocalArea", "WholeDomain", "Dynamic", "Adjacent+Dynamic")
 
 ## process data
 start.flag <- T
@@ -148,18 +147,45 @@ for (timeType in c("Transient", "Intermittent")) {
             transform(apportionment = apportionment_name,
                       pump = timeType)
           
+          # calculate fit
+          df.max.perf <- 
+            df.max %>% 
+            group_by(Time, stream_BC, pump, apportionment, analytical, method) %>% 
+            summarize(n.reach = sum(is.finite(SegNum.modflow)),
+                      n.match = sum(SegNum.modflow==SegNum.analytical),
+                      n.noMatch.noAnalytical = sum(SegNum.analytical==9999),
+                      MSE.match = MSE(depletion.prc, depletion.prc.modflow),
+                      KGE.match = KGE(depletion.prc, depletion.prc.modflow, method="2012")) %>%
+            transform(prc.match = n.match/n.reach,
+                      prc.noAnalytical = n.noMatch.noAnalytical/n.reach,
+                      Streams = "Qd > 0.1%")
+          
+          df.max.perf.gt5 <-
+            df.max %>% 
+            subset(depletion.prc.modflow > 0.05) %>% 
+            group_by(Time, stream_BC, pump, apportionment, analytical, method) %>% 
+            summarize(n.reach = sum(is.finite(SegNum.modflow)),
+                      n.match = sum(SegNum.modflow==SegNum.analytical),
+                      n.noMatch.noAnalytical = sum(SegNum.analytical==9999),
+                      MSE.match = MSE(depletion.prc, depletion.prc.modflow),
+                      KGE.match = KGE(depletion.prc, depletion.prc.modflow, method="2012")) %>%
+            transform(prc.match = n.match/n.reach,
+                      prc.noAnalytical = n.noMatch.noAnalytical/n.reach,
+                      Streams = "Qd > 5%")
           
           if (start.flag) {
             df.fit.all <- df
             df.fit.gt5.all <- df.gt5
             df.fit.sum <- df.sum
-            df.max.all <- df.max
+            df.fit.match <- df.max.perf
+            df.fit.match.gt5 <- df.max.perf.gt5
             start.flag <- F
           } else {
             df.fit.all <- rbind(df.fit.all, df)
             df.fit.gt5.all <- rbind(df.fit.gt5.all, df.gt5)
             df.fit.sum <- rbind(df.fit.sum, df.sum)
-            df.max.all <- rbind(df.max.all, df.max)
+            df.fit.match <- rbind(df.fit.match, df.max.perf)
+            df.fit.match.gt5 <- rbind(df.fit.match.gt5, df.max.perf.gt5)
           }
           
           # status update
@@ -171,34 +197,8 @@ for (timeType in c("Transient", "Intermittent")) {
   }  # end of apportionment_name loop
 }  # end of timeType loop
 
-## calculate fit statistics
-# calculate match percent
-df.fit.match <-
-  df.max.all %>% 
-  group_by(Time, stream_BC, pump, apportionment, analytical, method) %>% 
-  summarize(n.reach = sum(is.finite(SegNum.modflow)),
-            n.match = sum(SegNum.modflow==SegNum.analytical),
-            n.noMatch.noAnalytical = sum(SegNum.analytical==9999),
-            MSE.match = MSE(depletion.prc, depletion.prc.modflow),
-            KGE.match = KGE(depletion.prc, depletion.prc.modflow, method="2012")) %>%
-  transform(prc.match = n.match/n.reach,
-            prc.noAnalytical = n.noMatch.noAnalytical/n.reach,
-            Streams = "Qd > 0.1%")
-
-df.fit.match.gt5 <-
-  df.max.all %>% 
-  subset(depletion.prc.modflow > 0.05) %>% 
-  group_by(Time, stream_BC, pump, apportionment, analytical, method) %>% 
-  summarize(n.reach = sum(is.finite(SegNum.modflow)),
-            n.match = sum(SegNum.modflow==SegNum.analytical),
-            n.noMatch.noAnalytical = sum(SegNum.analytical==9999),
-            MSE.match = MSE(depletion.prc, depletion.prc.modflow),
-            KGE.match = KGE(depletion.prc, depletion.prc.modflow, method="2012")) %>%
-  transform(prc.match = n.match/n.reach,
-            prc.noAnalytical = n.noMatch.noAnalytical/n.reach,
-            Streams = "Qd > 5%")
-
-df.match.plot <- rbind(df.fit.match, df.fit.match.gt5)
+#df.match.plot <- rbind(df.fit.match, df.fit.match.gt5)
+df.match.plot <- df.fit.match
 df.match.plot$apportionment <- factor(df.match.plot$apportionment, 
                                       levels=c("WholeDomain", "LocalArea", "AdjacentOnly", "Dynamic", "Adjacent+Dynamic"))
 df.match.plot$method <- factor(df.match.plot$method, levels=c("Qf.Web", "Qf.WebSq", "Qf.InvDist", "Qf.InvDistSq", "Qf.TPoly"))
@@ -248,19 +248,15 @@ p.match.prc <-
   geom_rect(data=df.NoPump.times, 
             aes(xmin=starts/365, xmax=stops/365, ymin=-Inf, ymax=Inf), 
             fill=col.gray, alpha=0.25) +
-  geom_line(aes(x=Time/365, y=prc.match, color=method, linetype=Streams)) +
+  geom_line(aes(x=Time/365, y=prc.match, group=interaction(apportionment, analytical, method)), color="black", alpha=0.25) +
   facet_wrap(pump ~ ., ncol=2, 
              labeller=as_labeller(c("Transient"="Continuous Pumping", "Intermittent"="Intermittent Pumping"))) +
-  scale_linetype_discrete(name="Segments\nEvaluated") +
   scale_x_continuous(name="Time [years]", expand=c(0,0), breaks=seq(0,10,2)) +
   scale_y_continuous(name="% of Wells where\nMost Affected Reach is\nCorrectly Identified", 
                      limits=c(0,1), expand=c(0,0), breaks=seq(0,1,0.25),
                      labels=scales::percent) +
-  scale_color_manual(name="Depletion\nApportionment\nEquation", values=pal.method.Qf, labels=labels.method.Qf) +
   theme(legend.position="bottom",
-        strip.text=element_blank()) +
-  guides(colour = guide_legend(order=1, nrow=2), 
-         linetype = guide_legend(order=2, nrow=2))
+        strip.text=element_blank())
 
 ## plot of KGE, most affected reach
 p.match.KGE <- 
@@ -274,13 +270,11 @@ p.match.KGE <-
             aes(xmin=starts/365, xmax=stops/365, ymin=-Inf, ymax=Inf), 
             fill=col.gray, alpha=0.25) +
   geom_hline(yintercept=0, color=col.gray) +
-  geom_line(aes(x=Time/365, y=KGE.match, color=method)) +
+  geom_line(aes(x=Time/365, y=KGE.match, group=interaction(apportionment, analytical, method)), color="black", alpha=0.25) +
   facet_wrap(pump ~ ., ncol=2, 
              labeller=as_labeller(c("Transient"="Continuous Pumping", "Intermittent"="Intermittent Pumping"))) +
-  scale_linetype_discrete(name="Segments\nEvaluated") +
   scale_x_continuous(name="Time [years]", expand=c(0,0), breaks=seq(0,10,2)) +
   scale_y_continuous(name="KGE, Most\nAffected Reach", limits=c(min(df.match.plot$KGE.match), 1)) +
-  scale_color_manual(name="Depletion\nApportionment\nEquation", values=pal.method.Qf, labels=labels.method.Qf) +
   theme(strip.text=element_blank()) +
   NULL
 
@@ -292,12 +286,11 @@ p.overall.KGE <-
             aes(xmin=starts/365, xmax=stops/365, ymin=-Inf, ymax=Inf), 
             fill=col.gray, alpha=0.25) +
   geom_hline(yintercept=0, color=col.gray) +
-  geom_line(aes(x=Time/365, y=KGE.overall, color=method)) +
+  geom_line(aes(x=Time/365, y=KGE.overall, group=interaction(apportionment, analytical, method)), color="black", alpha=0.25) +
   facet_wrap(pump ~ ., ncol=2, 
              labeller=as_labeller(c("Transient"="(a) Continuous Pumping", "Intermittent"="(b) Intermittent Pumping"))) +
   scale_x_continuous(name="Time [years]", expand=c(0,0), breaks=seq(0,10,2)) +
   scale_y_continuous(name="KGE,\nAll Reaches", limits=c(min(df.overall.plot$KGE.overall), 1)) +
-  scale_color_manual(name="Depletion\nApportionment\nEquation", values=pal.method.Qf, labels=labels.method.Qf) +
   theme(strip.text=element_blank()) +
   NULL
 
@@ -310,12 +303,11 @@ p.sum.KGE <-
             aes(xmin=starts/365, xmax=stops/365, ymin=-Inf, ymax=Inf), 
             fill=col.gray, alpha=0.25) +
   geom_hline(yintercept=0, color=col.gray) +
-  geom_line(aes(x=Time/365, y=KGE.sum, color=method)) +
+  geom_line(aes(x=Time/365, y=KGE.sum, group=interaction(apportionment, analytical, method)), color="black", alpha=0.25) +
   facet_wrap(pump ~ ., ncol=2, 
              labeller=as_labeller(c("Transient"="(a) Continuous Pumping", "Intermittent"="(b) Intermittent Pumping"))) +
   scale_x_continuous(name="Time [years]", expand=c(0,0), breaks=seq(0,10,2)) +
   scale_y_continuous(name="KGE of Total\nCapture Fraction", limits=c(min(df.fit.sum$KGE.sum), 1)) +
-  scale_color_manual(name="Depletion\nApportionment\nEquation", values=pal.method.Qf, labels=labels.method.Qf) +
   theme(strip.text=element_blank()) +
   NULL
 
@@ -341,7 +333,7 @@ p.sum.KGE <-
 #        width=190, height=200, units="mm")
 
 # version without axis or legend which can be added with InkScape
-save_plot(file.path("figures+tables", "Figure_CompareApportionment_NoText.pdf"),
+save_plot(file.path("figures+tables", "Figure_CompareAll_NoText.pdf"),
           plot_grid(p.match.prc + theme(legend.position="none",
                                         axis.title.x = element_blank(),
                                         axis.text.x = element_blank()),
@@ -356,29 +348,3 @@ save_plot(file.path("figures+tables", "Figure_CompareApportionment_NoText.pdf"),
                                       axis.text.x = element_blank()),
                     ncol=1, align="v", axis="l"),
           ncol = 1, nrow = 4, base_width = 190/25.4, base_height=50/25.4, device=cairo_pdf)
-
-
-#### (2) Figure for SI: Comparison among steady-state results
-## read in fit statistics
-df.fit.SS <- read.csv(file.path("results", "Navarro_DecideBestMethod_01_CompareDepletionApportionment_fit-SS.csv"),
-                      stringsAsFactors=F)
-df.fit.SS$apportionment <- factor(df.fit.SS$apportionment, levels=c("AdjacentOnly", "LocalArea", "WholeDomain"))
-df.fit.SS$method <- factor(df.fit.SS$method, levels=c("f.Web", "f.WebSq", "f.InvDist", "f.InvDistSq", "f.TPoly"))
-
-df.fit.SS %>% 
-  subset(stream_BC %in% stream_BC_plot & 
-           apportionment==domain_plot_SS) %>% 
-  dplyr::select(method, apportionment, KGE.overall) %>% 
-  melt(id=c("method", "apportionment"),
-       variable.name="FitStatistic") %>%
-  ggplot(aes(x=method, y=value, fill=method)) +
-  geom_bar(stat="identity", position="dodge") +
-  geom_hline(yintercept=0, color=col.gray) +
-  scale_x_discrete(name="Depletion Apportionment Equation", 
-                   labels=labels.method) +
-  scale_y_continuous(name="Steady-State KGE") +
-  #facet_wrap(~FitStatistic, scales="free_y", ncol=1) +
-  scale_fill_manual(values=pal.method, guide=F) +
-  ggsave(file.path("figures+tables", "Figure_SI_CompareApportionment_SteadyState.png"),
-         width=95, height=60, units="mm") +
-  NULL

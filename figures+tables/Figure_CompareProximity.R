@@ -15,7 +15,7 @@ f.thres <- 0.001  # 0.1%
 modflow_v <- "mfnwt"
 stream_BC_plot <- c("RIV")
 
-## which analytical to plot
+## which conditions to plot
 analytical_plot <- "hunt"
 method_plot <- "Qf.WebSq"
 domain_plot <- c("AdjacentOnly", "LocalArea", "WholeDomain", "Dynamic", "Adjacent+Dynamic")
@@ -203,6 +203,7 @@ df.match.plot$apportionment <- factor(df.match.plot$apportionment,
                                       levels=c("WholeDomain", "LocalArea", "AdjacentOnly", "Dynamic", "Adjacent+Dynamic"))
 df.match.plot$method <- factor(df.match.plot$method, levels=c("Qf.Web", "Qf.WebSq", "Qf.InvDist", "Qf.InvDistSq", "Qf.TPoly"))
 df.match.plot$pump <- factor(df.match.plot$pump, levels=c("Transient", "Intermittent"))
+df.match.plot$analytical <- factor(df.match.plot$analytical, levels=c("glover", "hunt"))
 
 ## overall statistics
 #df.overall.plot <- rbind(df.fit.all, df.fit.gt5.all)
@@ -210,11 +211,13 @@ df.overall.plot <- df.fit.all
 df.overall.plot$apportionment <- factor(df.overall.plot$apportionment, levels=c("WholeDomain", "LocalArea", "AdjacentOnly", "Dynamic", "Adjacent+Dynamic"))
 df.overall.plot$pump <- factor(df.overall.plot$pump, levels=c("Transient", "Intermittent"))
 df.overall.plot$method <- factor(df.overall.plot$method, levels=c("Qf.Web", "Qf.WebSq", "Qf.InvDist", "Qf.InvDistSq", "Qf.TPoly"))
+df.overall.plot$analytical <- factor(df.overall.plot$analytical, levels=c("glover", "hunt"))
 
 ## capture fraction statistics
 df.fit.sum$apportionment <- factor(df.fit.sum$apportionment, levels=c("WholeDomain", "LocalArea", "AdjacentOnly", "Dynamic", "Adjacent+Dynamic"))
 df.fit.sum$pump <- factor(df.fit.sum$pump, levels=c("Transient", "Intermittent"))
 df.fit.sum$method <- factor(df.fit.sum$method, levels=c("Qf.Web", "Qf.WebSq", "Qf.InvDist", "Qf.InvDistSq", "Qf.TPoly"))
+df.fit.sum$analytical <- factor(df.fit.sum$analytical, levels=c("glover", "hunt"))
 
 ## times for annotation
 ts.pump.start <- sum(days_in_month(seq(1,4))) + 1 # for Transient continuous pumping
@@ -239,8 +242,8 @@ df.NoPump.times <-
 p.match.prc <-
   df.match.plot %>% 
   subset(stream_BC %in% stream_BC_plot & 
-           apportionment==domain_plot &
-           analytical==analytical_plot) %>% 
+           apportionment %in% domain_plot &
+           analytical %in% analytical_plot) %>% 
   ggplot() +
   geom_rect(data=df.NoPump.times, 
             aes(xmin=starts/365, xmax=stops/365, ymin=-Inf, ymax=Inf), 
@@ -263,8 +266,8 @@ p.match.prc <-
 p.match.KGE <- 
   df.match.plot %>% 
   subset(stream_BC %in% stream_BC_plot & 
-           apportionment==domain_plot &
-           analytical==analytical_plot &
+           apportionment %in% domain_plot &
+           analytical %in% analytical_plot &
            Streams=="Qd > 0.1%") %>% 
   ggplot() +
   geom_rect(data=df.NoPump.times, 
