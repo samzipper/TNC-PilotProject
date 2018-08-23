@@ -6,10 +6,10 @@ source(file.path("src", "paths+packages.R"))
 
 #### (0) Prep various inputs, parameters, etc
 ## which depletion apportionment equation(s) to compare? winners from Navarro_DecideBestMethod_01_CompareDepletionApportionment.R
-methods.plot <- c("Qf.Web", "Qf.WebSq")  # options: c("Qf.InvDist", "Qf.InvDistSq", "Qf.Web", "Qf.WebSq", "Qf.TPoly")
+method_plot <- c("Qf.Web", "Qf.WebSq")  # options: c("Qf.InvDist", "Qf.InvDistSq", "Qf.Web", "Qf.WebSq", "Qf.TPoly")
 
 ## which analytical model to use? winner from Navarro_DecideBestMethod_02_CompareAnalytical.R
-analytical.plot <- "hunt"  # options: "hunt" or "glover"
+analytical_plot <- "hunt"  # options: "hunt" or "glover"
 
 ## what is the pumping rate?
 Qw <- -6*100*0.00378541  # [m3/d]
@@ -54,8 +54,8 @@ f.thres <- 0.001  # 0.1%
 #       paste0("Depletion_Analytical_", timeType, "_", apportionment_name, "_AllMethods+Wells+Reaches.csv") %>%
 #       file.path("results", .) %>%
 #       read.csv(stringsAsFactors=F) %>%
-#       subset(analytical %in% analytical.plot) %>%
-#       dplyr::select(c("SegNum", "WellNum", "Time", "analytical", methods.plot)) %>%
+#       subset(analytical %in% analytical_plot) %>%
+#       dplyr::select(c("SegNum", "WellNum", "Time", "analytical", method_plot)) %>%
 #       melt(id=c("SegNum", "WellNum", "Time", "analytical"),
 #            value.name="depletion.prc", variable.name="method") %>%
 #       subset(depletion.prc > f.thres)

@@ -66,6 +66,7 @@ labs.analytical <- c("glover"="Glover", "hunt"="Hunt")
 labs.method <- c("Qf.InvDist"="Inverse\nDistance", "Qf.InvDistSq"="Inverse\nDistance\nSquared",
                  "Qf.Web"="Web", "Qf.WebSq"="Web\nSquared", "Qf.TPoly"="Thiessen\nPolygon")
 labs.stream_BC <- c("RIV"="RIV", "SFR"="SFR")
+labs.pump <- c("Transient"="Continuous", "Intermittent"="Intermittent")
 
 ## CRS for WGS plots
 crs.WGS <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
@@ -134,11 +135,17 @@ col.cat.org <- "#f58231"   # orange
 col.cat.red <- "#e6194b"   # red
 col.cat.blu <- "#0082c8"   # blue
 col.gray <- "gray65"       # gray for annotation lines, etc
+
 pal.method <- c("f.TPoly"=col.cat.grn, "f.InvDist"=col.cat.yel, "f.InvDistSq"=col.cat.org, "f.Web"=col.cat.red, "f.WebSq"=col.cat.blu)
 pal.method.Qf <- c("Qf.TPoly"=col.cat.grn, "Qf.InvDist"=col.cat.yel, "Qf.InvDistSq"=col.cat.org, "Qf.Web"=col.cat.red, "Qf.WebSq"=col.cat.blu, "Qf.NoApport"="black")
 labels.method <- c("f.TPoly"="Thiessen", "f.InvDist"="Inverse", "f.InvDistSq"="Inverse\nSquared", "f.Web"="Web", "f.WebSq"="Web\nSquared")
 labels.method.Qf <- c("Qf.TPoly"="Thiessen", "Qf.InvDist"="Inverse", "Qf.InvDistSq"="Inverse\nSquared", "Qf.Web"="Web", "Qf.WebSq"="Web\nSquared", "Qf.NoApport"="No\nApportionment")
-labels.apportionment <- c("WholeDomain"="Whole Domain", "AdjacentOnly"="Adjacent", "LocalArea"="Local Area", "Dynamic"="Dynamic (10 yrs)")
+
+pal.apportionment <- c("AdjacentOnly"="#a6cee3", "LocalArea"="#1f78b4", "WholeDomain"="#b2df8a", "Dynamic"="#33a02c", "Adjacent+Dynamic"="#fb9a99")
+labels.apportionment <- c("WholeDomain"="Whole Domain", "AdjacentOnly"="Adjacent", "LocalArea"="Local Area", "Dynamic"="Expanding", "Adjacent+Dynamic"="Adjacent +\nExpanding")
+
+pal.analytical <- c("hunt"="#134BCD", "glover"="#FFAA00")  #http://paletton.com/#uid=23L0u0k-3I4k-LXqtJlHyu5Ipnm
+labels.analytical <- c("hunt"="Hunt", "glover"="Glover")
 
 # NLCD color palette
 pal.NLCD <- c("11"="#5475A8", 
