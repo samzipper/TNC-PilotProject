@@ -132,6 +132,9 @@ for (timeType in c("Transient", "Intermittent")) {
                       stringsAsFactors=F) %>%
             group_by(stream_BC, pump, analytical, apportionment, method, Time) %>%
             summarize(MSE.sum = MSE(Qf.total.analytical, Qf.total.modflow),
+                      RMSE.sum = rmse(Qf.total.analytical, Qf.total.modflow),
+                      MAE.sum = mae(Qf.total.analytical, Qf.total.modflow),
+                      Qf.total.MODFLOW.mean = mean(Qf.total.modflow),
                       KGE.sum = KGE(Qf.total.analytical, Qf.total.modflow, method="2012"))
           
           ## most affected segment
@@ -180,6 +183,9 @@ df.fit.match <-
             n.match = sum(SegNum.modflow==SegNum.analytical),
             n.noMatch.noAnalytical = sum(SegNum.analytical==9999),
             MSE.match = MSE(depletion.prc, depletion.prc.modflow),
+            RMSE.match = rmse(depletion.prc, depletion.prc.modflow),
+            MAE.match = mae(depletion.prc, depletion.prc.modflow),
+            depletion.prc.modflow.mean = mean(depletion.prc.modflow),
             KGE.match = KGE(depletion.prc, depletion.prc.modflow, method="2012")) %>%
   transform(prc.match = n.match/n.reach,
             prc.noAnalytical = n.noMatch.noAnalytical/n.reach,
@@ -193,6 +199,9 @@ df.fit.match.gt5 <-
             n.match = sum(SegNum.modflow==SegNum.analytical),
             n.noMatch.noAnalytical = sum(SegNum.analytical==9999),
             MSE.match = MSE(depletion.prc, depletion.prc.modflow),
+            RMSE.match = rmse(depletion.prc, depletion.prc.modflow),
+            MAE.match = mae(depletion.prc, depletion.prc.modflow),
+            depletion.prc.modflow.mean = mean(depletion.prc.modflow),
             KGE.match = KGE(depletion.prc, depletion.prc.modflow, method="2012")) %>%
   transform(prc.match = n.match/n.reach,
             prc.noAnalytical = n.noMatch.noAnalytical/n.reach,
@@ -253,7 +262,7 @@ p.match.prc <-
              labeller=as_labeller(c("Transient"="Continuous Pumping", "Intermittent"="Intermittent Pumping"))) +
   scale_linetype_discrete(name="Segments\nEvaluated") +
   scale_x_continuous(name="Time [years]", expand=c(0,0), breaks=seq(0,10,2)) +
-  scale_y_continuous(name="% of Wells where\nMost Affected Reach is\nCorrectly Identified", 
+  scale_y_continuous(name="% of Wells where\nMost Affected Segment is\nCorrectly Identified", 
                      limits=c(0,1), expand=c(0,0), breaks=seq(0,1,0.25),
                      labels=scales::percent) +
   scale_color_manual(name="Depletion\nApportionment\nEquation", values=pal.method.Qf, labels=labels.method.Qf) +
@@ -262,8 +271,13 @@ p.match.prc <-
   guides(colour = guide_legend(order=1, nrow=2), 
          linetype = guide_legend(order=2, nrow=2))
 
-## plot of KGE, most affected reach
-p.match.KGE <- 
+subset(df.match.plot, pump=="Transient" & method=="Qf.Web" & Streams=="Qd > 0.1%" & Time > 3600)
+subset(df.match.plot, pump=="Transient" & method=="Qf.Web" & Streams=="Qd > 5%" & Time > 3600)
+subset(df.match.plot, pump=="Intermittent" & method=="Qf.Web" & Streams=="Qd > 0.1%" & Time > 3600)
+subset(df.match.plot, pump=="Intermittent" & method=="Qf.Web" & Streams=="Qd > 5%" & Time > 3600)
+
+## plot of fit, most affected reach
+p.match.fit <- 
   df.match.plot %>% 
   subset(stream_BC %in% stream_BC_plot & 
            apportionment %in% domain_plot &
@@ -274,18 +288,20 @@ p.match.KGE <-
             aes(xmin=starts/365, xmax=stops/365, ymin=-Inf, ymax=Inf), 
             fill=col.gray, alpha=0.25) +
   geom_hline(yintercept=0, color=col.gray) +
-  geom_line(aes(x=Time/365, y=KGE.match, color=method)) +
+  geom_line(aes(x=Time/365, y=MAE.match, color=method)) +
+  geom_line(data=subset(df.match.plot, analytical=="hunt" & apportionment=="Adjacent+Dynamic" & method=="Qf.WebSq" & Streams=="Qd > 0.1%"), 
+            aes(x=Time/365, y=depletion.prc.modflow.mean), color="black") +
   facet_wrap(pump ~ ., ncol=2, 
              labeller=as_labeller(c("Transient"="Continuous Pumping", "Intermittent"="Intermittent Pumping"))) +
   scale_linetype_discrete(name="Segments\nEvaluated") +
   scale_x_continuous(name="Time [years]", expand=c(0,0), breaks=seq(0,10,2)) +
-  scale_y_continuous(name="KGE, Most\nAffected Reach", limits=c(min(df.match.plot$KGE.match), 1)) +
+  scale_y_continuous(name="MAE of Depletion Potential,\nMost Affected Segment") +
   scale_color_manual(name="Depletion\nApportionment\nEquation", values=pal.method.Qf, labels=labels.method.Qf) +
   theme(strip.text=element_blank()) +
   NULL
 
 ## plot of KGE for all wells/reaches
-p.overall.KGE <-
+p.overall <-
   df.overall.plot %>% 
   ggplot() +
   geom_rect(data=df.NoPump.times, 
@@ -296,13 +312,13 @@ p.overall.KGE <-
   facet_wrap(pump ~ ., ncol=2, 
              labeller=as_labeller(c("Transient"="(a) Continuous Pumping", "Intermittent"="(b) Intermittent Pumping"))) +
   scale_x_continuous(name="Time [years]", expand=c(0,0), breaks=seq(0,10,2)) +
-  scale_y_continuous(name="KGE,\nAll Reaches", limits=c(min(df.overall.plot$KGE.overall), 1)) +
+  scale_y_continuous(name="KGE,\nAll Segments", limits=c(min(df.overall.plot$KGE.overall), 1)) +
   scale_color_manual(name="Depletion\nApportionment\nEquation", values=pal.method.Qf, labels=labels.method.Qf) +
   theme(strip.text=element_blank()) +
   NULL
 
-## plot of KGE for cumulative capture fraction
-p.sum.KGE <- 
+## plot of fit for cumulative capture fraction
+p.sum <- 
   df.fit.sum %>% 
   subset(stream_BC %in% stream_BC_plot) %>% 
   ggplot() +
@@ -310,11 +326,13 @@ p.sum.KGE <-
             aes(xmin=starts/365, xmax=stops/365, ymin=-Inf, ymax=Inf), 
             fill=col.gray, alpha=0.25) +
   geom_hline(yintercept=0, color=col.gray) +
-  geom_line(aes(x=Time/365, y=KGE.sum, color=method)) +
+  geom_line(aes(x=Time/365, y=MAE.sum, color=method)) +
+  geom_line(data=subset(df.fit.sum, analytical=="hunt" & apportionment=="Adjacent+Dynamic" & method=="Qf.WebSq"), 
+            aes(x=Time/365, y=Qf.total.MODFLOW.mean), color="black") +
   facet_wrap(pump ~ ., ncol=2, 
              labeller=as_labeller(c("Transient"="(a) Continuous Pumping", "Intermittent"="(b) Intermittent Pumping"))) +
   scale_x_continuous(name="Time [years]", expand=c(0,0), breaks=seq(0,10,2)) +
-  scale_y_continuous(name="KGE of Total\nCapture Fraction", limits=c(min(df.fit.sum$KGE.sum), 1)) +
+  scale_y_continuous(name="MAE of Total\nCapture Fraction") +
   scale_color_manual(name="Depletion\nApportionment\nEquation", values=pal.method.Qf, labels=labels.method.Qf) +
   theme(strip.text=element_blank()) +
   NULL
@@ -345,17 +363,17 @@ save_plot(file.path("figures+tables", "Figure_CompareApportionment_NoText.pdf"),
           plot_grid(p.match.prc + theme(legend.position="none",
                                         axis.title.x = element_blank(),
                                         axis.text.x = element_blank()),
-                    p.match.KGE + theme(legend.position="none",
+                    p.match.fit + theme(legend.position="none",
                                         axis.title.x = element_blank(),
                                         axis.text.x = element_blank()),
-                    p.overall.KGE + theme(legend.position="none",
-                                          axis.title.x = element_blank(),
-                                          axis.text.x = element_blank()),
-                    p.sum.KGE + theme(legend.position="none",
+                    p.overall + theme(legend.position="none",
                                       axis.title.x = element_blank(),
                                       axis.text.x = element_blank()),
+                    p.sum + theme(legend.position="none",
+                                  axis.title.x = element_blank(),
+                                  axis.text.x = element_blank()),
                     ncol=1, align="v", axis="l"),
-          ncol = 1, nrow = 4, base_width = 190/25.4, base_height=50/25.4, device=cairo_pdf)
+          ncol = 1, nrow = 4, base_width = 185/25.4, base_height=50/25.4, device=cairo_pdf)
 
 
 #### (2) Figure for SI: Comparison among steady-state results
