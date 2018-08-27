@@ -20,7 +20,7 @@ f.thres <- 0.001  # 0.1%
 # ## only have to run this once
 # start.flag <- T
 # for (timeType in c("Intermittent", "Transient")) {
-#   
+# 
 #   ## open MODFLOW results
 #   df.MODFLOW.RIV <-
 #     file.path("modflow","HTC", "Navarro", timeType, "RIV", modflow_v, "Depletion_MODFLOW.csv") %>%
@@ -29,7 +29,7 @@ f.thres <- 0.001  # 0.1%
 #     transform(depletion.prc.modflow = depletion_m3.d/Qw,          # use prescribed pumping rate
 #               stream_BC = "RIV",
 #               stringsAsFactors=F)
-#   
+# 
 #   #df.MODFLOW.SFR <-
 #   #  file.path("modflow","HTC", "Navarro", timeType, "SFR", modflow_v, "Depletion_MODFLOW.csv") %>%
 #   #  read.csv(stringsAsFactors=F) %>%
@@ -37,11 +37,11 @@ f.thres <- 0.001  # 0.1%
 #   #  transform(depletion.prc.modflow = depletion_m3.d/Qw,          # use prescribed pumping rate
 #   #            stream_BC = "SFR",
 #   #            stringsAsFactors=F)
-#   
+# 
 #   #df.MODFLOW <- rbind(df.MODFLOW.RIV, df.MODFLOW.SFR)
 #   df.MODFLOW <- df.MODFLOW.RIV
 #   df.MODFLOW$Time <- round(df.MODFLOW$Time, 1)
-#   
+# 
 #   ## for each stream_BC, WellNum, and Time find the most affected segment
 #   df.MODFLOW.most <-
 #     df.MODFLOW %>%
@@ -49,13 +49,13 @@ f.thres <- 0.001  # 0.1%
 #     #group_by(stream_BC, WellNum, Time) %>%
 #     group_by(WellNum, Time) %>%
 #     filter(depletion.prc.modflow==max(depletion.prc.modflow))
-#   
+# 
 #   ## Load output from Navarro_DecideBestMethod_04_TweakParameters.R
 #   df.analytical <- read.csv(file.path("results", paste0("Navarro_DecideBestMethod_04_TweakParameters-", timeType, ".csv")),
 #                             stringsAsFactors=F)
 #   df.analytical$Time <- round(df.analytical$Time, 1)
 #   colnames(df.analytical)[colnames(df.analytical)=="Qf"] <- "depletion.prc"
-#   
+# 
 #   ## for each stream_BC, WellNum, and Time find the most affected segment
 #   df.analytical.max <-
 #     df.analytical %>%
@@ -63,7 +63,7 @@ f.thres <- 0.001  # 0.1%
 #     group_by(Qf.thres, web.exp, WellNum, Time) %>%
 #     filter(depletion.prc == max(depletion.prc)) %>%
 #     dplyr::select(Time, WellNum, SegNum, Qf.thres, web.exp)
-#   
+# 
 #   for (qt in unique(df.analytical$Qf.thres)) {
 #     for (w in unique(df.analytical$web.exp)) {
 #       # combine max depletion segment info
@@ -79,7 +79,7 @@ f.thres <- 0.001  # 0.1%
 #         replace_na(list("SegNum.analytical"=9999, "Qf.thres"=qt, "web.exp"=w, "depletion.prc" = 0)) %>%
 #         transform(pump = timeType,
 #                   stringsAsFactors=F)
-#       
+# 
 #       # combine and calculate fit
 #       df <-
 #         df.MODFLOW %>%
@@ -90,12 +90,15 @@ f.thres <- 0.001  # 0.1%
 #         replace_na(list("web.exp"=w, "Qf.thres"=qt,  "depletion.prc"=0, "depletion.prc.modflow" = 0)) %>%
 #         group_by(Time, Qf.thres, web.exp) %>%
 #         summarize(bias.overall = pbias(depletion.prc, depletion.prc.modflow),
+#                   MAE.overall = mae(depletion.prc, depletion.prc.modflow),
+#                   depletion.prc.modflow.mean = mean(depletion.prc.modflow),
+#                   RMSE.overall = rmse(depletion.prc, depletion.prc.modflow),
 #                   MSE.overall = MSE(depletion.prc, depletion.prc.modflow),
 #                   KGE.overall = KGE(depletion.prc, depletion.prc.modflow, method="2012")) %>%
 #         transform(pump = timeType,
 #                   stringsAsFactors=F)
-#       
-#       
+# 
+# 
 #       if (start.flag) {
 #         df.max.all <- df.max
 #         df.fit.all <- df
@@ -104,10 +107,10 @@ f.thres <- 0.001  # 0.1%
 #         df.max.all <- rbind(df.max.all, df.max)
 #         df.fit.all <- rbind(df.fit.all, df)
 #       }
-#       
+# 
 #       # status update
 #       print(paste(timeType, w, qt, "complete"))
-#       
+# 
 #     }  # end of w loop
 #   }  # end of qt loop
 # }  # end of timeType loop
@@ -123,6 +126,9 @@ f.thres <- 0.001  # 0.1%
 #   summarize(n.reach = sum(is.finite(SegNum.modflow)),
 #             n.match = sum(SegNum.modflow==SegNum.analytical),
 #             bias.match = pbias(depletion.prc, depletion.prc.modflow),
+#             MAE.match = mae(depletion.prc, depletion.prc.modflow),
+#             depletion.prc.modflow.mean = mean(depletion.prc.modflow),
+#             RMSE.match = rmse(depletion.prc, depletion.prc.modflow),
 #             MSE.match = MSE(depletion.prc, depletion.prc.modflow),
 #             KGE.match = KGE(depletion.prc, depletion.prc.modflow, method="2012")) %>%
 #   transform(prc.match = n.match/n.reach)

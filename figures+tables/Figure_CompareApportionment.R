@@ -271,10 +271,10 @@ p.match.prc <-
   guides(colour = guide_legend(order=1, nrow=2), 
          linetype = guide_legend(order=2, nrow=2))
 
-subset(df.match.plot, pump=="Transient" & method=="Qf.Web" & Streams=="Qd > 0.1%" & Time > 3600)
-subset(df.match.plot, pump=="Transient" & method=="Qf.Web" & Streams=="Qd > 5%" & Time > 3600)
-subset(df.match.plot, pump=="Intermittent" & method=="Qf.Web" & Streams=="Qd > 0.1%" & Time > 3600)
-subset(df.match.plot, pump=="Intermittent" & method=="Qf.Web" & Streams=="Qd > 5%" & Time > 3600)
+subset(df.match.plot, pump=="Transient" & method=="Qf.WebSq" & Streams=="Qd > 0.1%" & Time > 3300)[,c("Time", "prc.match")]
+subset(df.match.plot, pump=="Intermittent" & method=="Qf.WebSq" & Streams=="Qd > 0.1%" & Time > 3300)[,c("Time", "prc.match")]
+subset(df.match.plot, pump=="Transient" & method=="Qf.WebSq" & Streams=="Qd > 5%" & Time > 3300)[,c("Time", "prc.match")]
+subset(df.match.plot, pump=="Intermittent" & method=="Qf.WebSq" & Streams=="Qd > 5%" & Time > 3300)[,c("Time", "prc.match")]
 
 ## plot of fit, most affected reach
 p.match.fit <- 
@@ -299,6 +299,9 @@ p.match.fit <-
   scale_color_manual(name="Depletion\nApportionment\nEquation", values=pal.method.Qf, labels=labels.method.Qf) +
   theme(strip.text=element_blank()) +
   NULL
+
+subset(df.match.plot, pump=="Transient" & method=="Qf.WebSq" & Streams=="Qd > 0.1%" & Time > 3200)[,c("Time", "MAE.match", "depletion.prc.modflow.mean")]
+subset(df.match.plot, pump=="Intermittent" & method=="Qf.WebSq" & Streams=="Qd > 0.1%" & Time > 3300)[,c("Time", "MAE.match", "depletion.prc.modflow.mean")]
 
 ## plot of KGE for all wells/reaches
 p.overall <-
@@ -336,6 +339,15 @@ p.sum <-
   scale_color_manual(name="Depletion\nApportionment\nEquation", values=pal.method.Qf, labels=labels.method.Qf) +
   theme(strip.text=element_blank()) +
   NULL
+
+subset(df.fit.sum, pump=="Transient" & method=="Qf.WebSq" & Time > 3200)[,c("Time", "MAE.sum", "Qf.total.MODFLOW.mean")]
+subset(df.fit.sum, pump=="Intermittent" & method=="Qf.WebSq" & Time > 3300)[,c("Time", "MAE.sum", "Qf.total.MODFLOW.mean")]
+
+qplot(MAE.sum, data=subset(df.fit.sum, pump=="Transient" & method=="Qf.WebSq" & Time > 3200))
+qplot(MAE.sum/Qf.total.MODFLOW.mean, data=subset(df.fit.sum, pump=="Transient" & method=="Qf.WebSq" & Time > 3200))
+
+qplot(MAE.sum, data=subset(df.fit.sum, pump=="Intermittent" & method=="Qf.WebSq" & Time > 3200))
+qplot(MAE.sum/Qf.total.MODFLOW.mean, data=subset(df.fit.sum, pump=="Intermittent" & method=="Qf.WebSq" & Time > 3200))
 
 ## combine and save
 
