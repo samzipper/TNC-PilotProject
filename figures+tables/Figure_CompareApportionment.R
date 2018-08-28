@@ -135,6 +135,8 @@ for (timeType in c("Transient", "Intermittent")) {
                       RMSE.sum = rmse(Qf.total.analytical, Qf.total.modflow),
                       MAE.sum = mae(Qf.total.analytical, Qf.total.modflow),
                       Qf.total.MODFLOW.mean = mean(Qf.total.modflow),
+                      Qf.total.MODFLOW.min = min(Qf.total.modflow),
+                      Qf.total.MODFLOW.max = max(Qf.total.modflow),
                       KGE.sum = KGE(Qf.total.analytical, Qf.total.modflow, method="2012"))
           
           ## most affected segment
@@ -186,6 +188,8 @@ df.fit.match <-
             RMSE.match = rmse(depletion.prc, depletion.prc.modflow),
             MAE.match = mae(depletion.prc, depletion.prc.modflow),
             depletion.prc.modflow.mean = mean(depletion.prc.modflow),
+            depletion.prc.modflow.min = min(depletion.prc.modflow),
+            depletion.prc.modflow.max = max(depletion.prc.modflow),
             KGE.match = KGE(depletion.prc, depletion.prc.modflow, method="2012")) %>%
   transform(prc.match = n.match/n.reach,
             prc.noAnalytical = n.noMatch.noAnalytical/n.reach,
@@ -202,6 +206,8 @@ df.fit.match.gt5 <-
             RMSE.match = rmse(depletion.prc, depletion.prc.modflow),
             MAE.match = mae(depletion.prc, depletion.prc.modflow),
             depletion.prc.modflow.mean = mean(depletion.prc.modflow),
+            depletion.prc.modflow.min = min(depletion.prc.modflow),
+            depletion.prc.modflow.max = max(depletion.prc.modflow),
             KGE.match = KGE(depletion.prc, depletion.prc.modflow, method="2012")) %>%
   transform(prc.match = n.match/n.reach,
             prc.noAnalytical = n.noMatch.noAnalytical/n.reach,
@@ -288,14 +294,14 @@ p.match.fit <-
             aes(xmin=starts/365, xmax=stops/365, ymin=-Inf, ymax=Inf), 
             fill=col.gray, alpha=0.25) +
   geom_hline(yintercept=0, color=col.gray) +
-  geom_line(aes(x=Time/365, y=MAE.match, color=method)) +
-  geom_line(data=subset(df.match.plot, analytical=="hunt" & apportionment=="Adjacent+Dynamic" & method=="Qf.WebSq" & Streams=="Qd > 0.1%"), 
-            aes(x=Time/365, y=depletion.prc.modflow.mean), color="black") +
+  geom_line(aes(x=Time/365, y=MAE.match/(depletion.prc.modflow.max-depletion.prc.modflow.min), color=method)) +
+ # geom_line(data=subset(df.match.plot, analytical=="hunt" & apportionment=="Adjacent+Dynamic" & method=="Qf.WebSq" & Streams=="Qd > 0.1%"), 
+#            aes(x=Time/365, y=depletion.prc.modflow.mean), color="black") +
   facet_wrap(pump ~ ., ncol=2, 
              labeller=as_labeller(c("Transient"="Continuous Pumping", "Intermittent"="Intermittent Pumping"))) +
   scale_linetype_discrete(name="Segments\nEvaluated") +
   scale_x_continuous(name="Time [years]", expand=c(0,0), breaks=seq(0,10,2)) +
-  scale_y_continuous(name="MAE of Depletion Potential,\nMost Affected Segment") +
+  scale_y_continuous(name="Normalized MAE,\nMost Affected Segment") +
   scale_color_manual(name="Depletion\nApportionment\nEquation", values=pal.method.Qf, labels=labels.method.Qf) +
   theme(strip.text=element_blank()) +
   NULL
@@ -329,13 +335,13 @@ p.sum <-
             aes(xmin=starts/365, xmax=stops/365, ymin=-Inf, ymax=Inf), 
             fill=col.gray, alpha=0.25) +
   geom_hline(yintercept=0, color=col.gray) +
-  geom_line(aes(x=Time/365, y=MAE.sum, color=method)) +
-  geom_line(data=subset(df.fit.sum, analytical=="hunt" & apportionment=="Adjacent+Dynamic" & method=="Qf.WebSq"), 
-            aes(x=Time/365, y=Qf.total.MODFLOW.mean), color="black") +
+  geom_line(aes(x=Time/365, y=MAE.sum/(Qf.total.MODFLOW.max-Qf.total.MODFLOW.min), color=method)) +
+  #geom_line(data=subset(df.fit.sum, analytical=="hunt" & apportionment=="Adjacent+Dynamic" & method=="Qf.WebSq"), 
+  #          aes(x=Time/365, y=Qf.total.MODFLOW.mean), color="black") +
   facet_wrap(pump ~ ., ncol=2, 
              labeller=as_labeller(c("Transient"="(a) Continuous Pumping", "Intermittent"="(b) Intermittent Pumping"))) +
   scale_x_continuous(name="Time [years]", expand=c(0,0), breaks=seq(0,10,2)) +
-  scale_y_continuous(name="MAE of Total\nCapture Fraction") +
+  scale_y_continuous(name="Normalized MAE,\nCapture Fraction") +
   scale_color_manual(name="Depletion\nApportionment\nEquation", values=pal.method.Qf, labels=labels.method.Qf) +
   theme(strip.text=element_blank()) +
   NULL

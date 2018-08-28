@@ -7,7 +7,7 @@ require(streamDepletr)
 
 #### (0) Prep various inputs, parameters, etc
 ## what is the best method?
-web.exp.best <- 1.75   # winner from Navarro_DecideBestMethod_05_CompareModels.R
+web.exp.best <- 2   # winner from Navarro_DecideBestMethod_05_CompareModels.R
 Qf.thres.best <- 0.01  # winner from Navarro_DecideBestMethod_05_CompareModels.R
 BC.plot <- "RIV"
 

@@ -70,11 +70,11 @@ p.match.fit <-
   geom_rect(data=df.NoPump.times, 
             aes(xmin=starts/365, xmax=stops/365, ymin=-Inf, ymax=Inf), 
             fill=col.gray, alpha=0.25) +
-  geom_line(aes(x=Time/365, y=MAE.match, color=factor(web.exp))) +
+  geom_line(aes(x=Time/365, y=MAE.match/(depletion.prc.modflow.max-depletion.prc.modflow.mean), color=factor(web.exp))) +
   facet_wrap(pump ~ ., ncol=2, 
              labeller=as_labeller(c("Transient"="Continuous Pumping", "Intermittent"="Intermittent Pumping"))) +
   scale_x_continuous(name="Time [years]", expand=c(0,0), breaks=seq(0,10,2)) +
-  scale_y_continuous(name="MAE of Depletion Potential,\nMost Affected Segment") +
+  scale_y_continuous(name="Normalized MAE,\nMost Affected Segment") +
   scale_color_manual(name="Web Exponent", values=pal.exp) +
   theme(legend.position="bottom") +
   NULL

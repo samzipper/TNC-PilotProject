@@ -5,6 +5,7 @@
 require(cowplot)
 require(ggtern)
 require(ggplot2)
+require(lemon)
 require(dplyr)
 require(reshape2)
 require(lubridate)
@@ -218,13 +219,6 @@ lmp <- function (modelobject) {
   attributes(p) <- NULL
   return(p)
 }
-
-# extract legend - https://stackoverflow.com/questions/13649473/add-a-common-legend-for-combined-ggplots
-g_legend<-function(a.gplot){
-  tmp <- ggplot_gtable(ggplot_build(a.gplot))
-  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
-  legend <- tmp$grobs[[leg]]
-  return(legend)}
 
 ## fit functions
 ## functions from Gudmundsson et al. (2012) for modified version of KGE

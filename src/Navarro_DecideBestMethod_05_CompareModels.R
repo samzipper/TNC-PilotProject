@@ -92,6 +92,8 @@ f.thres <- 0.001  # 0.1%
 #         summarize(bias.overall = pbias(depletion.prc, depletion.prc.modflow),
 #                   MAE.overall = mae(depletion.prc, depletion.prc.modflow),
 #                   depletion.prc.modflow.mean = mean(depletion.prc.modflow),
+#                   depletion.prc.modflow.min = min(depletion.prc.modflow),
+#                   depletion.prc.modflow.max = max(depletion.prc.modflow),
 #                   RMSE.overall = rmse(depletion.prc, depletion.prc.modflow),
 #                   MSE.overall = MSE(depletion.prc, depletion.prc.modflow),
 #                   KGE.overall = KGE(depletion.prc, depletion.prc.modflow, method="2012")) %>%
@@ -128,6 +130,8 @@ f.thres <- 0.001  # 0.1%
 #             bias.match = pbias(depletion.prc, depletion.prc.modflow),
 #             MAE.match = mae(depletion.prc, depletion.prc.modflow),
 #             depletion.prc.modflow.mean = mean(depletion.prc.modflow),
+#             depletion.prc.modflow.min = min(depletion.prc.modflow),
+#             depletion.prc.modflow.max = max(depletion.prc.modflow),
 #             RMSE.match = rmse(depletion.prc, depletion.prc.modflow),
 #             MSE.match = MSE(depletion.prc, depletion.prc.modflow),
 #             KGE.match = KGE(depletion.prc, depletion.prc.modflow, method="2012")) %>%
