@@ -10,13 +10,13 @@
    xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="189.68797mm"
-   height="179.49217mm"
-   viewBox="0 0 672.12275 635.9959"
+   width="189.68799mm"
+   height="120.44564mm"
+   viewBox="0 0 672.1228 426.7759"
    id="svg2"
    version="1.1"
    inkscape:version="0.91 r13725"
-   sodipodi:docname="Figure_MethodOverviewWithSearchRadius.svg"
+   sodipodi:docname="Figure_MethodOverview.svg"
    inkscape:export-filename="C:\Users\Sam\WorkGits\TNC-PilotProject\figures+tables\Figure_MethodOverview.png"
    inkscape:export-xdpi="300"
    inkscape:export-ydpi="300">
@@ -45,22 +45,6 @@
        effect="spiro"
        id="path-effect9070"
        is_visible="true" />
-    <marker
-       inkscape:stockid="Arrow2Mend"
-       orient="auto"
-       refY="0"
-       refX="0"
-       id="marker8374"
-       style="overflow:visible"
-       inkscape:isstock="true"
-       inkscape:collect="always">
-      <path
-         inkscape:connector-curvature="0"
-         id="path8376"
-         style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.625;stroke-linejoin:round;stroke-opacity:1"
-         d="M 8.7185878,4.0337352 -2.2072895,0.01601326 8.7185884,-4.0017078 c -1.7454984,2.3720609 -1.7354408,5.6174519 -6e-7,8.035443 z"
-         transform="scale(-0.6,-0.6)" />
-    </marker>
     <inkscape:path-effect
        effect="spiro"
        id="path-effect8366"
@@ -1256,8 +1240,8 @@
      inkscape:pageopacity="1"
      inkscape:pageshadow="2"
      inkscape:zoom="0.98"
-     inkscape:cx="336.06137"
-     inkscape:cy="312.08349"
+     inkscape:cx="164.12263"
+     inkscape:cy="183.47452"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -1289,7 +1273,7 @@
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1"
-     transform="translate(-0.11616135,-56.406347)">
+     transform="translate(-0.11613083,-56.406348)">
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:14.74459076px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
@@ -1325,142 +1309,6 @@
          style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:10px;font-family:Arial;-inkscape-font-specification:Arial">Step 3: Calculate streamflow depletion rate (<tspan
    style="font-style:italic"
    id="tspan9545">Qf</tspan>) for each segment using analytical model</tspan></text>
-    <text
-       xml:space="preserve"
-       style="font-style:normal;font-weight:normal;font-size:17.5px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       x="6.7917275"
-       y="505.51306"
-       id="text4689-3"
-       sodipodi:linespacing="125%"><tspan
-         sodipodi:role="line"
-         x="6.7917275"
-         y="505.51306"
-         style="font-style:italic;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:10px;font-family:arial;-inkscape-font-specification:arial;fill:#f58231;fill-opacity:1"
-         id="tspan4559-3"><tspan
-   style="font-style:italic;font-weight:bold;fill:#000000;fill-opacity:1"
-   id="tspan4622">Example calculations using </tspan>Inverse Distance Squared<tspan
-   style="font-style:italic;font-weight:bold;fill:#000000;fill-opacity:1"
-   id="tspan9287"> depletion apportionment equation and Glover analytical model</tspan></tspan></text>
-    <text
-       xml:space="preserve"
-       style="font-style:normal;font-weight:normal;font-size:17.5px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       x="20.864473"
-       y="533.92621"
-       id="text4689-3-3"
-       sodipodi:linespacing="125%"><tspan
-         sodipodi:role="line"
-         x="20.864473"
-         y="533.92621"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;font-family:arial;-inkscape-font-specification:arial;fill:#000000;fill-opacity:1"
-         id="tspan4559-3-9">Well-stream geometry: d<tspan
-   style="font-size:7.5px;baseline-shift:sub;fill:#000000;fill-opacity:1"
-   id="tspan4683">1</tspan> = 200 m, d<tspan
-   style="font-size:7.5px;baseline-shift:sub"
-   id="tspan4757">2</tspan> = 350 m, d<tspan
-   style="font-size:7.5px;baseline-shift:sub"
-   id="tspan4761">3</tspan> = 500 m, d<tspan
-   style="font-size:7.5px;baseline-shift:sub"
-   id="tspan4765">4</tspan> = 350 m</tspan></text>
-    <g
-       id="g8307"
-       transform="translate(-5.1724142,-8.3574954)">
-      <text
-         sodipodi:linespacing="125%"
-         id="text4689-3-3-1"
-         y="589.77893"
-         x="26.066185"
-         style="font-style:normal;font-weight:normal;font-size:17.5px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-         xml:space="preserve"><tspan
-           id="tspan4559-3-9-3"
-           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;font-family:arial;-inkscape-font-specification:arial;fill:#000000;fill-opacity:1"
-           y="589.77893"
-           x="26.066185"
-           sodipodi:role="line">f<tspan
-   id="tspan4683-3"
-   style="font-size:7.5px;baseline-shift:sub;fill:#000000;fill-opacity:1">1</tspan> = (1/200<tspan
-   id="tspan4799"
-   style="font-size:7.5px;baseline-shift:super">2</tspan>) / (1/200<tspan
-   id="tspan4805"
-   style="font-size:7.5px;baseline-shift:super">2</tspan> + 1/350<tspan
-   id="tspan4811"
-   style="font-size:7.5px;baseline-shift:super">2</tspan> + 1/500<tspan
-   id="tspan4815"
-   style="font-size:7.5px;baseline-shift:super">2</tspan> + 1/350<tspan
-   id="tspan4819"
-   style="font-size:7.5px;baseline-shift:super">2</tspan>) = 0.552</tspan></text>
-      <text
-         sodipodi:linespacing="125%"
-         id="text4689-3-3-1-4"
-         y="601.8963"
-         x="26.066185"
-         style="font-style:normal;font-weight:normal;font-size:17.5px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-         xml:space="preserve"><tspan
-           id="tspan4559-3-9-3-3"
-           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;font-family:arial;-inkscape-font-specification:arial;fill:#000000;fill-opacity:1"
-           y="601.8963"
-           x="26.066185"
-           sodipodi:role="line">f<tspan
-   id="tspan4683-3-6"
-   style="font-size:7.5px;baseline-shift:sub;fill:#000000;fill-opacity:1">2</tspan> = (1/350<tspan
-   id="tspan4799-9"
-   style="font-size:7.5px;baseline-shift:super">2</tspan>) / (1/200<tspan
-   id="tspan4805-3"
-   style="font-size:7.5px;baseline-shift:super">2</tspan> + 1/350<tspan
-   id="tspan4811-0"
-   style="font-size:7.5px;baseline-shift:super">2</tspan> + 1/500<tspan
-   id="tspan4815-3"
-   style="font-size:7.5px;baseline-shift:super">2</tspan> + 1/350<tspan
-   id="tspan4819-9"
-   style="font-size:7.5px;baseline-shift:super">2</tspan>) = 0.180</tspan></text>
-      <text
-         sodipodi:linespacing="125%"
-         id="text4689-3-3-1-4-3"
-         y="614.01361"
-         x="26.066185"
-         style="font-style:normal;font-weight:normal;font-size:17.5px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-         xml:space="preserve"><tspan
-           id="tspan4559-3-9-3-3-6"
-           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;font-family:arial;-inkscape-font-specification:arial;fill:#000000;fill-opacity:1"
-           y="614.01361"
-           x="26.066185"
-           sodipodi:role="line">f<tspan
-   id="tspan4683-3-6-3"
-   style="font-size:7.5px;baseline-shift:sub;fill:#000000;fill-opacity:1">3</tspan> = (1/500<tspan
-   id="tspan4799-9-0"
-   style="font-size:7.5px;baseline-shift:super">2</tspan>) / (1/200<tspan
-   id="tspan4805-3-7"
-   style="font-size:7.5px;baseline-shift:super">2</tspan> + 1/350<tspan
-   id="tspan4811-0-9"
-   style="font-size:7.5px;baseline-shift:super">2</tspan> + 1/500<tspan
-   id="tspan4815-3-5"
-   style="font-size:7.5px;baseline-shift:super">2</tspan> + 1/350<tspan
-   id="tspan4819-9-4"
-   style="font-size:7.5px;baseline-shift:super">2</tspan>) = 0.088</tspan></text>
-      <text
-         sodipodi:linespacing="125%"
-         id="text4689-3-3-1-4-2"
-         y="626.13098"
-         x="26.066185"
-         style="font-style:normal;font-weight:normal;font-size:17.5px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-         xml:space="preserve"><tspan
-           id="tspan4559-3-9-3-3-0"
-           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;font-family:arial;-inkscape-font-specification:arial;fill:#000000;fill-opacity:1"
-           y="626.13098"
-           x="26.066185"
-           sodipodi:role="line">f<tspan
-   id="tspan4683-3-6-7"
-   style="font-size:7.5px;baseline-shift:sub;fill:#000000;fill-opacity:1">4</tspan> = (1/350<tspan
-   id="tspan4799-9-8"
-   style="font-size:7.5px;baseline-shift:super">2</tspan>) / (1/200<tspan
-   id="tspan4805-3-0"
-   style="font-size:7.5px;baseline-shift:super">2</tspan> + 1/350<tspan
-   id="tspan4811-0-97"
-   style="font-size:7.5px;baseline-shift:super">2</tspan> + 1/500<tspan
-   id="tspan4815-3-0"
-   style="font-size:7.5px;baseline-shift:super">2</tspan> + 1/350<tspan
-   id="tspan4819-9-8"
-   style="font-size:7.5px;baseline-shift:super">2</tspan>) = 0.180</tspan></text>
-    </g>
     <flowRoot
        xml:space="preserve"
        id="flowRoot4967"
@@ -1472,117 +1320,19 @@
            height="98.689957"
            x="18.777292"
            y="293.63541" /></flowRegion><flowPara
-         id="flowPara4973" /></flowRoot>    <text
-       xml:space="preserve"
-       style="font-style:normal;font-weight:normal;font-size:17.5px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       x="12.931107"
-       y="566.25616"
-       id="text4689-3-2"
-       sodipodi:linespacing="125%"><tspan
-         sodipodi:role="line"
-         x="12.931107"
-         y="566.25616"
-         style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;font-family:arial;-inkscape-font-specification:arial;fill:#000000;fill-opacity:1"
-         id="tspan4559-3-3">Step 2: Fraction of total depletion for each stream segment (Eq. 5)</tspan></text>
-    <text
-       xml:space="preserve"
-       style="font-style:normal;font-weight:normal;font-size:17.5px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       x="20.556856"
-       y="652.90228"
-       id="text4689-3-3-1-43-2"
-       sodipodi:linespacing="125%"><tspan
-         sodipodi:role="line"
-         x="20.556856"
-         y="652.90228"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;font-family:arial;-inkscape-font-specification:arial;fill:#000000;fill-opacity:1"
-         id="tspan4559-3-9-3-5-3">Qf<tspan
-   style="font-size:7.5px;baseline-shift:sub;fill:#000000;fill-opacity:1"
-   id="tspan4683-3-2-5">1</tspan> = 0.741</tspan><tspan
-         sodipodi:role="line"
-         x="20.556856"
-         y="665.40228"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;font-family:arial;-inkscape-font-specification:arial;fill:#000000;fill-opacity:1"
-         id="tspan9289">Qf<tspan
-   style="font-size:7.5px;baseline-shift:sub"
-   id="tspan7291-7">2</tspan> = 0.562</tspan><tspan
-         sodipodi:role="line"
-         x="20.556856"
-         y="677.90228"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;font-family:arial;-inkscape-font-specification:arial;fill:#000000;fill-opacity:1"
-         id="tspan9294">Qf<tspan
-   style="font-size:7.5px;baseline-shift:sub"
-   id="tspan7295-8">3</tspan> = 0.408</tspan><tspan
-         sodipodi:role="line"
-         x="20.556856"
-         y="690.40228"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;font-family:arial;-inkscape-font-specification:arial;fill:#000000;fill-opacity:1"
-         id="tspan9298">Qf<tspan
-   style="font-size:7.5px;baseline-shift:sub"
-   id="tspan7299-4">4</tspan> = 0.562</tspan></text>
-    <text
-       xml:space="preserve"
-       style="font-style:normal;font-weight:normal;font-size:17.5px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       x="425.72189"
-       y="607.43097"
-       id="text4689-3-3-1-43-2-4"
-       sodipodi:linespacing="125%"><tspan
-         sodipodi:role="line"
-         x="425.72189"
-         y="607.43097"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;font-family:arial;-inkscape-font-specification:arial;fill:#000000;fill-opacity:1"
-         id="tspan4559-3-9-3-5-3-8">Qd<tspan
-   style="font-size:7.5px;baseline-shift:sub"
-   id="tspan7385">1</tspan> = f<tspan
-   style="font-size:7.5px;baseline-shift:sub"
-   id="tspan7381">1</tspan>*Q<tspan
-   style="font-size:7.5px;baseline-shift:sub;fill:#000000;fill-opacity:1"
-   id="tspan4683-3-2-5-4">f,1</tspan> = 0.409</tspan><tspan
-         sodipodi:role="line"
-         x="425.72189"
-         y="619.93097"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;font-family:arial;-inkscape-font-specification:arial;fill:#000000;fill-opacity:1"
-         id="tspan7389">Qd<tspan
-   style="font-size:7.5px;baseline-shift:sub"
-   id="tspan7291-7-1">2</tspan> = f<tspan
-   style="font-size:7.5px;baseline-shift:sub"
-   id="tspan7401">2</tspan>*Q<tspan
-   style="font-size:7.5px;baseline-shift:sub"
-   id="tspan7405">f,2</tspan> = 0.101</tspan><tspan
-         sodipodi:role="line"
-         x="425.72189"
-         y="632.43097"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;font-family:arial;-inkscape-font-specification:arial;fill:#000000;fill-opacity:1"
-         id="tspan7394">Qd<tspan
-   style="font-size:7.5px;baseline-shift:sub"
-   id="tspan7295-8-6">3</tspan> = f<tspan
-   style="font-size:7.5px;baseline-shift:sub"
-   id="tspan7409">3</tspan>*Q<tspan
-   style="font-size:7.5px;baseline-shift:sub"
-   id="tspan7413">f,3</tspan> = 0.036</tspan><tspan
-         sodipodi:role="line"
-         x="425.72189"
-         y="644.93097"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;font-family:arial;-inkscape-font-specification:arial;fill:#000000;fill-opacity:1"
-         id="tspan7398">Qd<tspan
-   style="font-size:7.5px;baseline-shift:sub"
-   id="tspan7299-4-7">4</tspan> = f<tspan
-   style="font-size:7.5px;baseline-shift:sub"
-   id="tspan7417">4</tspan>*Q<tspan
-   style="font-size:7.5px;baseline-shift:sub"
-   id="tspan7421">f,4</tspan> = 0.101</tspan></text>
-    <g
+         id="flowPara4973" /></flowRoot>    <g
        id="g7984"
        transform="translate(12.135189,0)">
       <text
          sodipodi:linespacing="125%"
          id="text4689-3-3-2-9"
-         y="346.92239"
+         y="345.97888"
          x="15.177685"
          style="font-style:normal;font-weight:normal;font-size:17.5px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
          xml:space="preserve"><tspan
            id="tspan4559-3-9-0-6"
            style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;font-family:arial;-inkscape-font-specification:arial;fill:#000000;fill-opacity:1"
-           y="346.92239"
+           y="345.97888"
            x="15.177685"
            sodipodi:role="line">Glover &amp; Balmer (1954), Eq. 7</tspan></text>
       <g
@@ -3356,17 +3106,17 @@
          id="tspan5628-6-2-6">OR</tspan></text>
     <g
        id="g7944"
-       transform="translate(34.135189,0)">
+       transform="translate(34.135198,0)">
       <text
          sodipodi:linespacing="125%"
          id="text4689-3-3-2-9-8"
-         y="346.92239"
+         y="345.97888"
          x="325.08875"
          style="font-style:normal;font-weight:normal;font-size:17.5px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
          xml:space="preserve"><tspan
            id="tspan4559-3-9-0-6-2"
            style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;font-family:arial;-inkscape-font-specification:arial;fill:#000000;fill-opacity:1"
-           y="346.92239"
+           y="345.97888"
            x="325.08875"
            sodipodi:role="line">Hunt (1999), Eq. 8</tspan></text>
       <path
@@ -3637,44 +3387,6 @@
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:17.5px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       x="13.185013"
-       y="520.55414"
-       id="text4689-3-2-5"
-       sodipodi:linespacing="125%"><tspan
-         sodipodi:role="line"
-         x="13.185013"
-         y="520.55414"
-         style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;font-family:arial;-inkscape-font-specification:arial;fill:#000000;fill-opacity:1"
-         id="tspan4559-3-3-1">Example Values</tspan></text>
-    <text
-       xml:space="preserve"
-       style="font-style:normal;font-weight:normal;font-size:17.5px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       x="20.166231"
-       y="547.28973"
-       id="text4689-3-2-5-9"
-       sodipodi:linespacing="125%"><tspan
-         sodipodi:role="line"
-         x="20.166231"
-         y="547.28973"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;font-family:arial;-inkscape-font-specification:arial;fill:#000000;fill-opacity:1"
-         id="tspan4559-3-3-1-3">Flow parameters: t = 365 d, S = 0.10, K = 1 m d<tspan
-   style="font-style:normal;font-weight:normal;font-size:7.5px;baseline-shift:super"
-   id="tspan9283-0-0">-1</tspan>, b = 50 m</tspan></text>
-    <text
-       xml:space="preserve"
-       style="font-style:normal;font-weight:normal;font-size:17.5px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       x="12.931107"
-       y="637.56653"
-       id="text4689-3-2-7"
-       sodipodi:linespacing="125%"><tspan
-         sodipodi:role="line"
-         x="12.931107"
-         y="637.56653"
-         style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;font-family:arial;-inkscape-font-specification:arial;fill:#000000;fill-opacity:1"
-         id="tspan8305">Step 3: Estimated streamflow depletion rate for each segment (Eq. 7)</tspan></text>
-    <text
-       xml:space="preserve"
-       style="font-style:normal;font-weight:normal;font-size:17.5px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
        x="3.9532936"
        y="481.07776"
        id="text4542-1-4-6"
@@ -3683,59 +3395,18 @@
          id="tspan4544-89-0-8"
          x="3.9532936"
          y="481.07776"
-         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:10px;font-family:Arial;-inkscape-font-specification:Arial">Step 4: Calculate the depletion potential for each stream segment as the product of Steps 2 and 3 (Eq. 1)</tspan></text>
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:10px;font-family:Arial;-inkscape-font-specification:Arial">Step 4: Calculate the depletion potential for each stream segment as the product of Steps 2 and 3 using Eq. 1.</tspan></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:17.5px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       x="406.70453"
-       y="578.53931"
-       id="text4689-3-2-7-9"
+       x="313.866"
+       y="345.98376"
+       id="text4542-5-6-5-2-1-4"
        sodipodi:linespacing="125%"><tspan
          sodipodi:role="line"
-         x="406.70453"
-         y="578.53931"
-         style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;font-family:arial;-inkscape-font-specification:arial;fill:#000000;fill-opacity:1"
-         id="tspan4559-3-3-0-9">Step 4: Estimated depletion potential</tspan><tspan
-         sodipodi:role="line"
-         x="406.70453"
-         y="591.03931"
-         style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;font-family:arial;-inkscape-font-specification:arial;fill:#000000;fill-opacity:1"
-         id="tspan8305-2">            for each segment (Eq. 1)</tspan></text>
-    <path
-       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1.25000012;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:1.25000015, 1.25000015;stroke-dashoffset:0;stroke-opacity:1;marker-end:url(#marker8374)"
-       d="M 81.206224,668.10474 404.56075,636.87247"
-       id="path9068"
-       inkscape:path-effect="#path-effect9070"
-       inkscape:original-d="M 81.206224,668.10474 404.56075,636.87247"
-       inkscape:connector-curvature="0" />
-    <path
-       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1.25000012;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:1.25000011, 1.25000011;stroke-dashoffset:0;stroke-opacity:1;marker-end:url(#marker9100)"
-       d="M 288.07557,595.67253 405.31695,621.5346"
-       id="path9090"
-       inkscape:path-effect="#path-effect9092"
-       inkscape:original-d="M 288.07557,595.67253 405.31695,621.5346"
-       inkscape:connector-curvature="0" />
-    <text
-       xml:space="preserve"
-       style="font-style:normal;font-weight:normal;font-size:17.5px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       x="409.79379"
-       y="663.0451"
-       id="text4689-3-2-7-9-3"
-       sodipodi:linespacing="125%"><tspan
-         sodipodi:role="line"
-         x="409.79379"
-         y="663.0451"
-         style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;font-family:arial;-inkscape-font-specification:arial;fill:#000000;fill-opacity:1"
-         id="tspan8305-2-9">Volumetric streamflow depletion, Qs, for each</tspan><tspan
-         sodipodi:role="line"
-         x="409.79379"
-         y="675.5451"
-         style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;font-family:arial;-inkscape-font-specification:arial;fill:#000000;fill-opacity:1"
-         id="tspan9385">stream segment can be obtained by multiplying</tspan><tspan
-         sodipodi:role="line"
-         x="409.79379"
-         y="688.0451"
-         style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;font-family:arial;-inkscape-font-specification:arial;fill:#000000;fill-opacity:1"
-         id="tspan9387">Qd by the pumping rate (Qw)</tspan></text>
+         x="313.866"
+         y="345.98376"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;font-family:Arial;-inkscape-font-specification:Arial"
+         id="tspan5628-6-2-3">OR</tspan></text>
   </g>
 </svg>
