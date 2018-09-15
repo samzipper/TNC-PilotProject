@@ -12,7 +12,7 @@ f.thres <- 0.001  # 0.1%
 
 ## which MODFLOW to plot
 modflow_v <- "mfnwt"
-stream_BC_plot <- c("RIV")
+stream_BC_plot <- "SFR"
 
 ## which conditions to plot
 analytical_plot <- c("glover", "hunt")
@@ -305,7 +305,7 @@ p.match.fit <-
              labeller=as_labeller(c("Transient"="Continuous Pumping", "Intermittent"="Intermittent Pumping"))) +
   scale_linetype_discrete(name="Segments\nEvaluated") +
   scale_x_continuous(name="Time [years]", expand=c(0,0), breaks=seq(0,10,2)) +
-  scale_y_continuous(name="Normalized MAE,\nMost Affected Segment") +
+  scale_y_reverse(name="Normalized MAE,\nMost Affected Segment") +
   theme(strip.text=element_blank()) +
   NULL
 
@@ -329,7 +329,7 @@ p.overall <-
   theme(strip.text=element_blank()) +
   NULL
 
-## plot of KGE for cumulative capture fraction
+## plot of MAE for cumulative capture fraction
 p.sum <- 
   df.fit.sum %>% 
   subset(stream_BC %in% stream_BC_plot) %>% 
@@ -348,7 +348,7 @@ p.sum <-
   facet_wrap(pump ~ ., ncol=2, 
              labeller=as_labeller(c("Transient"="(a) Continuous Pumping", "Intermittent"="(b) Intermittent Pumping"))) +
   scale_x_continuous(name="Time [years]", expand=c(0,0), breaks=seq(0,10,2)) +
-  scale_y_continuous(name="Normalized MAE,\nCapture Fraction") +
+  scale_y_reverse(name="Normalized MAE,\nCapture Fraction") +
   theme(strip.text=element_blank()) +
   NULL
 
@@ -374,7 +374,7 @@ p.sum <-
 #        width=190, height=200, units="mm")
 
 # version without axis or legend which can be added with InkScape
-save_plot(file.path("figures+tables", "Figure_CompareAll_NoText.pdf"),
+save_plot(file.path("figures+tables", paste0("Figure_CompareAll_", stream_BC_plot, "_NoText.pdf")),
           plot_grid(p.match.prc + theme(legend.position="none",
                                         axis.title.x = element_blank(),
                                         axis.text.x = element_blank()),

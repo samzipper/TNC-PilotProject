@@ -297,7 +297,7 @@ p.match.fit <-
              labeller=as_labeller(c("Transient"="Continuous Pumping", "Intermittent"="Intermittent Pumping"))) +
   scale_linetype_discrete(name="Segments\nEvaluated") +
   scale_x_continuous(name="Time [years]", expand=c(0,0), breaks=seq(0,10,2)) +
-  scale_y_continuous(name="Normalized MAE,\nMost Affected Segment") +
+  scale_y_reverse(name="Normalized MAE,\nMost Affected Segment") +
   scale_color_discrete(name="Stream\nProximity\nCriteria", labels=labels.apportionment) +
   theme(strip.text=element_blank()) +
   NULL
@@ -334,7 +334,7 @@ p.sum <-
   facet_wrap(pump ~ ., ncol=2, 
              labeller=as_labeller(c("Transient"="(a) Continuous Pumping", "Intermittent"="(b) Intermittent Pumping"))) +
   scale_x_continuous(name="Time [years]", expand=c(0,0), breaks=seq(0,10,2)) +
-  scale_y_continuous(name="Normalized MAE,\nCapture Fraction") +
+  scale_y_reverse(name="Normalized MAE,\nCapture Fraction") +
   scale_color_discrete(name="Stream\nProximity\nCriteria", labels=labels.apportionment) +
   theme(strip.text=element_blank()) +
   NULL
