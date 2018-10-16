@@ -184,7 +184,7 @@ ggplot() +
   geom_line(data=df.plot, aes(x=Time, y=depletion.prc.modflow, group=SegNum, color=factor(SegNum))) +
   geom_line(data=df.plot, aes(x=Time, y=depletion.prc, group=SegNum, color=factor(SegNum)), linetype="dashed") +
   facet_grid(WellNum ~ method, scales="free",
-             labeller=as_labeller(c(labels.method.Qf, "365"="Close Well", "393"="Medium", "421"="Far"))) +
+             labeller=as_labeller(c(labels.method.Qf, "365"="Proximate", "393"="Near", "421"="Far"))) +
   scale_x_continuous(name="Time [days]", expand=c(0,0)) +
   scale_y_continuous(name="Depletion Potential") +
   scale_color_discrete(name="Stream Reach")
@@ -200,7 +200,7 @@ p.map <-
   scale_x_continuous(name="Easting [m]", expand=c(0,0), breaks=map.breaks.x) +
   scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
   scale_shape_manual(name="Well-Stream\nDistance", values=c("365"=17, "393"=15, "421"=18), 
-                     labels=c("365"="Close", "393"="Medium", "421"="Far")) +
+                     labels=c("365"="Proximate", "393"="Near", "421"="Far")) +
   coord_equal() +
   theme(axis.text.y=element_text(angle=90, hjust=0.5)) +
   NULL
@@ -231,7 +231,7 @@ p.map.zoom <-
   scale_x_continuous(name="Easting [m]", breaks=zoom.breaks.x) +
   scale_y_continuous(name="Northing [m]", breaks=zoom.breaks.y) +
   scale_shape_manual(name="Well-Stream\nDistance", values=c("365"=17, "393"=15, "421"=18), 
-                     labels=c("365"="Close", "393"="Medium", "421"="Far")) +
+                     labels=c("365"="Proximate", "393"="Near", "421"="Far")) +
   scale_color_brewer(name="Stream Segment", type="qual",
                      palette=6) +
   coord_equal(xlim=c(min(df.riv.zoom$long), max(df.riv.zoom$long)), 
@@ -247,7 +247,7 @@ p.map.zoom <-
 #             aes(x=Time, y=Qf.sum, group=WellNum, linetype=factor(WellNum))) +
 #   scale_x_continuous(name="Time [days]") +
 #   scale_y_continuous(name="Total Capture Fraction") +
-#   scale_linetype_discrete(name="Well", labels=c("365"="Close", "393"="Medium", "421"="Far")) +
+#   scale_linetype_discrete(name="Well", labels=c("365"="Proximate", "393"="Near", "421"="Far")) +
 #   facet_wrap(~method, labeller=as_labeller(labels.method.Qf)) +
 #   NULL
 
@@ -257,7 +257,7 @@ p.depletion <-
   geom_line(data=df.plot, aes(x=Time, y=depletion.prc.modflow, group=SegNum, color=SegNum), linetype="dashed") +
   geom_line(data=df.plot, aes(x=Time, y=depletion.prc, group=SegNum, color=SegNum)) +
   facet_wrap(WellNum ~ ., scales="free", ncol=1,
-             labeller=as_labeller(c(labels.method.Qf, "365"="Close", "393"="Medium", "421"="Far"))) +
+             labeller=as_labeller(c(labels.method.Qf, "365"="Proximate", "393"="Near", "421"="Far"))) +
   scale_x_continuous(name="Time [days]", expand=c(0,0), limits=c(0,3650)) +
   scale_y_continuous(name="Depletion Potential in Each Stream Segment") +
   scale_color_brewer(name="Stream Segment", type="qual",
