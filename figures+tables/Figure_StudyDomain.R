@@ -23,7 +23,10 @@ r.ibound <- raster(file.path("modflow", "input", "ibound.tif"))
 r.elev <- r.ibound
 r.elev[] <- as.matrix(read.table(file.path("modflow", "input", "ztop.txt")))[]
 
-df.wel <- read.table(file.path("modflow", "input", "iwel.txt"), header=T)
+df.wel <- read.table(file.path("modflow", "input", "iwel.txt"), header=T) %>% 
+  subset(WellNum %in% 
+           read.csv(
+             file.path("results", "Depletion_Analytical_Intermittent_NoApportionment_AllMethods+Wells+Reaches.csv"))$WellNum)
 df.riv <- read.table(file.path("modflow", "input", "iriv_ReachData.txt"), header=T)
 df.sfr <- read.table(file.path("modflow", "input", "isfr_ReachData.txt"), header=T)
 
