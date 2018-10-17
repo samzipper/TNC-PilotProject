@@ -12,7 +12,7 @@ f.thres <- 0.001  # 0.1%
 
 ## which MODFLOW to plot
 modflow_v <- "mfnwt"
-stream_BC_plot <- "SFR"
+stream_BC_plot <- "RIV"
 
 ## which conditions to plot
 analytical_plot <- c("glover", "hunt")
@@ -188,12 +188,93 @@ for (timeType in c("Transient", "Intermittent")) {
                       prc.noAnalytical = n.noMatch.noAnalytical/n.reach,
                       Streams = "Qd > 5%")
           
+          ## output for chart
+          df.chart.PS <- 
+            df.max %>% 
+            subset(depletion.prc.modflow > 0.05) %>% 
+            group_by(stream_BC, pump, apportionment, analytical, method) %>% 
+            summarize(n.reach = sum(is.finite(SegNum.modflow)),
+                      n.match = sum(SegNum.modflow==SegNum.analytical),
+                      n.noMatch.noAnalytical = sum(SegNum.analytical==9999),
+                      MSE.match = MSE(depletion.prc, depletion.prc.modflow),
+                      RMSE.match = rmse(depletion.prc, depletion.prc.modflow),
+                      MAE.match = mae(depletion.prc, depletion.prc.modflow),
+                      depletion.prc.modflow.mean = mean(depletion.prc.modflow),
+                      depletion.prc.modflow.min = min(depletion.prc.modflow),
+                      depletion.prc.modflow.max = max(depletion.prc.modflow),
+                      KGE.match = KGE(depletion.prc, depletion.prc.modflow, method="2012")) %>%
+            transform(prc.match = n.match/n.reach,
+                      prc.noAnalytical = n.noMatch.noAnalytical/n.reach,
+                      Streams = "Qd > 5%") %>% 
+            group_by(pump, apportionment, method, analytical, pump) %>% 
+            summarize(primary.spatial = mean(prc.match))
+          
+          df.chart.PM <- 
+            df.max %>% 
+            group_by(stream_BC, pump, apportionment, analytical, method) %>% 
+            summarize(n.reach = sum(is.finite(SegNum.modflow)),
+                      n.match = sum(SegNum.modflow==SegNum.analytical),
+                      n.noMatch.noAnalytical = sum(SegNum.analytical==9999),
+                      MSE.match = MSE(depletion.prc, depletion.prc.modflow),
+                      RMSE.match = rmse(depletion.prc, depletion.prc.modflow),
+                      MAE.match = mae(depletion.prc, depletion.prc.modflow),
+                      depletion.prc.modflow.mean = mean(depletion.prc.modflow),
+                      depletion.prc.modflow.min = min(depletion.prc.modflow),
+                      depletion.prc.modflow.max = max(depletion.prc.modflow),
+                      KGE.match = KGE(depletion.prc, depletion.prc.modflow, method="2012")) %>%
+            transform(prc.match = n.match/n.reach,
+                      prc.noAnalytical = n.noMatch.noAnalytical/n.reach,
+                      Streams = "Qd > 0.1%") %>% 
+            group_by(pump, apportionment, method, analytical, pump) %>% 
+            summarize(primary.magnitude = mean(MAE.match/(depletion.prc.modflow.max-depletion.prc.modflow.min)))
+          
+          df.chart.OS <-
+            df.MODFLOW %>%
+            subset(stream_BC == BC) %>%
+            left_join(subset(df.analytical, method==m & analytical==a),
+                      by=c("WellNum", "Time")) %>%
+            replace_na(list("analytical"=a, "method"=m, "stream_BC"=BC, "depletion.prc"=0, "depletion.prc.modflow" = 0)) %>%
+            transform(apportionment = apportionment_name,
+                      pump = timeType,
+                      stringsAsFactors=F) %>%
+            group_by(stream_BC, pump, analytical, apportionment, method) %>%
+            summarize(MSE.overall = MSE(depletion.prc, depletion.prc.modflow),
+                      KGE.overall = KGE(depletion.prc, depletion.prc.modflow, method="2012")) %>% 
+            group_by(pump, apportionment, method, analytical, pump) %>% 
+            summarize(overall.spatial = mean(KGE.overall))
+          
+          df.chart.OM <-
+            df.MODFLOW.sum %>%
+            subset(stream_BC == BC) %>%
+            left_join(subset(df.analytical.sum, method==m & analytical==a),
+                      by=c("WellNum", "Time")) %>%
+            replace_na(list("analytical"=a, "method"=m, "stream_BC"=BC, "Qf.total.analytical"=0, "Qf.total.modflow" = 0)) %>%
+            transform(apportionment = apportionment_name,
+                      pump = timeType,
+                      stringsAsFactors=F) %>%
+            group_by(stream_BC, pump, analytical, apportionment, method) %>%
+            summarize(MSE.sum = MSE(Qf.total.analytical, Qf.total.modflow),
+                      RMSE.sum = rmse(Qf.total.analytical, Qf.total.modflow),
+                      MAE.sum = mae(Qf.total.analytical, Qf.total.modflow),
+                      Qf.total.MODFLOW.mean = mean(Qf.total.modflow),
+                      Qf.total.MODFLOW.min = min(Qf.total.modflow),
+                      Qf.total.MODFLOW.max = max(Qf.total.modflow),
+                      KGE.sum = KGE(Qf.total.analytical, Qf.total.modflow, method="2012")) %>% 
+            group_by(pump, apportionment, method, analytical, pump) %>% 
+            summarize(overall.magnitude = mean(MAE.sum/(Qf.total.MODFLOW.max-Qf.total.MODFLOW.min)))
+          
+          df.chart <-
+            left_join(df.chart.PS, df.chart.PM, by=c("analytical", "apportionment", "method", "pump")) %>% 
+            left_join(df.chart.OS, by=c("analytical", "apportionment", "method", "pump")) %>% 
+            left_join(df.chart.OM, by=c("analytical", "apportionment", "method", "pump"))
+          
           if (start.flag) {
             df.fit.all <- df
             df.fit.gt5.all <- df.gt5
             df.fit.sum <- df.sum
             df.fit.match <- df.max.perf
             df.fit.match.gt5 <- df.max.perf.gt5
+            df.chart.all <- df.chart
             start.flag <- F
           } else {
             df.fit.all <- rbind(df.fit.all, df)
@@ -201,6 +282,7 @@ for (timeType in c("Transient", "Intermittent")) {
             df.fit.sum <- rbind(df.fit.sum, df.sum)
             df.fit.match <- rbind(df.fit.match, df.max.perf)
             df.fit.match.gt5 <- rbind(df.fit.match.gt5, df.max.perf.gt5)
+            df.chart.all <- rbind(df.chart.all, df.chart)
           }
           
           # status update
@@ -389,3 +471,160 @@ save_plot(file.path("figures+tables", paste0("Figure_CompareAll_", stream_BC_plo
                                   axis.text.x = element_blank()),
                     ncol=1, align="v", axis="l"),
           ncol = 1, nrow = 4, base_width = 185/25.4, base_height=50/25.4, device=cairo_pdf)
+
+
+## replot without web highlighted
+
+#df.match.plot <- rbind(df.fit.match, df.fit.match.gt5)
+df.match.plot.gt5 <- df.fit.match.gt5
+df.match.plot.gt5$apportionment <- factor(df.match.plot.gt5$apportionment, 
+                                      levels=c("WholeDomain", "LocalArea", "AdjacentOnly", "Dynamic", "Adjacent+Dynamic"))
+df.match.plot.gt5$method <- factor(df.match.plot.gt5$method, levels=c("Qf.Web", "Qf.WebSq", "Qf.InvDist", "Qf.InvDistSq", "Qf.TPoly"))
+df.match.plot.gt5$pump <- factor(df.match.plot.gt5$pump, levels=c("Transient", "Intermittent"))
+df.match.plot.gt5$analytical <- factor(df.match.plot.gt5$analytical, levels=c("glover", "hunt"))
+
+## what is the winner for each variable to plot?
+analytical_best <- "hunt"
+method_best <- "Qf.WebSq"
+domain_best <- "Adjacent+Dynamic"
+
+## plot of match percentage
+p.match.prc.oneLine <-
+  df.match.plot.gt5 %>% 
+  subset(stream_BC %in% stream_BC_plot & 
+           apportionment %in% domain_plot &
+           analytical %in% analytical_plot) %>% 
+  ggplot() +
+  geom_rect(data=df.NoPump.times, 
+            aes(xmin=starts/365, xmax=stops/365, ymin=-Inf, ymax=Inf), 
+            fill=col.gray, alpha=0.25) +
+  geom_line(aes(x=Time/365, y=prc.match, group=interaction(apportionment, analytical, method)), color="gray75") +
+  geom_line(data=subset(df.match.plot.gt5, analytical==analytical_best & apportionment==domain_best & method==method_best & Streams=="Qd > 5%"), 
+            aes(x=Time/365, y=prc.match), color=col.cat.blu, size=2) +
+  facet_wrap(pump ~ ., ncol=2, 
+             labeller=as_labeller(c("Transient"="Continuous Pumping", "Intermittent"="Intermittent Pumping"))) +
+  scale_x_continuous(name="Time [years]", expand=c(0,0), breaks=seq(0,10,2)) +
+  scale_y_continuous(name="% of Wells where\nMost Affected Segment is\nCorrectly Identified", 
+                     limits=c(0,1), expand=c(0,0), breaks=seq(0,1,0.25),
+                     labels=scales::percent) +
+  theme(legend.position="bottom",
+        strip.text=element_blank())
+
+## plot of fit, most affected reach
+p.match.fit.oneLine <- 
+  df.match.plot %>% 
+  subset(stream_BC %in% stream_BC_plot & 
+           apportionment %in% domain_plot &
+           analytical %in% analytical_plot &
+           Streams=="Qd > 0.1%") %>% 
+  ggplot() +
+  geom_rect(data=df.NoPump.times, 
+            aes(xmin=starts/365, xmax=stops/365, ymin=-Inf, ymax=Inf), 
+            fill=col.gray, alpha=0.25) +
+  geom_hline(yintercept=0, color=col.gray) +
+  geom_line(aes(x=Time/365, y=MAE.match/(depletion.prc.modflow.max-depletion.prc.modflow.min), group=interaction(apportionment, analytical, method)), color="gray75") +
+  geom_line(data=subset(df.match.plot, analytical==analytical_best & apportionment==domain_best & method==method_best & Streams=="Qd > 0.1%"), 
+            aes(x=Time/365, y=MAE.match/(depletion.prc.modflow.max-depletion.prc.modflow.min)), color=col.cat.blu, size=2) +
+  facet_wrap(pump ~ ., ncol=2, 
+             labeller=as_labeller(c("Transient"="Continuous Pumping", "Intermittent"="Intermittent Pumping"))) +
+  scale_linetype_discrete(name="Segments\nEvaluated") +
+  scale_x_continuous(name="Time [years]", expand=c(0,0), breaks=seq(0,10,2)) +
+  scale_y_reverse(name="Normalized MAE,\nMost Affected Segment") +
+  theme(strip.text=element_blank()) +
+  NULL
+
+## plot of KGE for all wells/reaches
+p.overall.oneLine <-
+  df.overall.plot %>% 
+  ggplot() +
+  geom_rect(data=df.NoPump.times, 
+            aes(xmin=starts/365, xmax=stops/365, ymin=-Inf, ymax=Inf), 
+            fill=col.gray, alpha=0.25) +
+  geom_hline(yintercept=0, color=col.gray) +
+  geom_line(aes(x=Time/365, y=KGE.overall, group=interaction(apportionment, analytical, method)), color="gray75") +
+  geom_line(data=subset(df.overall.plot, analytical==analytical_best & apportionment==domain_best & method==method_best),
+            aes(x=Time/365, y=KGE.overall), color=col.cat.blu, size=2) +
+  facet_wrap(pump ~ ., ncol=2, 
+             labeller=as_labeller(c("Transient"="(a) Continuous Pumping", "Intermittent"="(b) Intermittent Pumping"))) +
+  scale_x_continuous(name="Time [years]", expand=c(0,0), breaks=seq(0,10,2)) +
+  scale_y_continuous(name="KGE,\nAll Segments", limits=c(min(df.overall.plot$KGE.overall), 1)) +
+  theme(strip.text=element_blank()) +
+  NULL
+
+## plot of MAE for cumulative capture fraction
+p.sum.oneLine <- 
+  df.fit.sum %>% 
+  subset(stream_BC %in% stream_BC_plot) %>% 
+  ggplot() +
+  geom_rect(data=df.NoPump.times, 
+            aes(xmin=starts/365, xmax=stops/365, ymin=-Inf, ymax=Inf), 
+            fill=col.gray, alpha=0.25) +
+  geom_hline(yintercept=0, color=col.gray) +
+  geom_line(aes(x=Time/365, y=MAE.sum, group=interaction(apportionment, analytical, method)), color="gray75") +
+  #geom_line(data=subset(df.fit.sum, analytical==analytical_best & apportionment==domain_best & method==method_best), 
+  #          aes(x=Time/365, y=Qf.total.MODFLOW.mean), color="black") +
+  geom_line(data=subset(df.fit.sum, analytical==analytical_best & apportionment==domain_best & method==method_best),
+            aes(x=Time/365, y=MAE.sum/(Qf.total.MODFLOW.max-Qf.total.MODFLOW.min)), color=col.cat.blu, size=2) +
+  facet_wrap(pump ~ ., ncol=2, 
+             labeller=as_labeller(c("Transient"="(a) Continuous Pumping", "Intermittent"="(b) Intermittent Pumping"))) +
+  scale_x_continuous(name="Time [years]", expand=c(0,0), breaks=seq(0,10,2)) +
+  scale_y_reverse(name="Normalized MAE,\nCapture Fraction") +
+  theme(strip.text=element_blank()) +
+  NULL
+
+# version without axis or legend which can be added with InkScape
+save_plot(file.path("figures+tables", paste0("Figure_CompareAll-OneLine_", stream_BC_plot, "_NoText.pdf")),
+          plot_grid(p.match.prc.oneLine + theme(legend.position="none",
+                                                axis.title.x = element_blank(),
+                                                axis.text.x = element_blank()),
+                    p.match.fit.oneLine + theme(legend.position="none",
+                                                axis.title.x = element_blank(),
+                                                axis.text.x = element_blank()),
+                    p.overall.oneLine + theme(legend.position="none",
+                                              axis.title.x = element_blank(),
+                                              axis.text.x = element_blank()),
+                    p.sum.oneLine + theme(legend.position="none",
+                                          axis.title.x = element_blank(),
+                                          axis.text.x = element_blank()),
+                    ncol=1, align="v", axis="l"),
+          ncol = 1, nrow = 4, base_width = 185/25.4, base_height=50/25.4, device=cairo_pdf)
+
+
+## save output for chart
+# match
+df.chart.PS <- 
+  df.match.plot.gt5 %>% 
+  group_by(pump, apportionment, method, analytical, pump) %>% 
+  summarize(primary.spatial = mean(prc.match))
+
+df.chart.PM <- 
+  df.match.plot %>% 
+  group_by(pump, apportionment, method, analytical, pump) %>% 
+  summarize(primary.magnitude = mean(MAE.match/(depletion.prc.modflow.max-depletion.prc.modflow.min)))
+
+df.chart.OS <-
+  df.overall.plot %>% 
+  group_by(pump, apportionment, method, analytical, pump) %>% 
+  summarize(overall.spatial = mean(KGE.overall))
+
+df.chart.OM <-
+  df.fit.sum %>% 
+  group_by(pump, apportionment, method, analytical, pump) %>% 
+  summarize(overall.magnitude = mean(MAE.sum/(Qf.total.MODFLOW.max-Qf.total.MODFLOW.min)))
+
+df.chart <-
+  left_join(df.chart.PS, df.chart.PM, by=c("analytical", "apportionment", "method", "pump")) %>% 
+  left_join(df.chart.OS, by=c("analytical", "apportionment", "method", "pump")) %>% 
+  left_join(df.chart.OM, by=c("analytical", "apportionment", "method", "pump"))
+
+analytical_best <- "hunt"
+method_best <- "Qf.WebSq"
+domain_best <- "Adjacent+Dynamic"
+
+df.chart.plot <- subset(df.chart.all, 
+                        (apportionment==domain_best & method==method_best & analytical==analytical_best) |
+                          (method==method_best & analytical==analytical_best) |
+                          (apportionment==domain_best & analytical==analytical_best) |
+                          (apportionment==domain_best & method==method_best)) %>% 
+  melt(id=c("pump", "apportionment", "method", "analytical"))
+write.csv(df.chart.plot, file.path("figures+tables", "Figure_CompareAll-Chart_Raw.csv"), row.names=F)
