@@ -369,21 +369,23 @@ p.fit.well <-
 lm(MAE.overall/(depletion.prc.modflow.max-depletion.prc.modflow.min) ~ wte_m, data=df.fit.well) %>% 
   summary()
 
-save_plot(file.path("figures+tables", "Figure_Error-Factors_ByWell.png"),
-          plot_grid(p.map.well + theme(legend.position="top"),
-                    p.fit.well,
-                    ncol = 1, 
-                    nrow = 2, 
-                    align = 'v',
-                    axis = 'l',
-                    rel_heights = c(2, 1),
-                    labels = c("(a)", "(b)"),
-                    label_size = 10,
-                    label_fontface = "plain",
-                    label_colour = "grey30",
-                    hjust = 0,
-                    vjust = 1),
-          base_width = 95/25.4, base_height=150/25.4)
+p.byWell <- plot_grid(p.map.well + theme(legend.position="top"),
+                      p.fit.well,
+                      ncol = 1, 
+                      nrow = 2, 
+                      align = 'v',
+                      axis = 'l',
+                      rel_heights = c(2, 1),
+                      labels = c("(a)", "(b)"),
+                      label_size = 10,
+                      label_fontface = "plain",
+                      label_colour = "grey30",
+                      hjust = 0,
+                      vjust = 1)
+
+#save_plot(file.path("figures+tables", "Figure_Error-Factors_ByWell.png"),
+#          p.byWell,
+#          base_width = 95/25.4, base_height=150/25.4)
 
 
 ## barplot fit by horizontal distance
@@ -429,18 +431,26 @@ p.bar.length <-
   scale_y_continuous(name="Normalized MAE") +
   coord_cartesian(ylim=c(0, max(df.fit.length$MAE.overall/(df.fit.length$depletion.prc.modflow.max-df.fit.length$depletion.prc.modflow.min))))
 
-save_plot(file.path("figures+tables", "Figure_Error-Factors_Geometry.png"),
-          plot_grid(p.bar.dist + theme(plot.margin=unit(c(0.5, 0.5, 2, 0.5), "mm")),
-                    p.bar.vert + theme(plot.margin=unit(c(1, 0.5, 1, 0.5), "mm")),
-                    p.bar.length + theme(plot.margin=unit(c(2, 0.5, 0.5, 0.5), "mm")),
-                    ncol = 1, 
-                    nrow = 3, 
-                    align = 'v',
-                    axis = 'l',
-                    labels = c("(a)", "(b)", "(c)"),
-                    label_size = 10,
-                    label_fontface = "plain",
-                    label_colour = "grey30",
-                    hjust = 0,
-                    vjust = 1),
-          base_width = 95/25.4, base_height=150/25.4)
+p.geometry <- plot_grid(p.bar.dist + theme(plot.margin=unit(c(0.5, 0.5, 2, 0.5), "mm")),
+                        p.bar.vert + theme(plot.margin=unit(c(1, 0.5, 1, 0.5), "mm")),
+                        p.bar.length + theme(plot.margin=unit(c(2, 0.5, 0.5, 0.5), "mm")),
+                        ncol = 1, 
+                        nrow = 3, 
+                        align = 'v',
+                        axis = 'l',
+                        labels = c("(c)", "(d)", "(e)"),
+                        label_size = 10,
+                        label_fontface = "plain",
+                        label_colour = "grey30",
+                        hjust = 0,
+                        vjust = 1)
+
+#save_plot(file.path("figures+tables", "Figure_Error-Factors_Geometry.png"),
+#          p.geometry,
+#          base_width = 95/25.4, base_height=150/25.4)
+
+## both ByWell and Geometry in one plot
+save_plot(file.path("figures+tables", "Figure_Error-Factors_ByWell+Geometry.png"),
+          plot_grid(p.byWell, p.geometry,
+                    ncol=2),
+          base_width = 190/25.4, base_height=150/25.4)
