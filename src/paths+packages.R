@@ -31,6 +31,7 @@ require(hydroGOF)
 require(RCurl)
 require(SPEI)
 require(tidyr)
+require(sf)
 
 ## metadata about watershed
 station.outlet <- "11468000"  # USGS gage station number for outlet gauge

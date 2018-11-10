@@ -1434,6 +1434,25 @@
        effect="spiro"
        id="path-effect7565-3"
        is_visible="true" />
+    <marker
+       inkscape:isstock="true"
+       style="overflow:visible"
+       id="marker9100-0-1"
+       refX="0"
+       refY="0"
+       orient="auto"
+       inkscape:stockid="Arrow2Mend">
+      <path
+         transform="scale(-0.6,-0.6)"
+         d="M 8.7185878,4.0337352 -2.2072895,0.01601326 8.7185884,-4.0017078 c -1.7454984,2.3720609 -1.7354408,5.6174519 -6e-7,8.035443 z"
+         style="fill:#777171;fill-opacity:1;fill-rule:evenodd;stroke:#777171;stroke-width:0.625;stroke-linejoin:round;stroke-opacity:1"
+         id="path9102-5-4"
+         inkscape:connector-curvature="0" />
+    </marker>
+    <inkscape:path-effect
+       effect="spiro"
+       id="path-effect7565-3-8"
+       is_visible="true" />
   </defs>
   <sodipodi:namedview
      id="base"
@@ -1442,9 +1461,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="1"
      inkscape:pageshadow="2"
-     inkscape:zoom="1.0602244"
-     inkscape:cx="336.29918"
-     inkscape:cy="298.05011"
+     inkscape:zoom="2.9987674"
+     inkscape:cx="464.52413"
+     inkscape:cy="411.33001"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -1468,7 +1487,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -4993,5 +5012,12 @@
        height="15.690012"
        x="148.35219"
        y="149.32373" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#777171;stroke-width:1.25000012;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker9100-0-1)"
+       d="M 600.41009,8.2236523 571.02428,-21.162152"
+       id="path7563-2-4"
+       inkscape:path-effect="#path-effect7565-3-8"
+       inkscape:original-d="M 600.41009,8.2236523 571.02428,-21.162152"
+       inkscape:connector-curvature="0" />
   </g>
 </svg>
