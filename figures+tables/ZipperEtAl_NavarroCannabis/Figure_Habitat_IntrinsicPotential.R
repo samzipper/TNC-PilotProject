@@ -1,4 +1,4 @@
-## Habitat_Figure_IntrinsicPotential.R
+## Figure_Habitat_IntrinsicPotential.R
 #' Map of Navarro River Watershed with intrinsic potential habitat suitability.
 
 source(file.path("src", "paths+packages.R"))
@@ -116,7 +116,7 @@ sf.all %>%
         legend.justification=c(0,0),
         legend.background=element_blank(),
         legend.box.background=element_blank()) +
-  ggsave(file.path("figures+tables", "Habitat_Figure_IntrinsicPotential_Continuous.png"),
+  ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_Habitat_IntrinsicPotential_Continuous.png"),
          width=190, height=74, units="mm") +
   NULL
 
@@ -138,7 +138,7 @@ sf.all %>%
         legend.box.background=element_blank())  +
   guides(color=guide_legend(override.aes = list(fill=c(col.cat.blu, col.cat.org)),
                             keyheight=0.1, keywidth=2)) +
-  ggsave(file.path("figures+tables", "Habitat_Figure_IntrinsicPotential_Discrete.png"),
+  ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_Habitat_IntrinsicPotential_Discrete.png"),
          width=190, height=74, units="mm") +
   NULL
 
@@ -148,7 +148,7 @@ sf.n.high %>%
   geom_sf(data=sf.basin, color=col.cat.red, fill=NA) +
   scale_x_continuous(name="Easting [m]", expand=c(0,0), breaks=map.breaks.x) +
   scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
-  scale_color_manual(name="Intrinsic\nHabitat\nPotential", 
+  scale_color_manual(name="Ecological Value", 
                      values=c("FALSE"=col.cat.blu, "TRUE"=col.cat.org),
                      labels=c("FALSE"="Low", "TRUE"="High")) +
   coord_sf(crs=crs.MODFLOW, datum=crs.MODFLOW) +
@@ -160,6 +160,13 @@ sf.n.high %>%
         legend.box.background=element_blank())  +
   guides(color=guide_legend(override.aes = list(fill=c(col.cat.blu, col.cat.org)),
                             keyheight=0.1, keywidth=2)) +
-  ggsave(file.path("figures+tables", "Habitat_Figure_IntrinsicPotential_Discrete-AnySpecies.png"),
+  ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_Habitat_IntrinsicPotential_Discrete-AnySpecies.png"),
          width=95, height=95, units="mm") +
   NULL
+
+sum(sf.n.high$n.species.high >= 1)
+sum(is.finite(sf.n.high$n.species.high))
+
+sum(subset(sf.n.high, n.species.high >= 1)$length_m)/1000
+sum(sf.n.high$length_m)/1000
+
