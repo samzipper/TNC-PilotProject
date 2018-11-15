@@ -5,7 +5,7 @@
 source(file.path("src", "paths+packages.R"))
 
 ## get data from USGS - only have to run once
-#df <- importDVs(station.outlet, code="00060", stat="00003", sdate="1900-01-01", edate="2017-12-31")
+#df <- importDVs(station.outlet, code="00060", stat="00003", sdate="1950-10-01", edate="2018-09-30")
 #df.info <- siteInfo(station.outlet)
 #write.csv(df, file.path("results", "Navarro_StreamflowData.csv"), row.names=F)
 #write.csv(df.info, file.path("results", "Navarro_StreamflowData_siteInfo.csv"), row.names=F)

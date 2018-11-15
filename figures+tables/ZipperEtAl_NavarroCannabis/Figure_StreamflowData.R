@@ -6,8 +6,8 @@
 source("src/paths+packages.R")
 
 ## get data from USGS - output from script Navarro_StreamflowData.R
-df <- read.csv(file.path("results", "Navarro_StreamflowData.csv"))
-df.info <- read.csv(file.path("results", "Navarro_StreamflowData_siteInfo.csv"))
+df <- read.csv(file.path("results", "Navarro_StreamflowData.csv"), stringsAsFactors=F)
+df.info <- read.csv(file.path("results", "Navarro_StreamflowData_siteInfo.csv"), stringsAsFactors=F)
 # df colnames:
 #   staid = station (char)
 #   val = discharge [cfs] (numeric)
@@ -15,9 +15,6 @@ df.info <- read.csv(file.path("results", "Navarro_StreamflowData_siteInfo.csv"))
 #   qualcode = quality code
 
 ## data inspection and cleanup
-plotParam(df)
-cleanUp(df, task = "view")  # appear to be no bad values
-if (df$date[dim(df)[1]] - df$date[1] != dim(df)[1]-1) stop('missing dates')
 if (sum(is.na(df$val))>0) stop(paste0('no data: ', paste(df$dates[is.na(df$val)], collapse=", ")))
 
 # gap-fill with linear interpolation
@@ -34,6 +31,7 @@ df$baseflow.mm_d <- bf[,1]
 df$quickflow.mm_d <- bf[,2]
 
 # year and water year
+df$date <- ymd(df$date)
 df$year <- year(df$date)
 df$water.year <- year(df$date+days(sum(days_in_month(c(10,11,12)))))
 df$month <- month(df$date)
@@ -64,26 +62,25 @@ df.DOY$baseflow.cfs.mean <- df.DOY$baseflow.mm_d.mean/cfs.to.mm
 # mean annual hydrograph
 p.Q.DOY <-
   ggplot() +
-  geom_line(data=df, aes(x=DOY, y=discharge.mm_d, group=year), color=col.gray, alpha=0.25) +
+  geom_line(data=df, aes(x=DOY, y=discharge.mm_d, group=year), color=col.gray, alpha=0.15) +
   geom_line(data=df.DOY, aes(x=DOY, y=discharge.mm_d.mean), color="black", size=2) +
   geom_line(data=df.DOY, aes(x=DOY, y=baseflow.mm_d.mean), color=col.cat.blu, size=2) +
-  annotate("text", x=60, y=90, label="Individual Years", color=col.gray) +
-  annotate("text", x=60, y=20, label="Mean Annual Hydrograph", color="black") +
-  annotate("text", x=60, y=0.3, label="Mean Annual\nBaseflow Hydrograph", color=col.cat.blu) +
+  annotate("text", x=60, y=0.1, label="Individual Years", color=col.gray) +
+  annotate("text", x=140, y=4, label="Mean Annual\nHydrograph", color="black") +
+  annotate("text", x=140, y=0.03, label="Mean Annual\nBaseflow Hydrograph", color=col.cat.blu) +
   scale_y_continuous(name="Discharge [mm/d]", trans="log10", breaks=(10^seq(-3,2)), labels=c("0.001", "0.01", "0.1", "1", "10", "100")) +
   scale_x_continuous(name="Day of Year", limits=c(0,366), breaks=seq(0,360,90), expand=c(0,0))
-ggsave(file.path("figures+tables", "ZipperEtAl_NavarroAnalyticalDepletionFunctions", "Figure_StreamflowData.png"),
-       p.Q.DOY, width=190, height=65, units="mm")
 
-### mean monthly trends - don't need for first paper
 ## mean monthly trends
 # mean month trends table
 df.mo.trend <- data.frame(month=seq(1,12),
                           R2 = NaN,
-                          p = NaN)
+                          p = NaN,
+                          slope = NaN)
 for (mo in seq(1,12)){
   df.mo.trend$R2[mo] <- summary(lm(baseflow.mm_d.mean ~ water.year, subset(df.yr.mo, month==mo)))$r.squared
   df.mo.trend$p[mo] <- lmp(lm(baseflow.mm_d.mean ~ water.year, subset(df.yr.mo, month==mo)))
+  df.mo.trend$slope[mo] <- coef(lm(baseflow.mm_d.mean ~ water.year, subset(df.yr.mo, month==mo)))[2]
 }
 
 # significance label
@@ -97,17 +94,41 @@ for (mo in seq(1,12)){
 }
 
 p.baseflow.mo.trend <-
-  ggplot(df.yr.mo, aes(x=water.year, y=baseflow.mm_d.mean, group=month)) +
+  ggplot(df.yr.mo, aes(x=water.year, y=baseflow.mm_d.mean*days_in_month(month), group=month)) +
   geom_hline(yintercept=0, color="gray65") +
   geom_point(color=col.cat.blu) +
   stat_smooth(method="lm", color="black") +
   facet_wrap(~month, scales="free_y", labeller=as_labeller(labs.mo.sig)) +
   scale_x_continuous(name="Water Year", breaks=seq(1950, 2010, 20)) +
-  scale_y_continuous(name="Mean Monthly Baseflow [mm/d]")
+  scale_y_continuous(name="Monthly Baseflow [mm]")
 
 ## save plots
-ggsave(file.path("figures+tables", "Figure_StreamflowData.png"),
-       grid.arrange(p.Q.DOY+labs(title="(a)") + theme(plot.title=element_text(hjust=0.01, vjust=-7)), 
-                    p.baseflow.mo.trend+labs(title="(b)") + theme(plot.title=element_text(hjust=0, vjust=-7)), 
+ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_StreamflowData.png"),
+       grid.arrange(p.Q.DOY+labs(title="(a)") + theme(plot.title=element_text(hjust=0.01, vjust=-7, face="plain"),
+                                                      plot.margin=unit(c(-5,1,0,1), "mm")), 
+                    p.baseflow.mo.trend+labs(title="(b)") + theme(plot.title=element_text(hjust=0, vjust=-7, face="plain"),
+                                                                  plot.margin=unit(c(-7,1,0,1), "mm")), 
                     ncol=1, heights=c(0.75,1)),
-       width=190, height=190, units="mm")
+       width=190, height=160, units="mm")
+
+# stats
+df.yr <-
+  df %>% 
+  group_by(water.year) %>% 
+  summarize(baseflow_mm = sum(baseflow.mm_d),
+            discharge_mm = sum(discharge.mm_d))
+
+mean(df.yr$baseflow_mm)
+sd(df.yr$baseflow_mm)
+
+mean(df.yr$discharge_mm)
+sd(df.yr$discharge_mm)
+
+mean(df.yr$baseflow_mm/df.yr$discharge_mm)
+sd(df.yr$baseflow_mm/df.yr$discharge_mm)
+
+sum(df.DOY$discharge.mm_d.mean)
+sum(df.DOY$baseflow.mm_d.mean)
+sum(df.DOY$baseflow.mm_d.mean)/sum(df.DOY$discharge.mm_d.mean)
+
+10*df.mo.trend$slope*days_in_month(df.mo.trend$month)
