@@ -44,6 +44,7 @@ results/Navarro_DecideBestMethod_04_*
 
 # GIS files
 *.qgs*
+*.aux.xml
 
 # History files
 .Rhistory

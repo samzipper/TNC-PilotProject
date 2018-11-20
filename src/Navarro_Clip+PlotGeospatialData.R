@@ -18,94 +18,105 @@ shp.adj.WGS <- spTransform(shp.adj, crs.WGS)
 shp.adj.riv.WGS <- spTransform(shp.adj.riv, crs.WGS)
 
 ## NED data
-# load raw data
-r.dem.NED <- raster(paste0(dir.dem.NED, "Navarro_NED10m.vrt"))
-
-# reproject boundary
-r.dem.NED.crop <- crop(r.dem.NED, extent(spTransform(shp.adj, crs(r.dem.NED))))
-
-# mask
-r.dem.NED.mask <- mask(r.dem.NED.crop, spTransform(shp.adj, crs(r.dem.NED.crop)), 
-                    filename=paste0(dir.gis, "Navarro_DEM_m_NED10m.tif"), datatype="FLT4S", overwrite=T)
+# # load raw data
+# r.dem.NED <- raster(paste0(dir.dem.NED, "Navarro_NED10m.vrt"))
+# 
+# # reproject boundary
+# r.dem.NED.crop <- crop(r.dem.NED, extent(spTransform(shp.adj, crs(r.dem.NED))))
+# 
+# # mask
+# r.dem.NED.mask <- mask(r.dem.NED.crop, spTransform(shp.adj, crs(r.dem.NED.crop)), 
+#                     filename=paste0(dir.gis, "Navarro_DEM_m_NED10m.tif"), datatype="FLT4S", overwrite=T)
+r.dem.NED.mask <- raster(paste0(dir.gis, "Navarro_DEM_m_NED10m.tif"))
 
 ## NLCD data: impervious, canopy, and lulc
-# load raw data
-r.can <- raster(paste0(dir.nlcd, "NLCD2011_CAN_California/NLCD2011_CAN_California.tif"))
-r.imp <- raster(paste0(dir.nlcd, "NLCD2011_IMP_California/NLCD2011_IMP_California.tif"))
-r.lulc <- raster(paste0(dir.nlcd, "NLCD2011_LC_California/NLCD2011_LC_California.tif"))
-
-# crop to basin boundary
-r.can.crop <- crop(r.can, extent(spTransform(shp.adj, crs(r.can))))
-r.imp.crop <- crop(r.imp, extent(spTransform(shp.adj, crs(r.can))))
-r.lulc.crop <- crop(r.lulc, extent(spTransform(shp.adj, crs(r.can))))
-
-# mask
-r.can.mask <- mask(r.can.crop, spTransform(shp.adj, crs(r.can)), 
-                   filename=paste0(dir.gis, "Navarro_NLCD2011_CanopyCover_30m.tif"), datatype="INT2S", overwrite=T)
-r.imp.mask <- mask(r.imp.crop, spTransform(shp.adj, crs(r.can)), 
-                   filename=paste0(dir.gis, "Navarro_NLCD2011_ImpervCover_30m.tif"), datatype="INT2S", overwrite=T)
-r.lulc.mask <- mask(r.lulc.crop, spTransform(shp.adj, crs(r.can)), 
-                    filename=paste0(dir.gis, "Navarro_NLCD2011_LULC_30m.tif"), datatype="INT2S", overwrite=T)
+# # load raw data
+# r.can <- raster(paste0(dir.nlcd, "NLCD2011_CAN_California/NLCD2011_CAN_California.tif"))
+# r.imp <- raster(paste0(dir.nlcd, "NLCD2011_IMP_California/NLCD2011_IMP_California.tif"))
+# r.lulc <- raster(paste0(dir.nlcd, "NLCD2011_LC_California/NLCD2011_LC_California.tif"))
+# 
+# # crop to basin boundary
+# r.can.crop <- crop(r.can, extent(spTransform(shp.adj, crs(r.can))))
+# r.imp.crop <- crop(r.imp, extent(spTransform(shp.adj, crs(r.can))))
+# r.lulc.crop <- crop(r.lulc, extent(spTransform(shp.adj, crs(r.can))))
+# 
+# # mask
+# r.can.mask <- mask(r.can.crop, spTransform(shp.adj, crs(r.can)), 
+#                    filename=paste0(dir.gis, "Navarro_NLCD2011_CanopyCover_30m.tif"), datatype="INT2S", overwrite=T)
+# r.imp.mask <- mask(r.imp.crop, spTransform(shp.adj, crs(r.can)), 
+#                    filename=paste0(dir.gis, "Navarro_NLCD2011_ImpervCover_30m.tif"), datatype="INT2S", overwrite=T)
+# r.lulc.mask <- mask(r.lulc.crop, spTransform(shp.adj, crs(r.can)), 
+#                     filename=paste0(dir.gis, "Navarro_NLCD2011_LULC_30m.tif"), datatype="INT2S", overwrite=T)
+r.can.mask <- raster(paste0(dir.gis, "Navarro_NLCD2011_CanopyCover_30m.tif"))
+r.imp.mask <- raster(paste0(dir.gis, "Navarro_NLCD2011_ImpervCover_30m.tif"))
+r.lulc.mask <- raster(paste0(dir.gis, "Navarro_NLCD2011_LULC_30m.tif"))
 
 ## HydroSHEDS data: dem and slope
-# load raw data
-r.dem.hysheds <- raster(path.dem.hysheds)
-r.slope.hysheds <- raster(path.slope.hysheds)
-
-# crop to basin boundary
-r.dem.hysheds.s <- crop.mask(r.dem.hysheds, shp.adj.WGS)
-r.slope.hysheds.s <- crop.mask(r.slope.hysheds, shp.adj.WGS)
-
-# write rasters
-writeRaster(r.dem.hysheds.s, paste0(dir.gis, "Navarro_DEM_m_HydroSHEDS_15s.tif"), datatype="INT2S", overwrite=T)
-writeRaster(r.slope.hysheds.s, paste0(dir.gis, "Navarro_slope_deg_HydroSHEDS_15s.tif"), datatype="FLT4S", overwrite=T)
+# # load raw data
+# r.dem.hysheds <- raster(path.dem.hysheds)
+# r.slope.hysheds <- raster(path.slope.hysheds)
+# 
+# # crop to basin boundary
+# r.dem.hysheds.s <- crop.mask(r.dem.hysheds, shp.adj.WGS)
+# r.slope.hysheds.s <- crop.mask(r.slope.hysheds, shp.adj.WGS)
+# 
+# # write rasters
+# writeRaster(r.dem.hysheds.s, paste0(dir.gis, "Navarro_DEM_m_HydroSHEDS_15s.tif"), datatype="INT2S", overwrite=T)
+# writeRaster(r.slope.hysheds.s, paste0(dir.gis, "Navarro_slope_deg_HydroSHEDS_15s.tif"), datatype="FLT4S", overwrite=T)
+r.dem.hysheds.s <- raster(paste0(dir.gis, "Navarro_DEM_m_HydroSHEDS_15s.tif"))
+r.slope.hysheds.s <- raster(paste0(dir.gis, "Navarro_slope_deg_HydroSHEDS_15s.tif"))
 
 ## soilgrids data: % sand (top 10 cm)
-# load raw data
-r.dtb <- raster(paste0(dir.SoilGrids, "1original/SoilGrids1km/BDTICM_M_1km_ll.tif"))
-r.sand <- raster(paste0(dir.SoilGrids, "2derived/SoilGrids1km/SNDPPT_M_meanTop015cm_1km_ll.tif"))
-
-# crop to basin boundary
-r.dtb.s <- crop.mask(r.dtb, shp.adj.WGS)
-r.sand.s <- crop.mask(r.sand, shp.adj.WGS)
-
-# convert dtb from cm to m
-r.dtb.s <- r.dtb.s/100
-
-# write rasters
-writeRaster(r.dtb.s, paste0(dir.gis, "Navarro_DTB_m_SoilGrids1km.tif"), datatype="FLT4S", overwrite=T)
-writeRaster(r.sand.s, paste0(dir.gis, "Navarro_sand_prc_top15cm_SoilGrids1km.tif"), datatype="FLT4S", overwrite=T)
+# # load raw data
+# r.dtb <- raster(paste0(dir.SoilGrids, "1original/SoilGrids1km/BDTICM_M_1km_ll.tif"))
+# r.sand <- raster(paste0(dir.SoilGrids, "2derived/SoilGrids1km/SNDPPT_M_meanTop015cm_1km_ll.tif"))
+# 
+# # crop to basin boundary
+# r.dtb.s <- crop.mask(r.dtb, shp.adj.WGS)
+# r.sand.s <- crop.mask(r.sand, shp.adj.WGS)
+# 
+# # convert dtb from cm to m
+# r.dtb.s <- r.dtb.s/100
+# 
+# # write rasters
+# writeRaster(r.dtb.s, paste0(dir.gis, "Navarro_DTB_m_SoilGrids1km.tif"), datatype="FLT4S", overwrite=T)
+# writeRaster(r.sand.s, paste0(dir.gis, "Navarro_sand_prc_top15cm_SoilGrids1km.tif"), datatype="FLT4S", overwrite=T)
+r.dtb.s <- raster(paste0(dir.gis, "Navarro_DTB_m_SoilGrids1km.tif"))
+r.sand.s <- raster(paste0(dir.gis, "Navarro_sand_prc_top15cm_SoilGrids1km.tif"))
 
 ## GLHYMPS data: porosity and permeability
-# load raw data
-r.porosity <- raster(paste0(dir.GLHYMPS, "na_porosity_x100_EPSG4326.tif"))
-r.logK <- raster(paste0(dir.GLHYMPS, "na_logK_Ice_x100_EPSG4326.tif"))
-
-# crop to basin boundary
-r.porosity.s <- crop.mask(r.porosity, shp.adj.WGS)
-r.logK.s <- crop.mask(r.logK, shp.adj.WGS)
-
-# anything that has a 0, set to NaN
-r.porosity.s[r.porosity.s==0] <- NaN
-r.logK.s[r.logK.s > -1000] <- NaN
-
-# get rid of x100
-r.porosity.s <- r.porosity.s/100
-r.logK.s <- r.logK.s/100
-
-# write rasters
-writeRaster(r.porosity.s, paste0(dir.gis, "Navarro_porosity_GLHYMPS.tif"), datatype="FLT4S", overwrite=T)
-writeRaster(r.logK.s, paste0(dir.gis, "Navarro_logK_GLHYMPS.tif"), datatype="FLT4S", overwrite=T)
+# # load raw data
+# r.porosity <- raster(paste0(dir.GLHYMPS, "na_porosity_x100_EPSG4326.tif"))
+# r.logK <- raster(paste0(dir.GLHYMPS, "na_logK_Ice_x100_EPSG4326.tif"))
+# 
+# # crop to basin boundary
+# r.porosity.s <- crop.mask(r.porosity, shp.adj.WGS)
+# r.logK.s <- crop.mask(r.logK, shp.adj.WGS)
+# 
+# # anything that has a 0, set to NaN
+# r.porosity.s[r.porosity.s==0] <- NaN
+# r.logK.s[r.logK.s > -1000] <- NaN
+# 
+# # get rid of x100
+# r.porosity.s <- r.porosity.s/100
+# r.logK.s <- r.logK.s/100
+# 
+# # write rasters
+# writeRaster(r.porosity.s, paste0(dir.gis, "Navarro_porosity_GLHYMPS.tif"), datatype="FLT4S", overwrite=T)
+# writeRaster(r.logK.s, paste0(dir.gis, "Navarro_logK_GLHYMPS.tif"), datatype="FLT4S", overwrite=T)
+r.porosity.s <- raster(paste0(dir.gis, "Navarro_porosity_GLHYMPS.tif"))
+r.logK.s <- raster(paste0(dir.gis, "Navarro_logK_GLHYMPS.tif"))
 
 ## WTD from Fan et al. (2013)
-# load raw data
-r.wtd <- raster(path.wtd)
-
-# crop to basin boundary
-r.wtd.s <- crop.mask(r.wtd, shp.adj.WGS)
-
-# write rasters
-writeRaster(r.wtd.s, paste0(dir.gis, "Navarro_WTD_m_FanEtAl2013.tif"), datatype="FLT4S", overwrite=T)
+# # load raw data
+# r.wtd <- raster(path.wtd)
+# 
+# # crop to basin boundary
+# r.wtd.s <- crop.mask(r.wtd, shp.adj.WGS)
+# 
+# # write rasters
+# writeRaster(r.wtd.s, paste0(dir.gis, "Navarro_WTD_m_FanEtAl2013.tif"), datatype="FLT4S", overwrite=T)
+r.wtd.s <- raster(paste0(dir.gis, "Navarro_WTD_m_FanEtAl2013.tif"))
 
 ## make plots
 # tidy data
