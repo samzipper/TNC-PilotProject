@@ -17,6 +17,9 @@ shp.riv.WGS <- spTransform(shp.riv, crs.WGS)
 shp.adj.WGS <- spTransform(shp.adj, crs.WGS)
 shp.adj.riv.WGS <- spTransform(shp.adj.riv, crs.WGS)
 
+# synthetic pumping wells
+df.wel <- read.table(file.path("modflow", "input", "iwel.txt"), header=T)
+
 ## NED data
 # # load raw data
 # r.dem.NED <- raster(paste0(dir.dem.NED, "Navarro_NED10m.vrt"))
