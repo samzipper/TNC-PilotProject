@@ -1,4 +1,4 @@
-## Navarro_Habitat_CalculateWellStreamPairs.R
+## Navarro_Cannabis_CalculateWellStreamPairs.R
 #' This script is intended to calculate analytical model inputs for each well-stream combination:
 #'   -d = distance to stream [m]
 #'   -S = effective storage coefficient [-]
@@ -21,10 +21,10 @@ df.wel <- read.table(file.path("modflow", "input", "iwel.txt"), header=T)
 sf.wel <- st_as_sf(df.wel, coords = c("lon", "lat"), crs = st_crs(sf.streams))
 
 # rasters
-r.lulc <- raster(paste0(dir.gis, "Navarro_Habitat_LULC_30m.tif"))
-r.dem.30m <- raster(paste0(dir.gis, "Navarro_Habitat_DEM_30m.tif"))
-r.dtb <- raster(paste0(dir.gis, "Navarro_Habitat_DTB_30m.tif"))
-r.aquifers <- raster(paste0(dir.gis, "Navarro_Habitat_GroundwaterBasins_30m.tif"))
+r.lulc <- raster(paste0(dir.gis, "Navarro_Cannabis_LULC_30m.tif"))
+r.dem.30m <- raster(paste0(dir.gis, "Navarro_Cannabis_DEM_30m.tif"))
+r.dtb <- raster(paste0(dir.gis, "Navarro_Cannabis_DTB_30m.tif"))
+r.aquifers <- raster(paste0(dir.gis, "Navarro_Cannabis_GroundwaterBasins_30m.tif"))
 
 ## extract some potentially relevant data
 sf.wel$elev_m <- raster::extract(r.dem.30m, sf.wel)  # elevation of that grid cell [m]
@@ -53,5 +53,5 @@ df.all <- data.frame(
 ## save output
 df.all %>% 
   format(digits = 3) %>% 
-  write.csv(file.path("results", "Navarro_Habitat_CalculateWellStreamPairs.csv"),
+  write.csv(file.path("results", "Navarro_Cannabis_CalculateWellStreamPairs.csv"),
             row.names=F)

@@ -1,4 +1,4 @@
-## Navarro_Habitat_PrepGeospatialData.R
+## Navarro_Cannabis_PrepGeospatialData.R
 # This script is intended to load, plot, and save geospatial data needed for analysis of 
 # pumping impacts on habitat. Everything should be at 30 m resolution and in the EPSG:26910 projection.
 
@@ -34,7 +34,7 @@ shp.adj <- readOGR(dsn="data/NHD/WBD", layer="WBDHU12_Navarro+Adjacent")
 #        filename=paste0(dir.gis, "Navarro_Habitat_LULC_30m.tif"), datatype="INT2S", overwrite=T)
 
 # read in r.lulc raster
-r.lulc <- raster(paste0(dir.gis, "Navarro_Habitat_LULC_30m.tif"))
+r.lulc <- raster(paste0(dir.gis, "Navarro_Cannabis_LULC_30m.tif"))
 
 # # set up DEM
 # r.dem <-
@@ -49,7 +49,7 @@ r.lulc <- raster(paste0(dir.gis, "Navarro_Habitat_LULC_30m.tif"))
 #        filename=paste0(dir.gis, "Navarro_Habitat_DEM_30m.tif"), datatype="FLT4S", overwrite=T)
 
 # read in DEM raster
-r.dem.30m <- raster(paste0(dir.gis, "Navarro_Habitat_DEM_30m.tif"))
+r.dem.30m <- raster(paste0(dir.gis, "Navarro_Cannabis_DEM_30m.tif"))
 
 # # depth to bedrock
 # r.dtb <-
@@ -61,7 +61,7 @@ r.dem.30m <- raster(paste0(dir.gis, "Navarro_Habitat_DEM_30m.tif"))
 #        filename=paste0(dir.gis, "Navarro_Habitat_DTB_30m.tif"), overwrite=T)
 
 # read in DTB raster
-r.dtb <- raster(paste0(dir.gis, "Navarro_Habitat_DTB_30m.tif"))
+r.dtb <- raster(paste0(dir.gis, "Navarro_Cannabis_DTB_30m.tif"))
 
 # # alluvial aquifer extents - convert from shapefiles to rasters
 # # this will be used to define spatial distribution of K and Sy
@@ -75,4 +75,4 @@ r.dtb <- raster(paste0(dir.gis, "Navarro_Habitat_DTB_30m.tif"))
 #             datatype="INT1U", overwrite=T)
 
 # read in aquifers raster
-r.aquifers <- raster(paste0(dir.gis, "Navarro_Habitat_GroundwaterBasins_30m.tif"))
+r.aquifers <- raster(paste0(dir.gis, "Navarro_Cannabis_GroundwaterBasins_30m.tif"))
