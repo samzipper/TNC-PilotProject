@@ -8,7 +8,8 @@ source("src/paths+packages.R")
 # stream shapefile (from NHD)
 sf.streams <- 
   sf::st_read(file.path("modflow", "input", "iriv.shp"), stringsAsFactors=F) %>% 
-  subset(TermnlP == outlet.TerminalPa)
+  subset(lnLngt_ >= 100)
+st_write(sf.streams, file.path("results", "GIS", "Navarro_Cannabis_StreamNetwork.shp"))
 
 # domain boundary shapefile
 df.basin <- 

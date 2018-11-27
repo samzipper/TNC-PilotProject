@@ -7,7 +7,7 @@ source(file.path("src", "paths+packages.R"))
 ## load data from Navarro_Cannabis_HabitatIntrinsicPotential.R
 # stream shapefile (from NHD)
 sf.streams <- 
-  sf::st_read(file.path("modflow", "input", "iriv.shp"), stringsAsFactors=F) %>% 
+  sf::st_read(file.path("results", "GIS", "Navarro_Cannabis_StreamNetwork.shp"), stringsAsFactors=F) %>% 
   subset(TermnlP == outlet.TerminalPa) %>% 
   left_join(read.csv(file.path("results", "Navarro_Cannabis_HabitatIntrinsicPotential.csv")),
             by=c("SegNum"))

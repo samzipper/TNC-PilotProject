@@ -1,13 +1,13 @@
 ## Figure_GeospatialData.R
 #' This script is intended to make a plot of the geospatial data used in the analytical depletion
-#' functions, which are created using the script Navarro_Habitat_PrepGeospatialData.R
+#' functions, which are created using the script Navarro_Cannabis_PrepGeospatialData.R
 
 source(file.path("src", "paths+packages.R"))
 
 ## load data
 # stream shapefile (from NHD)
 sf.streams <- 
-  sf::st_read(file.path("modflow", "input", "iriv.shp"), stringsAsFactors=F) %>% 
+  sf::st_read(file.path("results", "GIS", "Navarro_Cannabis_StreamNetwork.shp"), stringsAsFactors=F) %>% 
   subset(TermnlP == outlet.TerminalPa)
 
 # domain boundary shapefile
@@ -20,10 +20,10 @@ sf.basin <-
   sf::st_read(file.path("data", "NHD", "WBD", "WBDHU10_Navarro.shp"))
 
 # rasters
-r.lulc <- raster(paste0(dir.gis, "Navarro_Habitat_LULC_30m.tif"))
-r.dem.30m <- raster(paste0(dir.gis, "Navarro_Habitat_DEM_30m.tif"))
-r.dtb <- raster(paste0(dir.gis, "Navarro_Habitat_DTB_30m.tif"))
-r.aquifers <- raster(paste0(dir.gis, "Navarro_Habitat_GroundwaterBasins_30m.tif"))
+r.lulc <- raster(paste0(dir.gis, "Navarro_Cannabis_LULC_30m.tif"))
+r.dem.30m <- raster(paste0(dir.gis, "Navarro_Cannabis_DEM_30m.tif"))
+r.dtb <- raster(paste0(dir.gis, "Navarro_Cannabis_DTB_30m.tif"))
+r.aquifers <- raster(paste0(dir.gis, "Navarro_Cannabis_GroundwaterBasins_30m.tif"))
 
 ## convert raster to points
 df.dem <- 
