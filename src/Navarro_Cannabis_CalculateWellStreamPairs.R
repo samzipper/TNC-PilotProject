@@ -5,7 +5,6 @@
 #'   -Tr = effective transmissivity [L2/T]
 
 source(file.path("src", "paths+packages.R"))
-require(streamDepletr)
 
 ## load data
 # stream shapefile (from NHD)
@@ -32,7 +31,8 @@ sf.wel$dtb_m <- raster::extract(r.dtb, sf.wel)       # depth to bedrock [m]
 sf.streams$elev_m <- raster::extract(r.dem.30m, sf.streams, fun='mean', na.rm=T)  # mean elevation of all grid cells stream touches [m]
 sf.streams$dtb_m <- raster::extract(r.dtb, sf.streams, fun='mean', na.rm=T)       # mean DTB of all grid cells stream touches [m]
 
-ggplot() + geom_sf(data=sf.streams, aes(color=is.na(elev_m)))
+sum(is.na(sf.streams$elev_m))
+sum(is.na(sf.streams$dtb_m))
 
 ## predict stream width based on drainage area
 sf.streams$width_m <- WidthFromDA(DA=sf.streams$TtDASKM, w.min=1, w.max=100)
