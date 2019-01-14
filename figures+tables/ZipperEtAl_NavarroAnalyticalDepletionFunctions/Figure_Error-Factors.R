@@ -237,7 +237,7 @@ df.fit.well <-
 df.dist <-
   file.path("results", "Navarro_DepletionApportionment_WholeDomain_AllMethods+Wells+Reaches.csv") %>% 
   read.csv(stringsAsFactors=F) %>% 
-  left_join(df.wel[,c("WellNum", "ztop_m")], by=c("WellNum"))
+  left_join(df.wel[,c("WellNum", "wte_m", "ztop_m")], by=c("WellNum"))
 
 # load streambed info to calculate vertical distance
 df.stream.elev <- 
@@ -248,14 +248,17 @@ df.stream.elev <-
 
 df.dist <- 
   left_join(df.dist, df.stream.elev, by=c("SegNum")) %>% 
-  transform(dist.vert.m = (ztop_m - streambed_elev_m))
+  transform(dist.vert.m = (ztop_m - streambed_elev_m),
+            dist.vert.wellscreen.m = (wte_m - streambed_elev_m))  # wte_m is the top of the well screen elevation
 
 # join with all info
 df.all.dist <-
   df.plot %>% 
   subset(pump=="Transient") %>% 
-  left_join(df.dist[,c("SegNum", "WellNum", "distToWell.min.m", "dist.vert.m")], by=c("SegNum", "WellNum"))
+  left_join(df.dist[,c("SegNum", "WellNum", "distToWell.min.m", "dist.vert.m", "dist.vert.wellscreen.m")], 
+            by=c("SegNum", "WellNum"))
 
+# distance from land surface elevation of well to streambed
 dist.breaks <- quantile(df.all.dist$distToWell.min.m, seq(0,1,0.05))
 df.all.dist$dist.cut <- cut(df.all.dist$distToWell.min.m, dist.breaks, include.lowest=T)
 df.fit.dist <- 
@@ -283,6 +286,7 @@ df.fit.dist <-
             dist.m.min = min(distToWell.min.m),
             dist.m.max = max(distToWell.min.m))
 
+# distance from top of well screen to streambed
 dist.vert.breaks <- quantile(df.dist$dist.vert.m, seq(0,1,0.05))
 df.all.dist$dist.vert.cut <- cut(df.all.dist$dist.vert.m, dist.vert.breaks, include.lowest=T)
 df.fit.dist.vert <- 
@@ -309,6 +313,34 @@ df.fit.dist.vert <-
             dist.m.median = median(dist.vert.m),
             dist.m.min = min(dist.vert.m),
             dist.m.max = max(dist.vert.m))
+
+
+dist.vert.wellscreen.breaks <- quantile(df.dist$dist.vert.wellscreen.m, seq(0,1,0.05))
+df.all.dist$dist.vert.wellscreen.cut <- cut(df.all.dist$dist.vert.wellscreen.m, dist.vert.wellscreen.breaks, include.lowest=T)
+df.fit.dist.vert.wellscreen <- 
+  df.all.dist %>% 
+  subset(Time %in% times_plot &
+           pump %in% pump_plot) %>% 
+  group_by(pump, dist.vert.wellscreen.cut) %>% 
+  summarize(n.reach = sum(is.finite(depletion.prc)),
+            cor = cor(depletion.prc, depletion.prc.modflow, method="pearson"),
+            bias = pbias(depletion.prc, depletion.prc.modflow),
+            R2 = R2(depletion.prc, depletion.prc.modflow),
+            MSE.bias = MSE.bias(depletion.prc, depletion.prc.modflow),
+            MSE.var = MSE.var(depletion.prc, depletion.prc.modflow),
+            MSE.cor = MSE.cor(depletion.prc, depletion.prc.modflow),
+            MSE.bias.norm = MSE.bias.norm(depletion.prc, depletion.prc.modflow),
+            MSE.var.norm = MSE.var.norm(depletion.prc, depletion.prc.modflow),
+            MSE.cor.norm = MSE.cor.norm(depletion.prc, depletion.prc.modflow),
+            MSE.overall = MSE(depletion.prc, depletion.prc.modflow),
+            MAE.overall = mae(depletion.prc, depletion.prc.modflow),
+            KGE.overall = KGE(depletion.prc, depletion.prc.modflow, method="2012"),
+            depletion.prc.modflow.mean = mean(depletion.prc.modflow),
+            depletion.prc.modflow.max = max(depletion.prc.modflow),
+            depletion.prc.modflow.min = min(depletion.prc.modflow),
+            dist.m.median = median(dist.vert.wellscreen.m),
+            dist.m.min = min(dist.vert.wellscreen.m),
+            dist.m.max = max(dist.vert.wellscreen.m))
 
 ## calculate overall fit by reach length
 df.fit.length <-

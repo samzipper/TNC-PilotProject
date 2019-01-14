@@ -32,7 +32,7 @@ shp.adj <- readOGR(dsn="data/NHD/WBD", layer="WBDHU12_Navarro+Adjacent")
 #   crop(r.lulc, extent(spTransform(shp.adj, crs(r.lulc)))) %>% 
 #   projectRaster(from=., crs=crs(crs.MODFLOW), res=30, method="ngb") %>% 
 #   mask(., spTransform(shp.adj, crs.MODFLOW),
-#        filename=paste0(dir.gis, "Navarro_Habitat_LULC_30m.tif"), datatype="INT2S", overwrite=T)
+#        filename=paste0(dir.gis, "Navarro_Cannabis_LULC_30m.tif"), datatype="INT2S", overwrite=T)
 
 # read in r.lulc raster
 r.lulc <- raster(paste0(dir.gis, "Navarro_Cannabis_LULC_30m.tif"))
@@ -47,7 +47,7 @@ r.lulc <- raster(paste0(dir.gis, "Navarro_Cannabis_LULC_30m.tif"))
 #                            to = r.lulc,
 #                            method="bilinear") %>%
 #   mask(., spTransform(shp.adj, crs.MODFLOW),
-#        filename=paste0(dir.gis, "Navarro_Habitat_DEM_30m.tif"), datatype="FLT4S", overwrite=T)
+#        filename=paste0(dir.gis, "Navarro_Cannabis_DEM_30m.tif"), datatype="FLT4S", overwrite=T)
 
 # read in DEM raster
 r.dem.30m <- raster(paste0(dir.gis, "Navarro_Cannabis_DEM_30m.tif"))
@@ -59,7 +59,7 @@ r.dem.30m <- raster(paste0(dir.gis, "Navarro_Cannabis_DEM_30m.tif"))
 #   projectRaster(crs=crs.MODFLOW) %>%
 #   resample(., r.lulc, method="bilinear") %>%
 #   mask(., spTransform(shp.adj, crs.MODFLOW),
-#        filename=paste0(dir.gis, "Navarro_Habitat_DTB_30m.tif"), overwrite=T)
+#        filename=paste0(dir.gis, "Navarro_Cannabis_DTB_30m.tif"), overwrite=T)
 
 # read in DTB raster
 r.dtb <- raster(paste0(dir.gis, "Navarro_Cannabis_DTB_30m.tif"))
@@ -72,8 +72,22 @@ r.dtb <- raster(paste0(dir.gis, "Navarro_Cannabis_DTB_30m.tif"))
 # r.aquifers <-
 #   rasterize(shp.aquifers, r.lulc, field='OBJECTID', background=0) %>%
 #   mask(., spTransform(shp.adj, crs.MODFLOW))
-# writeRaster(r.aquifers, filename=paste0(dir.gis, "Navarro_Habitat_GroundwaterBasins_30m.tif"),
+# writeRaster(r.aquifers, filename=paste0(dir.gis, "Navarro_Cannabis_GroundwaterBasins_30m.tif"),
 #             datatype="INT1U", overwrite=T)
 
 # read in aquifers raster
 r.aquifers <- raster(paste0(dir.gis, "Navarro_Cannabis_GroundwaterBasins_30m.tif"))
+
+## some output from MODFLOW model
+# # steady-state water table elevation
+# r.wte <- raster(file.path("modflow", "input", "ibound.tif"))  # load ibound raster as a template for water table elevation
+# m.wte <- as.matrix(read.csv(file.path("modflow", "Navarro-SteadyState", "RIV", "mfnwt", "wte.csv"), header=F))
+# r.wte[] <- m.wte
+# r.wte <- 
+#   r.wte %>% 
+#   resample(., r.lulc, method="bilinear") %>% 
+#   mask(., spTransform(shp.adj, crs.MODFLOW),
+#        filename=paste0(dir.gis, "Navarro_Cannabis_WTE_30m.tif"), overwrite=T)
+
+# read in aquifers raster
+r.wte <- raster(paste0(dir.gis, "Navarro_Cannabis_GroundwaterBasins_30m.tif"))
