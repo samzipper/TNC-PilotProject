@@ -32,7 +32,8 @@ sf.all <-
                            labels=c("Low", "High"),
                            include.lowest=T)) %>% 
   transform(species = str_split_fixed(Species_IP_metric, pattern="_", n=3)[,1],
-            metric = str_split_fixed(Species_IP_metric, pattern="_", n=3)[,3])
+            metric = str_split_fixed(Species_IP_metric, pattern="_", n=3)[,3]) %>% 
+  subset(species != "Chinook")  # ignore Chinook based on conversation with Jen - not sensitive to summer low flows
 
 sf.n.high <-
   sf.all %>% 
@@ -46,7 +47,7 @@ sf.n.high <-
 sf.all %>% 
   subset(metric=="mean") %>% 
   ggplot() +
-  facet_wrap(~species) +
+  facet_wrap(~species, labeller=as_labeller(labs.species)) +
   geom_sf(aes(color=IP)) +
   geom_sf(data=sf.basin, color=col.cat.red, fill=NA) +
   scale_x_continuous(name="Easting [m]", expand=c(0,0), breaks=map.breaks.x) +
@@ -61,13 +62,13 @@ sf.all %>%
         legend.background=element_blank(),
         legend.box.background=element_blank()) +
   ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_Habitat_IntrinsicPotential_Continuous.png"),
-         width=190, height=74, units="mm") +
+         width=190, height=105, units="mm") +
   NULL
 
 sf.all %>% 
   subset(metric=="mean") %>% 
   ggplot() +
-  facet_wrap(~species) +
+  facet_wrap(~species, labeller=as_labeller(labs.species)) +
   geom_sf(aes(color=IP_class)) +
   geom_sf(data=sf.basin, color=col.cat.red, fill=NA) +
   scale_x_continuous(name="Easting [m]", expand=c(0,0), breaks=map.breaks.x) +
@@ -83,7 +84,7 @@ sf.all %>%
   guides(color=guide_legend(override.aes = list(fill=c(col.cat.blu, col.cat.org)),
                             keyheight=0.1, keywidth=2)) +
   ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_Habitat_IntrinsicPotential_Discrete.png"),
-         width=190, height=74, units="mm") +
+         width=190, height=105, units="mm") +
   NULL
 
 sf.n.high %>% 
@@ -104,7 +105,29 @@ sf.n.high %>%
         legend.box.background=element_blank())  +
   guides(color=guide_legend(override.aes = list(fill=c(col.cat.blu, col.cat.org)),
                             keyheight=0.1, keywidth=2)) +
-  ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_Habitat_IntrinsicPotential_Discrete-AnySpecies.png"),
+  ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_Habitat_IntrinsicPotential_Discrete-CohoOrSteelhead.png"),
+         width=95, height=95, units="mm") +
+  NULL
+
+
+sf.all %>% 
+  subset(species=="Coho") %>% 
+  ggplot() +
+  geom_sf(aes(color=IP_class)) +
+  geom_sf(data=sf.basin, color=col.cat.red, fill=NA) +
+  scale_x_continuous(name="Easting [m]", expand=c(0,0), breaks=map.breaks.x) +
+  scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
+  scale_color_manual(name="Intrinsic\nHabitat\nPotential", values=c("Low"=col.cat.blu, "High"=col.cat.org)) +
+  coord_sf(crs=crs.MODFLOW, datum=crs.MODFLOW) +
+  theme(panel.grid=element_line(color="transparent")) +
+  theme(axis.text.y=element_text(angle=90, hjust=0.5),
+        legend.position=c(0,0),
+        legend.justification=c(0,0),
+        legend.background=element_blank(),
+        legend.box.background=element_blank())  +
+  guides(color=guide_legend(override.aes = list(fill=c(col.cat.blu, col.cat.org)),
+                            keyheight=0.1, keywidth=2)) +
+  ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_Habitat_IntrinsicPotential_Discrete-Coho.png"),
          width=95, height=95, units="mm") +
   NULL
 

@@ -70,6 +70,7 @@ labs.method <- c("Qf.InvDist"="Inverse\nDistance", "Qf.InvDistSq"="Inverse\nDist
                  "Qf.Web"="Web", "Qf.WebSq"="Web\nSquared", "Qf.TPoly"="Thiessen\nPolygon")
 labs.stream_BC <- c("RIV"="RIV", "SFR"="SFR")
 labs.pump <- c("Transient"="Continuous", "Intermittent"="Intermittent")
+labs.species <- c("Coho"="Coho", "Chinook"="Chinook", "Steel"="Steelhead")
 
 ## CRS for WGS plots
 crs.WGS <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"

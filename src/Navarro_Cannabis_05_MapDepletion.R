@@ -12,7 +12,7 @@ require(streamDepletr)
 ## read in data from Navarro_Cannabis_DepletionBySegment.R
 df.depletion <- read.csv(file.path("results", "Navarro_Cannabis_DepletionBySegment.csv"), stringsAsFactors=F)
 
-## output from Navarro_Cannabis_HabitatIntrinsicPotential.R
+## output from Navarro_Cannabis_02_HabitatIntrinsicPotential.R
 df.habitat <- 
   file.path("results", "Navarro_Cannabis_HabitatIntrinsicPotential.csv") %>% 
   read.csv(stringsAsFactors=F) %>% 
@@ -23,7 +23,8 @@ df.habitat <-
                            labels=c("Low", "High"),
                            include.lowest=T)) %>% 
   transform(species = str_split_fixed(Species_IP_metric, pattern="_", n=3)[,1],
-            metric = str_split_fixed(Species_IP_metric, pattern="_", n=3)[,3])
+            metric = str_split_fixed(Species_IP_metric, pattern="_", n=3)[,3]) %>% 
+  subset(species == "Coho")  # focus on Coho based on conversation with Jen - most sensitive to habitat conditions
 
 # summarize each segment to max value for any species
 df.habitat.summary <-
@@ -152,7 +153,7 @@ ggplot(data=df.Qf) +
                             title.position="top", 
                             title.hjust=0.5,
                             order=2),
-         fill = guide_colorbar(title = "Depletion from High-Value\nStreams [% of pumping rate]",
+         fill = guide_colorbar(title = "Depletion from High-Potential\nStreams [% of pumping rate]",
                                #title.position="top", 
                                title.hjust=0.5,
                                order=1)) +
