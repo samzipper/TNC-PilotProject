@@ -82,6 +82,9 @@ crs.MODFLOW <- "+init=epsg:26910"   # NAD83 UTM Zone 10 N
 dir.gis <- "results/GIS/"
 
 ## paths to external datasets (e.g. global geospatial datasets on GSAS server)
+# directory of proprietary TNC data that cannot be shared
+dir.TNC <- "C:/Users/Sam/OneDrive - The University of Kansas/Research/StreamflowDepletion/TNC-PilotProject/ProprietaryStuffFromTNC"
+
 # directory with CA-DWR water table depth data
 dir.gw.dwr <- "Z:/2.active_projects/Zipper/1.Spatial_data/regional/NavarroRiver/wt_water_table_wells/1original/Statewide_GWL_Data_20170905/"
 
