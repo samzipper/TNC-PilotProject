@@ -1,9 +1,7 @@
 ## Navarro_Cannabis_DepletionBySegment.R
-#' This script is intended to calculate depletion for stream segments 
-#' with high intrinsic habitat potential.
+#' This script is intended to calculate depletion for stream segments.
 #' 
-#' It requires output from Navarro_Cannabis_CalculateWellStreamPairs.R 
-#' and Navarro_Cannabis_HabitatIntrinsicPotential.R
+#' It requires output from Navarro_Cannabis_03_CalculateWellStreamPairs.R
 
 source(file.path("src", "paths+packages.R"))
 require(streamDepletr)
@@ -13,35 +11,9 @@ require(streamDepletr)
 sf.basin <-
   sf::st_read(file.path("data", "NHD", "WBD", "WBDHU10_Navarro.shp"))
 
-## output from Navarro_Cannabis_HabitatIntrinsicPotential.R
-df.habitat <- 
-  file.path("results", "Navarro_Cannabis_HabitatIntrinsicPotential.csv") %>% 
-  read.csv(stringsAsFactors=F) %>% 
-  melt(id=c("SegNum"), value.name="IP", variable.name="Species_IP_metric") %>% 
-  replace_na(list(IP=0)) %>%   # stream segments with no IP data indicates not suitable habitat
-  transform(IP_class = cut(IP, 
-                           breaks=c(0,0.7,1), 
-                           labels=c("Low", "High"),
-                           include.lowest=T)) %>% 
-  transform(species = str_split_fixed(Species_IP_metric, pattern="_", n=3)[,1],
-            metric = str_split_fixed(Species_IP_metric, pattern="_", n=3)[,3])
-
-# summarize each segment to max value for any species
-df.habitat.summary <-
-  df.habitat %>% 
-  subset(metric=="mean") %>% 
-  group_by(SegNum) %>% 
-  summarize(IP = max(IP)) %>% 
-  transform(IP_class = cut(IP, 
-                           breaks=c(0,0.7,1, 5),   # nothing will get Outside Navarro category
-                           labels=c("Low", "High", "Outside Navarro"),
-                           include.lowest=T))
-
-# join habitat data with stream shapefile (from NHD)
+# load stream shapefile (from NHD)
 sf.streams <- 
-  sf::st_read(file.path("results", "GIS", "Navarro_Cannabis_StreamNetwork.shp"), stringsAsFactors=F) %>% 
-  left_join(df.habitat.summary, by=c("SegNum")) %>% 
-  replace_na(list("IP_class" = "Outside Navarro"))
+  sf::st_read(file.path("results", "GIS", "Navarro_Cannabis_StreamNetwork.shp"), stringsAsFactors=F)
 
 # subdivide sf.streams into points for web squared calculation
 # define point spacing and figure out how many points to make
@@ -64,7 +36,7 @@ sf.wel <-
   read.table(header=T) %>% 
   st_as_sf(coords = c("lon", "lat"), crs = st_crs(sf.streams))
 
-## find distance from each stream point to each stream segment
+## find distance from each well point to each stream segment
 pt_coords <- st_coordinates(sf.streams.pts)
 dist_all_pts <- 
   st_distance(x=sf.streams.pts, y=sf.wel) %>% 
