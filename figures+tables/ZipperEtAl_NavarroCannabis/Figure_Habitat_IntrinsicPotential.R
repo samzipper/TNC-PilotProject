@@ -49,7 +49,7 @@ sf.all %>%
   ggplot() +
   facet_wrap(~species, labeller=as_labeller(labs.species)) +
   geom_sf(aes(color=IP)) +
-  geom_sf(data=sf.basin, color=col.cat.red, fill=NA) +
+  geom_sf(data=sf.basin, color=col.gray, fill=NA) +
   scale_x_continuous(name="Easting [m]", expand=c(0,0), breaks=map.breaks.x) +
   scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
   scale_color_viridis(name="Intrinsic\nHabitat\nPotential", limits=c(0,1), breaks=seq(0,1,0.25),
@@ -70,10 +70,10 @@ sf.all %>%
   ggplot() +
   facet_wrap(~species, labeller=as_labeller(labs.species)) +
   geom_sf(aes(color=IP_class)) +
-  geom_sf(data=sf.basin, color=col.cat.red, fill=NA) +
+  geom_sf(data=sf.basin, color=col.gray, fill=NA) +
   scale_x_continuous(name="Easting [m]", expand=c(0,0), breaks=map.breaks.x) +
   scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
-  scale_color_manual(name="Intrinsic\nHabitat\nPotential", values=c("Low"=col.cat.blu, "High"=col.cat.org)) +
+  scale_color_manual(name="Intrinsic\nHabitat\nPotential", values=c("Low"="black", "High"=col.cat.red)) +
   coord_sf(crs=crs.MODFLOW, datum=crs.MODFLOW) +
   theme(panel.grid=element_line(color="transparent")) +
   theme(axis.text.y=element_text(angle=90, hjust=0.5),
@@ -81,7 +81,7 @@ sf.all %>%
         legend.justification=c(0,0),
         legend.background=element_blank(),
         legend.box.background=element_blank())  +
-  guides(color=guide_legend(override.aes = list(fill=c(col.cat.blu, col.cat.org)),
+  guides(color=guide_legend(override.aes = list(fill=c("black", col.cat.red)),
                             keyheight=0.1, keywidth=2)) +
   ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_Habitat_IntrinsicPotential_Discrete.png"),
          width=190, height=105, units="mm") +
@@ -90,11 +90,11 @@ sf.all %>%
 sf.n.high %>% 
   ggplot() +
   geom_sf(aes(color=n.species.high>0)) +
-  geom_sf(data=sf.basin, color=col.cat.red, fill=NA) +
+  geom_sf(data=sf.basin, color=col.gray, fill=NA) +
   scale_x_continuous(name="Easting [m]", expand=c(0,0), breaks=map.breaks.x) +
   scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
   scale_color_manual(name="Ecological Value", 
-                     values=c("FALSE"=col.cat.blu, "TRUE"=col.cat.org),
+                     values=c("FALSE"="black", "TRUE"=col.cat.red),
                      labels=c("FALSE"="Low", "TRUE"="High")) +
   coord_sf(crs=crs.MODFLOW, datum=crs.MODFLOW) +
   theme(panel.grid=element_line(color="transparent")) +
@@ -103,7 +103,7 @@ sf.n.high %>%
         legend.justification=c(0,0),
         legend.background=element_blank(),
         legend.box.background=element_blank())  +
-  guides(color=guide_legend(override.aes = list(fill=c(col.cat.blu, col.cat.org)),
+  guides(color=guide_legend(override.aes = list(fill=c("black", col.cat.red)),
                             keyheight=0.1, keywidth=2)) +
   ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_Habitat_IntrinsicPotential_Discrete-CohoOrSteelhead.png"),
          width=95, height=95, units="mm") +
@@ -114,10 +114,10 @@ sf.all %>%
   subset(species=="Coho") %>% 
   ggplot() +
   geom_sf(aes(color=IP_class)) +
-  geom_sf(data=sf.basin, color=col.cat.red, fill=NA) +
+  geom_sf(data=sf.basin, color=col.gray, fill=NA) +
   scale_x_continuous(name="Easting [m]", expand=c(0,0), breaks=map.breaks.x) +
   scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
-  scale_color_manual(name="Intrinsic\nHabitat\nPotential", values=c("Low"=col.cat.blu, "High"=col.cat.org)) +
+  scale_color_manual(name="Intrinsic\nHabitat\nPotential", values=c("Low"="black", "High"=col.cat.red)) +
   coord_sf(crs=crs.MODFLOW, datum=crs.MODFLOW) +
   theme(panel.grid=element_line(color="transparent")) +
   theme(axis.text.y=element_text(angle=90, hjust=0.5),
@@ -125,7 +125,7 @@ sf.all %>%
         legend.justification=c(0,0),
         legend.background=element_blank(),
         legend.box.background=element_blank())  +
-  guides(color=guide_legend(override.aes = list(fill=c(col.cat.blu, col.cat.org)),
+  guides(color=guide_legend(override.aes = list(fill=c("black", col.cat.red)),
                             keyheight=0.1, keywidth=2)) +
   ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_Habitat_IntrinsicPotential_Discrete-Coho.png"),
          width=95, height=95, units="mm") +

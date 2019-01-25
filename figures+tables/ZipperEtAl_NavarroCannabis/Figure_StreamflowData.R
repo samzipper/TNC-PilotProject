@@ -3,7 +3,7 @@
 #' and make a figure.
 #' Very similar to script Navarro_StreamflowtData.R
 
-source("src/paths+packages.R")
+source(file.path("src", "paths+packages.R"))
 
 ## get data from USGS - output from script Navarro_StreamflowData.R
 df <- read.csv(file.path("results", "Navarro_StreamflowData.csv"), stringsAsFactors=F)
