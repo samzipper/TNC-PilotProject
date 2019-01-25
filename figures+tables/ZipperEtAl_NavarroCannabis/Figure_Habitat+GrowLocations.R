@@ -26,10 +26,6 @@ df.pump <- read.csv(file.path(dir.TNC, "CannabisMonthlyWaterUse_WilsonEtAl.csv")
 df.pump$Month <- factor(df.pump$Month, levels=c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
 df.pump$Setting <- factor(df.pump$Setting, levels=c("Outdoor", "Greenhouse"))
 
-## gallons to liters conversion factor
-gal.to.L <- 3.78541
-gal.to.m3 <- gal.to.L/1000
-
 # calculate total water use
 df.pump.yr <- 
   df.pump %>% 

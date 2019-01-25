@@ -6,6 +6,15 @@
 source(file.path("src", "paths+packages.R"))
 require(streamDepletr)
 
+### what dates do you want output for? (units: number of days since start of pumping)
+
+
+# figure out the date of september 15 each year
+yrs.model <- c(1, 2, 3, 4, 5, 10, 15, 20, 30, 50) 
+DOYs.model <- yday(c("2017-01-15", "2017-02-14", "2017-03-15", "2017-04-15", "2017-05-15", "2017-06-15",
+                     "2017-07-15", "2017-08-15", "2017-09-15", "2017-10-15", "2017-11-15", "2017-12-15"))
+DOYs.all <- rep(DOYs.model, times=length(yrs.model)) + rep(365*(yrs.model-1), each=length(DOYs.model))
+
 ### load and pre-process data
 # domain boundary shapefile
 sf.basin <-
@@ -28,11 +37,10 @@ df.pump$Month <- factor(df.pump$Month, levels=c("Jan", "Feb", "Mar", "Apr", "May
 df.pump$Setting <- factor(df.pump$Setting, levels=c("Outdoor", "Greenhouse"))
 df.pump$MonthNum <- match(df.pump$Month, month.abb)
 df.pump$MonthLengthDays <- lubridate::days_in_month(df.pump$MonthNum)
-gal.to.L <- 3.78541
-df.pump$m3PlantDay <- df.pump$MeanWaterUse_GalPlantDay*gal.to.L/1000
+df.pump$m3PlantDay <- df.pump$MeanWaterUse_GalPlantDay*gal.to.m3
 
 # set up long data frames for intermittent_pumping script; separate for outdoor and greenhouse
-t.max.yrs <- 25
+t.max.yrs <- max(yrs.model)
 df.pump.outdoor <- 
   subset(df.pump, Setting=="Outdoor") %>% 
   dplyr::select(MonthNum, MonthLengthDays, m3PlantDay) %>% 
@@ -127,13 +135,9 @@ df.all <- left_join(df.all, as.data.frame(sf.grows)[,c("GrowNum", "greenhouse", 
 ## loop through times [d] for depletion calculations
 min_frac <- 0.01  # minimum depletion considered
 
-# figure out the date of september 15 each year
-DOY.sept <- 365*seq(0,(t.max.yrs-1)) + yday("2017-09-15")
-
 w.start.flag <- T
 counter <- 0
 for (w in unique(df.all$GrowNum)){
-  counter <- counter+1
   
   wel_coord <- 
     sf.grows %>% 
@@ -158,13 +162,14 @@ for (w in unique(df.all$GrowNum)){
   
   
   t.start.flag <- T
-  for (time_days in DOY.sept[c(1,10,25)]){
+  max_dist_prev <- 500
+  for (time_days in DOYs.all){
     
     # find maximum distance, based on maximum observed S, Tr, lmda (inclusive estimate)
     max_dist <- depletion_max_distance(Qf_thres = min_frac,
                                        d_interval = 250,
-                                       d_min = 500,
-                                       d_max = Inf,
+                                       d_min = max_dist_prev,
+                                       d_max = max(df.all$dist_wellToStream_m[df.all$GrowNum==w]),
                                        method="hunt",
                                        t = time_days,
                                        S = max(df.all$S_eff[df.all$GrowNum==w]),
@@ -192,6 +197,9 @@ for (w in unique(df.all$GrowNum)){
       df.apportion <- rbind(df.apportion, df.apportion.w.t)
     }
     
+    # update max_dist starting value
+    max_dist_prev <- max_dist
+    
   }
   
   # join with df_all
@@ -207,6 +215,8 @@ for (w in unique(df.all$GrowNum)){
     df.out <- rbind(df.out, df.all.t)
   }
   
+  # status update
+  counter <- counter+1
   print(paste0("Well ", counter, " of ", length(unique(df.all$GrowNum)), " depletion apportionment complete, ", Sys.time()))
 }
 
