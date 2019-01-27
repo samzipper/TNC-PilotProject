@@ -1,7 +1,4 @@
-## Figure_StreamflowData.R
-#' This script is intended to download streamflow data for the Navarro River Watershed
-#' and make a figure.
-#' Very similar to script Navarro_StreamflowtData.R
+## Figure_WatershedScale_Depletion.R
 
 source(file.path("src", "paths+packages.R"))
 

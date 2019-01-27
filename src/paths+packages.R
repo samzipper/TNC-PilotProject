@@ -48,6 +48,8 @@ baseflow.mm_d <- baseflow.cfs*(0.3048^3)*(0.001^3)*(1/area.km2)*86400*1000*1000
 ## gallons to liters conversion factor
 gal.to.L <- 3.78541
 gal.to.m3 <- gal.to.L/1000
+cfs.to.mm <- (0.3048^3)*(0.001^3)*(1/area.km2)*86400*1000*1000
+cfs.to.m3d <- (0.3048^3)*86400
 
 ## labels
 labs.mo <- c("1"="Jan", "2"="Feb", "3"="Mar", "4"="Apr", "5"="May", "6"="Jun",
