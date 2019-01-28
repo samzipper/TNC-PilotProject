@@ -6,7 +6,6 @@
 #' and Navarro_Cannabis_HabitatIntrinsicPotential.R
 
 source(file.path("src", "paths+packages.R"))
-require(streamDepletr)
 
 ### load and pre-process data
 ## read in data from Navarro_Cannabis_DepletionBySegment.R
@@ -22,28 +21,17 @@ df.habitat <-
   melt(id=c("SegNum"), value.name="IP", variable.name="Species_IP_metric") %>% 
   replace_na(list(IP=0)) %>%   # stream segments with no IP data indicates not suitable habitat
   transform(IP_class = cut(IP, 
-                           breaks=c(0,0.7,1), 
-                           labels=c("Low", "High"),
+                           breaks=c(0,0.7,1.01,100),     # nothing will get Outside Navarro category
+                           labels=c("Low", "High", "Outside Navarro"),
                            include.lowest=T)) %>% 
   transform(species = str_split_fixed(Species_IP_metric, pattern="_", n=3)[,1],
             metric = str_split_fixed(Species_IP_metric, pattern="_", n=3)[,3]) %>% 
-  subset(species == "Coho" & metric=="mean")  # focus on Coho based on conversation with Jen - most sensitive to habitat conditions
-
-# summarize each segment to max value for any species
-df.habitat.summary <-
-  df.habitat %>% 
-  subset(metric=="mean") %>% 
-  group_by(SegNum) %>% 
-  summarize(IP = max(IP)) %>% 
-  transform(IP_class = cut(IP, 
-                           breaks=c(0,0.7,1, 5),   # nothing will get Outside Navarro category
-                           labels=c("Low", "High", "Outside Navarro"),
-                           include.lowest=T))
+  subset(species == "Coho" & metric=="max")  # focus on Coho based on conversation with Jen - most sensitive to habitat conditions
 
 # join habitat data with stream shapefile (from NHD)
 sf.streams <- 
   sf::st_read(file.path("results", "GIS", "Navarro_Cannabis_StreamNetwork.shp"), stringsAsFactors=F) %>% 
-  left_join(df.habitat.summary, by=c("SegNum")) %>% 
+  left_join(df.habitat, by=c("SegNum")) %>% 
   replace_na(list("IP_class" = "Outside Navarro"))
 
 ## well locations
@@ -61,7 +49,7 @@ sf.basin <-
 ### combine data
 # add IP_class to depletion
 df.depletion <- 
-  left_join(df.depletion, df.habitat.summary, by="SegNum") %>% 
+  left_join(df.depletion, df.habitat, by="SegNum") %>% 
   replace_na(list("IP_class"="Outside Navarro"))
 
 # summarize depletion in high ecological value segments by time_d and WellNum
@@ -233,7 +221,6 @@ time_labels_df <-
   setNames(paste0(c("(d) ", "(e) ", "(f) "), "Year ", times_plot/365),
            times_plot)
 
-
 ## Figure: rasters of depletion from high-value segments by year
 p.maps <- 
   ggplot(data=df.Qf) +
@@ -286,7 +273,7 @@ p.dist <-
   NULL
 
 ## save plots
-plot_grid(p.maps, 
+plot_grid(p.maps + theme(plot.margin = unit(c(1,2,1,4), "mm")), 
           p.dist, 
           nrow=2,
           align="lr",

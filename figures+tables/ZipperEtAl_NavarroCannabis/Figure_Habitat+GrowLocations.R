@@ -34,7 +34,7 @@ df.pump.yr <-
   group_by(Setting) %>% 
   summarize(WaterUse_m3PlantYr = sum(WaterUse_m3PlantDay*MonthDays))
 
-# calcualte water use for each grow
+# calculate water use for each grow
 sf.grows$WaterUse_m3y <- NaN
 sf.grows$WaterUse_m3y[sf.grows$greenhouse==0] <- df.pump.yr$WaterUse_m3PlantYr[df.pump.yr$Setting=="Outdoor"]*sf.grows$plants[sf.grows$greenhouse==0]
 sf.grows$WaterUse_m3y[sf.grows$greenhouse==1] <- df.pump.yr$WaterUse_m3PlantYr[df.pump.yr$Setting=="Greenhouse"]*sf.grows$plants[sf.grows$greenhouse==1]
@@ -77,14 +77,14 @@ sf.all <-
                            include.lowest=T)) %>% 
   transform(species = str_split_fixed(Species_IP_metric, pattern="_", n=3)[,1],
             metric = str_split_fixed(Species_IP_metric, pattern="_", n=3)[,3]) %>% 
-  subset(species != "Chinook")  # ignore Chinook based on conversation with Jen - not sensitive to summer low flows
+  subset(species == "Coho" & metric == "max")
 
 
 # plot
 ggplot() +
   geom_sf(data=sf.subbasins.plants, aes(fill=TotalWaterUse_m3y/10000), color="white") +
   geom_sf(data=sf.streams, color="white") +
-  geom_sf(data=subset(sf.all, species=="Coho"), aes(color=IP_class)) +
+  geom_sf(data=sf.all, aes(color=IP_class)) +
   scale_fill_viridis(name="Estimated Cannabis Water\nUse [10,000 cu. m/yr]", 
                      trans="log10", limits=c(1, max(sf.subbasins.plants$TotalWaterUse_m3y/10000))) +
   scale_color_manual(name="Intrinsic Habitat Potential", values=c("Low"="black", "High"=col.cat.red)) +

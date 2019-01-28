@@ -40,12 +40,12 @@ sf.n.high <-
   as.data.frame() %>% 
   group_by(SegNum, metric) %>% 
   summarize(n.species.high = sum(IP > 0.7)) %>% 
-  subset(metric=="mean") %>% 
+  subset(metric=="max") %>% 
   left_join(sf.streams, ., by=c("SegNum"))
 
 ## make plot
 sf.all %>% 
-  subset(metric=="mean") %>% 
+  subset(metric=="max") %>% 
   ggplot() +
   facet_wrap(~species, labeller=as_labeller(labs.species)) +
   geom_sf(aes(color=IP)) +
@@ -66,7 +66,7 @@ sf.all %>%
   NULL
 
 sf.all %>% 
-  subset(metric=="mean") %>% 
+  subset(metric=="max") %>% 
   ggplot() +
   facet_wrap(~species, labeller=as_labeller(labs.species)) +
   geom_sf(aes(color=IP_class)) +
@@ -93,7 +93,7 @@ sf.n.high %>%
   geom_sf(data=sf.basin, color=col.gray, fill=NA) +
   scale_x_continuous(name="Easting [m]", expand=c(0,0), breaks=map.breaks.x) +
   scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
-  scale_color_manual(name="Ecological Value", 
+  scale_color_manual(name="Intrinsic\nHabitat\nPotential", 
                      values=c("FALSE"="black", "TRUE"=col.cat.red),
                      labels=c("FALSE"="Low", "TRUE"="High")) +
   coord_sf(crs=crs.MODFLOW, datum=crs.MODFLOW) +
@@ -111,6 +111,7 @@ sf.n.high %>%
 
 
 sf.all %>% 
+  subset(metric=="max") %>%
   subset(species=="Coho") %>% 
   ggplot() +
   geom_sf(aes(color=IP_class)) +
