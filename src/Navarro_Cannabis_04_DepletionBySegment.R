@@ -6,6 +6,12 @@
 source(file.path("src", "paths+packages.R"))
 require(streamDepletr)
 
+### what dates do you want output for? (units: number of days since start of pumping)
+# convert years and dates to DOY since pumping started
+yrs.model <- c(1, 10, 50) 
+DOYs.model <- yday(c("2017-09-15"))
+DOYs.all <- rep(DOYs.model, times=length(yrs.model)) + rep(365*(yrs.model-1), each=length(DOYs.model))
+
 ### load and pre-process data
 # domain boundary shapefile
 sf.basin <-
@@ -35,6 +41,53 @@ sf.wel <-
   file.path("modflow", "input", "iwel.txt") %>% 
   read.table(header=T) %>% 
   st_as_sf(coords = c("lon", "lat"), crs = st_crs(sf.streams))
+
+## load pumping rates - this is proprietary from TNC, cannot be shared (until Wilson et al paper published)
+df.pump <- read.csv(file.path(dir.TNC, "CannabisMonthlyWaterUse_WilsonEtAl.csv"), stringsAsFactors=F)
+df.pump$Month <- factor(df.pump$Month, levels=c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
+df.pump$Setting <- factor(df.pump$Setting, levels=c("Outdoor", "Greenhouse"))
+df.pump$MonthNum <- match(df.pump$Month, month.abb)
+df.pump$MonthLengthDays <- lubridate::days_in_month(df.pump$MonthNum)
+df.pump$m3PlantDay <- df.pump$MeanWaterUse_GalPlantDay*gal.to.m3
+
+# set up long data frames for intermittent_pumping script; separate for outdoor and greenhouse
+t.max.yrs <- max(yrs.model)
+df.pump.outdoor <- 
+  subset(df.pump, Setting=="Outdoor") %>% 
+  dplyr::select(MonthNum, MonthLengthDays, m3PlantDay) %>% 
+  replicate(t.max.yrs, ., simplify = FALSE) %>% 
+  dplyr::bind_rows() %>% 
+  transform(EndOfMonthDays = cumsum(MonthLengthDays))
+df.pump.outdoor$StartOfMonthDays <- c(1, df.pump.outdoor$EndOfMonthDays[1:(t.max.yrs*12)-1]+1)
+
+df.pump.greenhouse <- 
+  subset(df.pump, Setting=="Greenhouse") %>% 
+  dplyr::select(MonthNum, MonthLengthDays, m3PlantDay) %>% 
+  replicate(t.max.yrs, ., simplify = FALSE) %>% 
+  dplyr::bind_rows() %>% 
+  transform(EndOfMonthDays = cumsum(MonthLengthDays))
+df.pump.greenhouse$StartOfMonthDays <- c(1, df.pump.greenhouse$EndOfMonthDays[1:(t.max.yrs*12)-1]+1)
+
+## figure out what is the 'average' grow operation - outdoor/greenhouse, # of plants
+# grow locations shapefile
+sf.grows <- 
+  sf::st_read(file.path(dir.TNC, "nav_cannabis_ucbtnc", "nav_cannabis_ucbtnc.shp")) %>% 
+  subset(year==16) %>%                  # 2016 data only
+  st_zm(drop = TRUE, what = "ZM") %>%   # drop Z dimension from geometry
+  sf::st_transform(crs.MODFLOW) %>% 
+  dplyr::rename(GrowNum = FID_allgro)
+
+# ~50/50 greenhouse and outdoor
+sum(sf.grows$greenhouse==0)
+sum(sf.grows$greenhouse==1)
+n.plants.mean <- round(mean(sf.grows$plants))  # 70 plants
+
+# calculate the 'average' monthly pumping rate as average of greenhosue and outdoor
+df.pump.average <- 
+  data.frame(MonthNum = df.pump.greenhouse$MonthNum,
+             StartOfMonthDays = df.pump.greenhouse$StartOfMonthDays,
+             EndOfMonthDays = df.pump.greenhouse$EndOfMonthDays,
+             WaterUse_m3d = n.plants.mean*(df.pump.greenhouse$m3PlantDay + df.pump.outdoor$m3PlantDay)/2)
 
 ## find distance from each well point to each stream segment
 pt_coords <- st_coordinates(sf.streams.pts)
@@ -97,46 +150,52 @@ df.all$lmda <- 0.1*K_u*df.all$stream_width_m/df.all$stream_dtb_m  # streambed co
 ## loop through times [d] for depletion calculations
 min_frac <- 0.01  # minimum depletion considered
 
-start.flag <- T
-for (time_days in c(1*365, 5*365, 10*365, 25*365)){
-
-  # find maximum distance, based on maximm observed S, Tr, lmda (inclusive estimate)
-  max_dist <- depletion_max_distance(Qf_thres = min_frac,
-                                     d_interval = 100,
-                                     d_min = NULL,
-                                     d_max = Inf,
-                                     method="hunt",
-                                     t = time_days,
-                                     S = max(df.all$S_eff),
-                                     Tr = max(df.all$Tr_eff),
-                                     lmda = max(df.all$lmda))
+w.start.flag <- T
+counter <- 0
+for (w in unique(df.all$WellNum)){
   
-  ## apportion for each WellNum
-  w.start.flag <- T
-  for (w in unique(df.all$WellNum)){
-    wel_coord <- 
-      sf.wel %>% 
-      subset(WellNum == w) %>% 
-      st_coordinates()
+  wel_coord <- 
+    sf.wel %>% 
+    subset(WellNum == w) %>% 
+    st_coordinates()
+  
+  # retain only relevant points
+  dist_w_pts <- subset(dist_all_pts, WellNum==w)
+  
+  # first: Theissen polygons to figure out adjacent catchments
+  df.apportion.t <- 
+    dist_w_pts %>% 
+    group_by(SegNum) %>% 
+    filter(dist_wellToStream_m == max(dist_wellToStream_m)) %>% 
+    apportion_polygon(., 
+                      wel_lon = wel_coord[1,"X"], 
+                      wel_lat = wel_coord[1,"Y"],
+                      crs = CRS(st_crs(sf.streams)[["proj4string"]]),
+                      reach_name = "SegNum",
+                      dist_name = "dist_wellToStream_m") %>% 
+    set_colnames(c("SegNum", "frac_depletion"))
+  
+  
+  t.start.flag <- T
+  max_dist_prev <- 500
+  for (time_days in DOYs.all){
     
-    # first: Theissen polygons to figure out adjacent catchments
-    df.apportion.t <- 
-      subset(dist_all_pts, WellNum==w) %>% 
-      group_by(SegNum) %>% 
-      filter(dist_wellToStream_m == max(dist_wellToStream_m)) %>% 
-      apportion_polygon(., 
-                        wel_lon = wel_coord[1,"X"], 
-                        wel_lat = wel_coord[1,"Y"],
-                        crs = CRS(st_crs(sf.streams)[["proj4string"]]),
-                        reach_name = "SegNum",
-                        dist_name = "dist_wellToStream_m") %>% 
-      set_colnames(c("SegNum", "frac_depletion"))
+    # find maximum distance, based on maximum observed S, Tr, lmda (inclusive estimate)
+    max_dist <- depletion_max_distance(Qf_thres = min_frac,
+                                       d_interval = 250,
+                                       d_min = max_dist_prev,
+                                       d_max = max(df.all$dist_wellToStream_m[df.all$WellNum==w]),
+                                       method="hunt",
+                                       t = time_days,
+                                       S = max(df.all$S_eff[df.all$WellNum==w]),
+                                       Tr = max(df.all$Tr_eff[df.all$WellNum==w]),
+                                       lmda = max(df.all$lmda[df.all$WellNum==w]))
     
     # second: use web^2 to apportion to any stream segment that is within max_dist
     #         OR that is adjacent to well based on Theissen Polygon
-    df.apportion.w <- 
-      dist_all_pts %>% 
-      subset(WellNum==w & ((dist_wellToStream_m <= max_dist) | (SegNum %in% df.apportion.t$SegNum))) %>% 
+    df.apportion.w.t <- 
+      dist_w_pts %>% 
+      subset((dist_wellToStream_m <= max_dist) | (SegNum %in% df.apportion.t$SegNum)) %>% 
       apportion_web(reach_dist = ., 
                     w = 2, 
                     min_frac = min_frac,
@@ -144,41 +203,87 @@ for (time_days in c(1*365, 5*365, 10*365, 25*365)){
                     dist_name = "dist_wellToStream_m") %>% 
       set_colnames(c("SegNum", "frac_depletion")) %>% 
       transform(WellNum = w,
-                time_d = time_days)
+                time_days = time_days)
     
-    if (w.start.flag){
-      df.apportion <- df.apportion.w
-      w.start.flag <- F
+    if (t.start.flag){
+      df.apportion <- df.apportion.w.t
+      t.start.flag <- F
     } else {
-      df.apportion <- rbind(df.apportion, df.apportion.w)
+      df.apportion <- rbind(df.apportion, df.apportion.w.t)
     }
     
-    print(paste0("Time ", time_days, ", well ", w, " depletion apportionment complete, ", Sys.time()))
+    # update max_dist starting value
+    max_dist_prev <- max_dist
     
   }
   
   # join with df_all
   df.all.t <- 
-    left_join(df.apportion, df.all, by=c("SegNum", "WellNum"))
+    left_join(df.apportion, 
+              df.all[,c("SegNum", "WellNum", "dist_wellToStream_m", "S_eff", "Tr_eff", "lmda")], 
+              by=c("SegNum", "WellNum"))
   
-  if (start.flag){
+  if (w.start.flag){
     df.out <- df.all.t
-    start.flag <- F
+    w.start.flag <- F
   } else {
     df.out <- rbind(df.out, df.all.t)
   }
+  
+  # status update
+  counter <- counter+1
+  print(paste0("Well ", counter, " of ", length(unique(df.all$WellNum)), " depletion apportionment complete, ", Sys.time()))
 }
 
-## calculate depletion
-df.out$Qf <- hunt(t = df.out$time_d,
-                  d = df.out$dist_wellToStream_m,
-                  S = df.out$S_eff,
-                  Tr = df.out$Tr_eff,
-                  lmda = df.out$lmda) * 
-  df.out$frac_depletion
+## unique well-seg combos
+df.combos <- 
+  df.out %>% 
+  dplyr::select(SegNum, WellNum, dist_wellToStream_m, S_eff, Tr_eff, lmda) %>% 
+  unique()
 
-## save output
-df.out %>% 
+## calculate depletion for all combos
+start.flag.Qs <- T
+for (i in 1:dim(df.combos)[1]){
+  # identify well-seg combo
+  seg <- df.combos$SegNum[i]
+  w <- df.combos$WellNum[i]
+  
+  # get times
+  output_t_days <- df.out$time_days[df.out$SegNum==seg & df.out$WellNum==w]
+  output_frac <- df.out$frac_depletion[df.out$SegNum==seg & df.out$WellNum==w]
+  
+  # use 'average' grow for depletion calculation
+  Qs <- intermittent_pumping(t = output_t_days,
+                             starts = df.pump.average$StartOfMonthDays,
+                             stops  = df.pump.average$EndOfMonthDays,
+                             rates  = df.pump.average$WaterUse_m3d,
+                             method = "hunt",
+                             d = df.combos$dist_wellToStream_m[i],
+                             S = df.combos$S_eff[i],
+                             Tr = df.combos$Tr_eff[i],
+                             lmda = df.combos$lmda[i])
+
+  # compile output
+  df.depletion <- data.frame(SegNum = seg,
+                             WellNum = w,
+                             time_days = output_t_days,
+                             Qs = Qs)
+  
+  if (start.flag.Qs){
+    df.Qs <- df.depletion
+    start.flag.Qs <- F
+  } else {
+    df.Qs <- rbind(df.Qs, df.depletion)
+  }
+  
+  print(paste0("Depletion ", i, " of ", dim(df.combos)[1], " complete, ", Sys.time()))
+  
+}
+
+# combine and save
+df.Qs %>% 
+  left_join(df.out, by=c("SegNum", "WellNum", "time_days")) %>% 
+  transform(depletion_m3d = Qs*frac_depletion) %>% 
   format(digits = 3) %>% 
   write.csv(file.path("results", "Navarro_Cannabis_DepletionBySegment.csv"),
             row.names=F)

@@ -7,9 +7,7 @@ source(file.path("src", "paths+packages.R"))
 require(streamDepletr)
 
 ### what dates do you want output for? (units: number of days since start of pumping)
-
-
-# figure out the date of september 15 each year
+# convert years and dates to DOY since pumping started
 yrs.model <- c(1, 2, 3, 4, 5, 10, 15, 20, 30, 50) 
 DOYs.model <- yday(c("2017-01-15", "2017-02-14", "2017-03-15", "2017-04-15", "2017-05-15", "2017-06-15",
                      "2017-07-15", "2017-08-15", "2017-09-15", "2017-10-15", "2017-11-15", "2017-12-15"))
