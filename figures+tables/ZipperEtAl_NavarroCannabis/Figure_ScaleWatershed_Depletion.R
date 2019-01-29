@@ -53,7 +53,6 @@ df.Q.mo <-
 df.Q.mo$baseflow_m3d.ribbon.min[df.Q.mo$baseflow_m3d.ribbon.min < df.Q.mo$baseflow_m3d.min] <- 
   df.Q.mo$baseflow_m3d.min[df.Q.mo$baseflow_m3d.ribbon.min < df.Q.mo$baseflow_m3d.min]
 
-
 #### load and process cannabis data
 # depletion by segment associated with each well - output from Navarro_Cannabis-Grows_02_DepletionBySegment.R
 df <- 
