@@ -188,6 +188,15 @@ labels.NLCD <- c("11"="Open Water",
                  "95"="Herb. Wetland")
 
 ## functions
+# round all columns in data frame to reduce output file size
+# from: https://stackoverflow.com/questions/29352659/r-write-csv-with-fixed-precision
+dfDigits <- function(x, digits = 3) {
+  ## x is a data.frame
+  for (col in colnames(x)[sapply(x, class) == 'numeric'])
+    x[,col] <- round(x[,col], digits = digits)
+  x
+}
+
 # estimate stream width based on drainage area
 # (see Navarro_StreamWidthEstimates.xlsx file)
 WidthFromDA <- function(DA, w.min, w.max){
