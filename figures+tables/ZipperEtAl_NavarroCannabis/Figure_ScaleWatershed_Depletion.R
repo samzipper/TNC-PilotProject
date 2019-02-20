@@ -2,6 +2,9 @@
 
 source(file.path("src", "paths+packages.R"))
 
+## what years to plot? options: 1  2  3  4  5 10 15 20 30 50
+yrs.plot <- c(1, 10, 50)
+
 #### load and process streamflow data
 ## get data from USGS - output from script Navarro_StreamflowData.R
 df.Q <- read.csv(file.path("results", "Navarro_StreamflowData.csv"), stringsAsFactors=F)
@@ -53,9 +56,24 @@ df.Q.mo <-
 df.Q.mo$baseflow_m3d.ribbon.min[df.Q.mo$baseflow_m3d.ribbon.min < df.Q.mo$baseflow_m3d.min] <- 
   df.Q.mo$baseflow_m3d.min[df.Q.mo$baseflow_m3d.ribbon.min < df.Q.mo$baseflow_m3d.min]
 
+## habitat - output from Navarro_Cannabis_02_HabitatIntrinsicPotential.R - 
+#   used to figure out what stream reaches are in Navarro
+df.habitat <- 
+  file.path("results", "Navarro_Cannabis_HabitatIntrinsicPotential.csv") %>% 
+  read.csv(stringsAsFactors=F) %>% 
+  melt(id=c("SegNum"), value.name="IP", variable.name="Species_IP_metric") %>% 
+  replace_na(list(IP=0)) %>%   # stream segments with no IP data indicates not suitable habitat
+  transform(species = str_split_fixed(Species_IP_metric, pattern="_", n=3)[,1],
+            metric = str_split_fixed(Species_IP_metric, pattern="_", n=3)[,3]) %>% 
+  subset(species == "Coho" & metric == "mean") %>%  # focus on Coho based on conversation with Jen - most sensitive to habitat conditions
+  transform(IP_class = addNA(cut(IP, 
+                                 breaks=c(0,0.7,1), 
+                                 labels=c("Low", "High"),
+                                 include.lowest=T)))
+
 #### load and process cannabis data
 # depletion by segment associated with each well - output from Navarro_Cannabis-Grows_02_DepletionBySegment.R
-df <- 
+df.grow <- 
   file.path(dir.TNC, "DerivedData", "Navarro_Cannabis-Grows_DepletionBySegment.csv") %>% 
   read.csv(stringsAsFactors=F) %>% 
   transform(time_yrs = time_days/365,
@@ -63,7 +81,7 @@ df <-
 
 # calculate distance to closest stream for each grow
 df.grow.closest <- 
-  df %>% 
+  df.grow %>% 
   group_by(GrowNum) %>% 
   summarize(dist_m_closestStream = min(dist_wellToStream_m))
 
@@ -82,32 +100,14 @@ df.grow.closest$WaterSource <- factor(df.grow.closest$WaterSource, levels=c("Sur
                                                                             "Groundwater Only"))
 
 ## first: do some data trimming to get df down to a more manageable size
-# habitat - output from Navarro_Cannabis_02_HabitatIntrinsicPotential.R - 
-#   used to figure out what stream reaches are in Navarro
-df.habitat <- 
-  file.path("results", "Navarro_Cannabis_HabitatIntrinsicPotential.csv") %>% 
-  read.csv(stringsAsFactors=F) %>% 
-  melt(id=c("SegNum"), value.name="IP", variable.name="Species_IP_metric") %>% 
-  replace_na(list(IP=0)) %>%   # stream segments with no IP data indicates not suitable habitat
-  transform(species = str_split_fixed(Species_IP_metric, pattern="_", n=3)[,1],
-            metric = str_split_fixed(Species_IP_metric, pattern="_", n=3)[,3]) %>% 
-  subset(species == "Coho" & metric == "mean") %>%  # focus on Coho based on conversation with Jen - most sensitive to habitat conditions
-  transform(IP_class = addNA(cut(IP, 
-                                 breaks=c(0,0.7,1), 
-                                 labels=c("Low", "High"),
-                                 include.lowest=T)))
-
 # calculate year and month
-df$year.dec <- df$time_days/365 + 1
-df$year <- floor(df$year.dec)
-df$month <- round((df$year.dec - df$year)*12)+1
-
-# what years to plot? options: 1  2  3  4  5 10 15 20 30 50
-yrs.plot <- c(1, 10, 50)
+df.grow$year.dec <- df.grow$time_days/365 + 1
+df.grow$year <- floor(df.grow$year.dec)
+df.grow$month <- round((df.grow$year.dec - df.grow$year)*12)+1
 
 # trim data frame
-df.analysis <-
-  df %>% 
+df.grow.analysis <-
+  df.grow %>% 
   subset(SegNum %in% df.habitat$SegNum) %>% 
   subset(year %in% yrs.plot) %>% 
   left_join(df.grow.closest, by="GrowNum") %>% 
@@ -130,44 +130,69 @@ for (iter in 1:n.iter){
   grows.gw <- c(grows.gw.only, base::sample(grows.sw.or.gw, size=n.sample))
   
   # summarize total depletion by year and month
-  df.depletion.i <-
-    df.analysis %>% 
+  df.grow.depletion.i <-
+    df.grow.analysis %>% 
     subset(GrowNum %in% grows.gw) %>% 
     group_by(year, month) %>% 
     summarize(depletion_m3d_Navarro = sum(depletion_m3d)) %>% 
     transform(iter = iter)
   
   if (iter==1){
-    df.depletion <- df.depletion.i
+    df.grow.depletion <- df.grow.depletion.i
   } else {
-    df.depletion <- rbind(df.depletion, df.depletion.i)
+    df.grow.depletion <- rbind(df.grow.depletion, df.grow.depletion.i)
   }
   
 }
 
 # summarize to mean and std
-df.depletion.summary <-
-  df.depletion %>% 
+df.grow.depletion.summary <-
+  df.grow.depletion %>% 
   group_by(year, month) %>% 
   summarize(depletion_m3d_Navarro_mean = mean(depletion_m3d_Navarro),
             depletion_m3d_Navarro_std = sd(depletion_m3d_Navarro)) %>% 
-  left_join(df.Q.mo, by="month")
+  left_join(df.Q.mo, by="month") %>% 
+  transform(WaterUser="Cannabis")
+
+#### load and process residential data
+# depletion by segment associated with each well - output from Navarro_Residential_03_DepletionBySegment.R
+df.res <- 
+  file.path(dir.TNC, "DerivedData", "Navarro_Residential_03_DepletionBySegment.csv") %>% 
+  read.csv(stringsAsFactors=F) %>% 
+  transform(time_yrs = time_days/365,
+            depletion_m3s = depletion_m3d*86400)
+
+# calculate year and month
+df.res$year.dec <- df.res$time_days/365 + 1
+df.res$year <- floor(df.res$year.dec)
+df.res$month <- round((df.res$year.dec - df.res$year)*12)+1
+
+# trim and summarize data frame
+df.res.depletion.summary <-
+  df.res %>% 
+  subset(SegNum %in% df.habitat$SegNum) %>% 
+  subset(year %in% yrs.plot) %>% 
+  # sum for all segments in Navarro
+  group_by(year, month) %>% 
+  summarize(depletion_m3d_Navarro = sum(depletion_m3d)) %>% 
+  left_join(df.Q.mo, by="month") %>% 
+  transform(WaterUser="Residential")
 
 ### Figure: monthly baseflow and streamflow depletion
 p.vol <- 
   ggplot() +
-  geom_ribbon(data=df.depletion.summary, aes(x=month, 
-                                             ymin=(depletion_m3d_Navarro_mean-depletion_m3d_Navarro_std), 
-                                             ymax=(depletion_m3d_Navarro_mean+depletion_m3d_Navarro_std),
-                                             fill=factor(year)),
+  geom_ribbon(data=df.grow.depletion.summary, aes(x=month, 
+                                                  ymin=(depletion_m3d_Navarro_mean-depletion_m3d_Navarro_std), 
+                                                  ymax=(depletion_m3d_Navarro_mean+depletion_m3d_Navarro_std),
+                                                  fill=factor(year)),
               alpha = 0.25) +
-  geom_line(data=df.depletion.summary, aes(x=month, y=depletion_m3d_Navarro_mean, color=factor(year))) +
-  geom_point(data=df.depletion.summary, aes(x=month, y=depletion_m3d_Navarro_mean, color=factor(year))) +
+  geom_line(data=df.grow.depletion.summary, aes(x=month, y=depletion_m3d_Navarro_mean, color=factor(year))) +
+  geom_point(data=df.grow.depletion.summary, aes(x=month, y=depletion_m3d_Navarro_mean, color=factor(year))) +
   scale_x_continuous(name = "Month", breaks=seq(1,12)) +
   scale_color_manual(name = "Years of\nPumping", 
                      values=c(col.cat.grn, col.cat.org, col.cat.red)) +
   scale_fill_manual(name = "Years of\nPumping", 
-                     values=c(col.cat.grn, col.cat.org, col.cat.red)) +
+                    values=c(col.cat.grn, col.cat.org, col.cat.red)) +
   scale_y_continuous(name = "Streamflow Depletion [m3/d]") +
   theme(legend.position=c(1,0),
         legend.justification=c(1,0),
@@ -176,7 +201,7 @@ p.vol <-
   NULL
 
 p.prc <-
-  ggplot(df.depletion.summary, aes(x=month)) +
+  ggplot(df.grow.depletion.summary, aes(x=month)) +
   geom_ribbon(aes(ymin=100*(depletion_m3d_Navarro_mean-depletion_m3d_Navarro_std)/baseflow_m3d, 
                   ymax=100*(depletion_m3d_Navarro_mean+depletion_m3d_Navarro_std)/baseflow_m3d,
                   fill=factor(year)), alpha=0.5) +
@@ -189,7 +214,7 @@ p.prc <-
   theme(legend.position=c(0,0.93),
         legend.justification=c(0,1),
         legend.background=element_blank()) +
-#  guides(color=F, fill=F) +
+  #  guides(color=F, fill=F) +
   NULL
 
 plot_grid(p.vol, 
@@ -222,4 +247,29 @@ ggplot(df.grow.closest, aes(x=dist_m_closestStream, fill=WaterSource)) +
         legend.justification=c(1,1)) +
   ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_ScaleWatershed_Depletion_AllocatingWaterUse.png"),
          width = 95, height = 95, units="mm") +
+  NULL
+
+## SI Figure: Comparison of residential and cannabis depletion
+df.comparison <-
+  rbind(df.res.depletion.summary[,c("year", "month", "depletion_m3d_Navarro", "WaterUser")],
+        setNames(df.grow.depletion.summary[,c("year", "month", "depletion_m3d_Navarro_mean", "WaterUser")], c("year", "month", "depletion_m3d_Navarro", "WaterUser")))
+
+time_labels <- 
+  setNames(paste0("Year ", yrs.plot),
+           yrs.plot)
+
+ggplot() +
+  geom_line(data=df.comparison, aes(x=month, y=depletion_m3d_Navarro, color=factor(year), linetype=WaterUser)) +
+  scale_x_continuous(name = "Month", breaks=seq(1,12)) +
+  facet_wrap(~year, ncol=3, labeller=as_labeller(time_labels), scales="free_y") +
+  scale_color_manual(name = "Years of Pumping", 
+                     values=c(col.cat.grn, col.cat.org, col.cat.red), guide=F) +
+  scale_linetype_manual(name = "Water User", 
+                     values=c("Residential"="dashed", "Cannabis"="solid")) +
+  scale_y_continuous(name = "Streamflow Depletion [m3/d]", 
+                     limits=c(min(df.comparison$depletion_m3d_Navarro), max(df.comparison$depletion_m3d_Navarro))) +
+  theme(legend.position="bottom",
+        legend.background=element_blank()) +
+  ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_ScaleWatershed_Depletion_CompareResidential.png"),
+         width = 190, height = 95, units="mm") +
   NULL

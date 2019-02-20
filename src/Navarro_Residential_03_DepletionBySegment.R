@@ -31,7 +31,7 @@ df.pump.long$StartOfMonthDays <- c(1, df.pump.long$EndOfMonthDays[1:(t.max.yrs*1
 
 # start of each pumping period based on difference
 i.starts <- which(c(1, diff(df.pump.long$m3HouseDay)) != 0)
-i.ends <- c((i.starts-1)[2:length(i.starts)], length(i.starts))
+i.ends <- c((i.starts-1)[2:length(i.starts)], i.starts[length(i.starts)])
 
 df.pump.compressed <-
   data.frame(StartOfMonthDays = df.pump.long$StartOfMonthDays[i.starts],
@@ -88,7 +88,7 @@ df.Qs %>%
   left_join(df.out, by=c("SegNum", "HouseNum", "time_days")) %>% 
   transform(depletion_m3d = Qs*frac_depletion) %>% 
   dplyr::select(SegNum, HouseNum, time_days, Qs, frac_depletion, depletion_m3d) %>% 
-  subset(depletion_m3d >= 1e-5) %>% 
-  dfDigits(x=., digits=5) %>% 
+  subset(depletion_m3d >= 1e-6) %>% 
+  dfDigits(x=., digits=7) %>% 
   write.csv(file.path(dir.TNC, "DerivedData", "Navarro_Residential_03_DepletionBySegment.csv"),
             row.names=F)
