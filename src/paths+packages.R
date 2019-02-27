@@ -45,6 +45,14 @@ area.km2 <- area.mi2*1.609344*1.609344
 baseflow.cfs <- 8.4  # baseflow requirement from Table 7 in final cannabis policy https://www.waterboards.ca.gov/board_decisions/adopted_orders/resolutions/2017/final_cannabis_policy_with_att_a.pdf
 baseflow.mm_d <- baseflow.cfs*(0.3048^3)*(0.001^3)*(1/area.km2)*86400*1000*1000
 
+## hydrostratigraphic properties
+# define K and S for unconsolidated sediment (K_u) and fractured bedrock (K_f)
+K_u <- 86400*4.5e-3    # [m/d], value for Russian River sediments from Su et al (2007)
+K_f <- 86400*10^(-5.5) # [m/d], Gleeson et al. coarse-grained siliclastic sedimentary rocks
+
+S_u <- 0.35  # [-], value for Russian River sediments from Su et al (2007)
+S_f <- 0.27  # [-], Gleeson et al. coarse-grained siliclastic sedimentary rocks
+
 ## gallons to liters conversion factor
 gal.to.L <- 3.78541
 gal.to.m3 <- gal.to.L/1000

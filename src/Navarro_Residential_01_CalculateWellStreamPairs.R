@@ -98,7 +98,7 @@ dist_all <-
 # max number of segments to consider as potential options for each well
 #   selected this number iteratively - did a preliminary analysis considering all well-stream combos
 #   for grow locations then looked at the max number of segments affected by a given well (which was 29)
-max.well.segs <- 35
+max.well.segs <- 30
 
 df.all <- 
   data.frame(
@@ -130,13 +130,6 @@ df.all <-
 
 
 ## calculate aquifer and stream hydrostratigraphic values
-# define K and S for unconsolidated sediment (K_u) and fractured bedrock (K_f)
-K_u <- 86400*10^(-3.52)  # [m/d]
-K_f <- 86400*10^(-8.2)   # [m/d]
-
-S_u <- 0.27  # [-]
-S_f <- 0.19  # [-]
-
 # coarsen data for extraction
 r.wte.coarse <- raster::aggregate(r.wte, fact=5)
 r.elev.coarse <- raster::aggregate(r.dem.30m, fact=5)
@@ -156,12 +149,22 @@ for (i in 1:dim(df.all)[1]){
   screenTop_elev_m <- well_elev_m - df.all$well_screenTopDepth_m[i]
   screenBot_elev_m <- well_elev_m - df.all$well_screenBotDepth_m[i]
   
+  # minimum allowed aquifer thickness [m] - needed because some wells only have ~3 m screen itnervals which is not reasonable
+  min_thickness_m <- 30  # don't allow < this value
   min_aq_thick_m <- 
-    max(c(screenTop_elev_m, screenBot_elev_m, stream_elev_m)) - 
-    min(c(screenTop_elev_m, screenBot_elev_m, stream_elev_m)) 
+    max(c(
+      (max(c(screenTop_elev_m, screenBot_elev_m, stream_elev_m)) - 
+         min(c(screenTop_elev_m, screenBot_elev_m, stream_elev_m))),
+      min_thickness_m
+    ))
   
-  ## calculate transmissivity at well - bottom of well screen to top of water table or top of well screen
+  ## calculate transmissivity at well
+  # set top and bottom of flow domain
+  # top = max of well screen top and WTE, constrained by land surface 
   well_T_top_m <- min(c(well_elev_m, max(c(well_wte_m, screenTop_elev_m))))
+  # bottom = min of well screen bottom and stream elevation, constrained by min allowed thickness
+  well_T_bot_m <- min(c((well_T_top_m - min_aq_thick_m), screenBot_elev_m, stream_elev_m))
+  
   if (well_T_top_m > well_bedrock_elev_m){
     # top of transmissivity calculation is in alluvial
     mu_well <- well_T_top_m - well_bedrock_elev_m
@@ -170,12 +173,12 @@ for (i in 1:dim(df.all)[1]){
     mu_well <- 0
   }
   
-  if (screenBot_elev_m > well_bedrock_elev_m){
+  if (well_T_bot_m > well_bedrock_elev_m){
     # bottom of well screen is in alluvial
     mf_well <- 0
   } else {
     # bottom of well screen is in bedrock
-    mf_well <- well_T_top_m - screenBot_elev_m - mu_well
+    mf_well <- well_T_top_m - well_T_bot_m - mu_well
   }
   
   # weight based on flow parallel to layering (horizontal)

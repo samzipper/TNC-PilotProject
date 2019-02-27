@@ -70,7 +70,8 @@ for (i in 1:dim(df.combos)[1]){
   df.depletion <- data.frame(SegNum = seg,
                              HouseNum = house,
                              time_days = output_t_days,
-                             Qs = Qs)
+                             Qs = Qs) %>% 
+    subset(Qs > 1e-6)
   
   if (start.flag.Qs){
     df.Qs <- df.depletion

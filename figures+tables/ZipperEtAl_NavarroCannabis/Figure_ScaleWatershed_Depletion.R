@@ -74,10 +74,19 @@ df.habitat <-
 #### load and process cannabis data
 # depletion by segment associated with each well - output from Navarro_Cannabis-Grows_02_DepletionBySegment.R
 df.grow <- 
-  file.path(dir.TNC, "DerivedData", "Navarro_Cannabis-Grows_DepletionBySegment.csv") %>% 
+  file.path(dir.TNC, "DerivedData", "Navarro_Cannabis-Grows_03_DepletionBySegment.csv") %>% 
   read.csv(stringsAsFactors=F) %>% 
   transform(time_yrs = time_days/365,
             depletion_m3s = depletion_m3d*86400)
+
+# load well-stream pairs which has distance
+df.pairs <- 
+  file.path(dir.TNC, "DerivedData", "Navarro_Cannabis-Grows_01_CalculateWellStreamPairs.csv") %>% 
+  read.csv(stringsAsFactors=F) %>% 
+  dplyr::select(SegNum, GrowNum, dist_wellToStream_m)
+
+df.grow <-
+  left_join(df.grow, df.pairs, by=c("SegNum", "GrowNum"))
 
 # calculate distance to closest stream for each grow
 df.grow.closest <- 
@@ -115,11 +124,11 @@ df.grow.analysis <-
 
 ## iterate many times to calculate depletion by year and month 
 ## for different combinations of pumping wells
-n.iter <- 100
+n.iter <- 1   # number of times for bootstrapping
 
 # figure out how many to sample
 n.grows <- length(unique(df.grow.closest$GrowNum))
-prc.gw <- 0.73  # 73% of grow sites in Mendocino County use GW (from Dillis)
+prc.gw <- 1  # 73% of grow sites in Mendocino County use GW (from Dillis)
 n.gw <- round(n.grows*prc.gw)
 grows.gw.only <- df.grow.closest$GrowNum[df.grow.closest$WaterSource=="Groundwater Only"]
 grows.sw.or.gw <- df.grow.closest$GrowNum[df.grow.closest$WaterSource=="Surface Water or Groundwater"]
