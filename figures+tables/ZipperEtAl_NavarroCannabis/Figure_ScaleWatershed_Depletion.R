@@ -46,9 +46,13 @@ df.Q.yr.mo <-
             baseflow_m3d.cum = sum(baseflow_m3d))
 
 # summarize by month
+# what years to average for comparison?
+yrs.average <- seq(1999, 2018)  # last 20 years
 df.Q.mo <-
-  summarize(group_by(df.Q.yr.mo, month),
-            baseflow_m3d = mean(baseflow_m3d.mean),
+  df.Q.yr.mo %>% 
+  subset(water.year %in% yrs.average) %>% 
+  group_by(month) %>% 
+  summarize(baseflow_m3d = mean(baseflow_m3d.mean),
             baseflow_m3d.std = sd(baseflow_m3d.mean),
             baseflow_m3d.min = min(baseflow_m3d.mean)) %>% 
   transform(baseflow_m3d.ribbon.min = baseflow_m3d - baseflow_m3d.std,
@@ -124,11 +128,11 @@ df.grow.analysis <-
 
 ## iterate many times to calculate depletion by year and month 
 ## for different combinations of pumping wells
-n.iter <- 1   # number of times for bootstrapping
+n.iter <- 100   # number of times for bootstrapping
 
 # figure out how many to sample
 n.grows <- length(unique(df.grow.closest$GrowNum))
-prc.gw <- 1  # 73% of grow sites in Mendocino County use GW (from Dillis)
+prc.gw <- 0.73  # 73% of grow sites in Mendocino County use GW (from Dillis)
 n.gw <- round(n.grows*prc.gw)
 grows.gw.only <- df.grow.closest$GrowNum[df.grow.closest$WaterSource=="Groundwater Only"]
 grows.sw.or.gw <- df.grow.closest$GrowNum[df.grow.closest$WaterSource=="Surface Water or Groundwater"]
@@ -259,26 +263,64 @@ ggplot(df.grow.closest, aes(x=dist_m_closestStream, fill=WaterSource)) +
   NULL
 
 ## SI Figure: Comparison of residential and cannabis depletion
-df.comparison <-
+df.comparison.long <-
   rbind(df.res.depletion.summary[,c("year", "month", "depletion_m3d_Navarro", "WaterUser")],
         setNames(df.grow.depletion.summary[,c("year", "month", "depletion_m3d_Navarro_mean", "WaterUser")], c("year", "month", "depletion_m3d_Navarro", "WaterUser")))
+
+df.comparison.wide <- 
+  left_join(df.res.depletion.summary[,c("year", "month", "depletion_m3d_Navarro")],
+            setNames(df.grow.depletion.summary[,c("year", "month", "depletion_m3d_Navarro_mean")], 
+                     c("year", "month", "depletion_m3d_Navarro_Cannabis")), 
+            by=c("year", "month")) %>% 
+  transform(Depletion_Grow.Res = depletion_m3d_Navarro_Cannabis/depletion_m3d_Navarro)
 
 time_labels <- 
   setNames(paste0("Year ", yrs.plot),
            yrs.plot)
 
 ggplot() +
-  geom_line(data=df.comparison, aes(x=month, y=depletion_m3d_Navarro, color=factor(year), linetype=WaterUser)) +
+  geom_line(data=df.comparison.long, aes(x=month, y=depletion_m3d_Navarro, color=factor(year), linetype=WaterUser)) +
   scale_x_continuous(name = "Month", breaks=seq(1,12)) +
   facet_wrap(~year, ncol=3, labeller=as_labeller(time_labels), scales="free_y") +
   scale_color_manual(name = "Years of Pumping", 
                      values=c(col.cat.grn, col.cat.org, col.cat.red), guide=F) +
   scale_linetype_manual(name = "Water User", 
-                     values=c("Residential"="dashed", "Cannabis"="solid")) +
+                        values=c("Residential"="dashed", "Cannabis"="solid")) +
   scale_y_continuous(name = "Streamflow Depletion [m3/d]", 
                      limits=c(min(df.comparison$depletion_m3d_Navarro), max(df.comparison$depletion_m3d_Navarro))) +
   theme(legend.position="bottom",
         legend.background=element_blank()) +
   ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_ScaleWatershed_Depletion_CompareResidential.png"),
          width = 190, height = 95, units="mm") +
+  NULL
+
+
+
+ggplot() +
+  geom_line(data=df.comparison.wide, aes(x=month, y=100*Depletion_Grow.Res, color=factor(year))) +
+  scale_x_continuous(name = "Month", breaks=seq(1,12)) +
+  facet_wrap(~year, ncol=3, labeller=as_labeller(time_labels), scales="free_y") +
+  scale_color_manual(name = "Years of Pumping", 
+                     values=c(col.cat.grn, col.cat.org, col.cat.red), guide=F) +
+  scale_linetype_manual(name = "Water User", 
+                        values=c("Residential"="dashed", "Cannabis"="solid")) +
+  scale_y_continuous(name = "Cannabis Streamflow Depletion\n[% of Residential Depletion]", 
+                     limits=c(0,100), expand=c(0,0)) +
+  theme(legend.position="bottom",
+        legend.background=element_blank()) +
+ # ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_ScaleWatershed_Depletion_CompareResidential.png"),
+#         width = 190, height = 95, units="mm") +
+  NULL
+
+ggplot(df.res.depletion.summary, aes(x=month)) +
+  geom_line(aes(y=100*depletion_m3d_Navarro/baseflow_m3d, color=factor(year)), linetype="dashed") +
+  geom_point(aes(y=100*depletion_m3d_Navarro/baseflow_m3d, color=factor(year))) +
+  scale_x_continuous(name = "Month", breaks=seq(1,12)) +
+  scale_y_continuous(name="Streamflow Depletion\n[% of Monthly Baseflow]") +
+  scale_fill_manual(name="Years of\nPumping", values=c(col.cat.grn, col.cat.org, col.cat.red)) +
+  scale_color_manual(name="Years of\nPumping", values=c(col.cat.grn, col.cat.org, col.cat.red)) +
+  theme(legend.position=c(0,0.93),
+        legend.justification=c(0,1),
+        legend.background=element_blank()) +
+  #  guides(color=F, fill=F) +
   NULL
