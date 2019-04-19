@@ -375,30 +375,43 @@ df.fit.length <-
 
 ##### make plots
 ## map of fit by well
+max(df.fit.well$MAE.overall/(df.fit.well$depletion.prc.modflow.max-df.fit.well$depletion.prc.modflow.min))
+r.ibound <- raster(file.path("modflow", "input", "ibound.tif"))
+df.ibound <- 
+  r.ibound %>% 
+  rasterToPoints() %>% 
+  data.frame() %>% 
+  set_colnames(c("lon", "lat", "ibound"))
+
 p.map.well <-
   df.fit.well %>% 
+  transform(MAE.norm = MAE.overall/(depletion.prc.modflow.max-depletion.prc.modflow.min)) %>% 
   ggplot() +
+  geom_raster(data=subset(df.ibound, ibound != 0), aes(x=lon, y=lat), fill=col.gray) +
   geom_polygon(data=df.basin, aes(x=long, y=lat, group=group), fill=NA, color="red") +
-  geom_path(data=df.riv, aes(x=long, y=lat, group=group), color="blue") +
-  geom_point(aes(x=lon, y=lat, size=MAE.overall/(depletion.prc.modflow.max-depletion.prc.modflow.min)), alpha=0.5) +
+  geom_path(data=df.riv, aes(x=long, y=lat, group=group), color=col.cat.blu) +
+  geom_point(aes(x=lon, y=lat, size=MAE.norm, fill=MAE.norm), shape=21, alpha=0.75) +
   scale_x_continuous(name="Easting [m]", expand=c(0,0), breaks=map.breaks.x) +
   scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
-  scale_size_area(name="Normalized\nMAE") +
+  scale_fill_viridis(name="Normalized\nMAE", limits=c(0, 0.406), breaks=seq(0.1, 0.4, 0.1)) +
+  scale_size_continuous(name="Normalized\nMAE", limits=c(0, 0.406), breaks=seq(0.1, 0.4, 0.1)) +
   coord_equal() +
   theme(axis.text.y=element_text(angle=90, hjust=0.5),
-        legend.title=element_text(hjust=0.5))
+        legend.title=element_text(hjust=0.5)) +
+  guides(fill= guide_legend(), size=guide_legend())
 
 ## scatter fit by WTE
 p.fit.well <-
   df.fit.well %>% 
-  ggplot(aes(x=wte_m, y=MAE.overall/(depletion.prc.modflow.max-depletion.prc.modflow.min))) +
+  transform(MAE.norm = MAE.overall/(depletion.prc.modflow.max-depletion.prc.modflow.min)) %>% 
+  ggplot(aes(x=wte_m, y=MAE.norm)) +
   geom_point() +
   stat_smooth(method="lm") +
   scale_x_continuous(name="Water Table Elevation at Well [m]") +
   scale_y_continuous(name="Normalized MAE") +
   theme(legend.position="bottom")
 
-lm(MAE.overall/(depletion.prc.modflow.max-depletion.prc.modflow.min) ~ wte_m, data=df.fit.well) %>% 
+lm(MAE.norm ~ wte_m, data=df.fit.well) %>% 
   summary()
 
 p.byWell <- plot_grid(p.map.well + theme(legend.position="top"),
@@ -482,7 +495,7 @@ p.geometry <- plot_grid(p.bar.dist + theme(plot.margin=unit(c(0.5, 0.5, 2, 0.5),
 #          base_width = 95/25.4, base_height=150/25.4)
 
 ## both ByWell and Geometry in one plot
-save_plot(file.path("figures+tables", "Figure_Error-Factors_ByWell+Geometry.png"),
+save_plot(file.path("figures+tables", "ZipperEtAl_NavarroAnalyticalDepletionFunctions", "Figure_Error-Factors_ByWell+Geometry.png"),
           plot_grid(p.byWell, p.geometry,
                     ncol=2),
           base_width = 190/25.4, base_height=150/25.4)
