@@ -12,7 +12,7 @@ f.thres <- 0.001  # 0.1%
 
 ## which MODFLOW to plot
 modflow_v <- "mfnwt"
-stream_BC_plot <- "RIV"
+stream_BC_plot <- "SFR"
 
 ## which conditions to plot
 analytical_plot <- c("glover", "hunt")
@@ -71,6 +71,18 @@ for (timeType in c("Transient", "Intermittent")) {
            value.name="depletion.prc", variable.name="method") %>%
       subset(depletion.prc > f.thres)
     
+    ## load no apportionment output
+    df.NoApport <- 
+      file.path("results", paste0("Depletion_Analytical_", timeType, "_NoApportionment_AllMethods+Wells+Reaches.csv")) %>% 
+      read.csv(stringsAsFactors=F) %>% 
+      dplyr::select(SegNum, WellNum, Time, analytical, Qf.NoApport) %>% 
+      set_colnames(c("SegNum", "WellNum", "Time", "analytical", "depletion.prc")) %>% 
+      transform(method = "Qf.NoApport")
+    
+    ## add no apportionment to analytical
+    df.analytical <-
+      rbind(df.analytical, df.NoApport)
+    
     ## Time has long decimals; round before merging to ensure time match
     df.analytical$Time <- round(df.analytical$Time, 1)
     
@@ -88,8 +100,9 @@ for (timeType in c("Transient", "Intermittent")) {
       dplyr::select(analytical, WellNum, Time, method, SegNum)
     
     for (BC in stream_BC_plot) {
-      for (m in method_plot) {
+      for (m in c(method_plot, "Qf.NoApport")) {
         for (a in analytical_plot) {
+          
           ## overall fit
           df <-
             df.MODFLOW %>%
@@ -298,7 +311,7 @@ for (timeType in c("Transient", "Intermittent")) {
 df.match.plot <- df.fit.match
 df.match.plot$apportionment <- factor(df.match.plot$apportionment, 
                                       levels=c("WholeDomain", "LocalArea", "AdjacentOnly", "Dynamic", "Adjacent+Dynamic"))
-df.match.plot$method <- factor(df.match.plot$method, levels=c("Qf.Web", "Qf.WebSq", "Qf.InvDist", "Qf.InvDistSq", "Qf.TPoly"))
+df.match.plot$method <- factor(df.match.plot$method, levels=c("Qf.Web", "Qf.WebSq", "Qf.InvDist", "Qf.InvDistSq", "Qf.TPoly", "Qf.NoApport"))
 df.match.plot$pump <- factor(df.match.plot$pump, levels=c("Transient", "Intermittent"))
 df.match.plot$analytical <- factor(df.match.plot$analytical, levels=c("glover", "hunt"))
 
@@ -307,13 +320,13 @@ df.match.plot$analytical <- factor(df.match.plot$analytical, levels=c("glover", 
 df.overall.plot <- df.fit.all
 df.overall.plot$apportionment <- factor(df.overall.plot$apportionment, levels=c("WholeDomain", "LocalArea", "AdjacentOnly", "Dynamic", "Adjacent+Dynamic"))
 df.overall.plot$pump <- factor(df.overall.plot$pump, levels=c("Transient", "Intermittent"))
-df.overall.plot$method <- factor(df.overall.plot$method, levels=c("Qf.Web", "Qf.WebSq", "Qf.InvDist", "Qf.InvDistSq", "Qf.TPoly"))
+df.overall.plot$method <- factor(df.overall.plot$method, levels=c("Qf.Web", "Qf.WebSq", "Qf.InvDist", "Qf.InvDistSq", "Qf.TPoly", "Qf.NoApport"))
 df.overall.plot$analytical <- factor(df.overall.plot$analytical, levels=c("glover", "hunt"))
 
 ## capture fraction statistics
 df.fit.sum$apportionment <- factor(df.fit.sum$apportionment, levels=c("WholeDomain", "LocalArea", "AdjacentOnly", "Dynamic", "Adjacent+Dynamic"))
 df.fit.sum$pump <- factor(df.fit.sum$pump, levels=c("Transient", "Intermittent"))
-df.fit.sum$method <- factor(df.fit.sum$method, levels=c("Qf.Web", "Qf.WebSq", "Qf.InvDist", "Qf.InvDistSq", "Qf.TPoly"))
+df.fit.sum$method <- factor(df.fit.sum$method, levels=c("Qf.Web", "Qf.WebSq", "Qf.InvDist", "Qf.InvDistSq", "Qf.TPoly", "Qf.NoApport"))
 df.fit.sum$analytical <- factor(df.fit.sum$analytical, levels=c("glover", "hunt"))
 
 ## times for annotation
@@ -345,7 +358,8 @@ p.match.prc <-
   df.match.plot %>% 
   subset(stream_BC %in% stream_BC_plot & 
            apportionment %in% domain_plot &
-           analytical %in% analytical_plot) %>% 
+           analytical %in% analytical_plot &
+           method %in% method_plot) %>% 
   ggplot() +
   geom_rect(data=df.NoPump.times, 
             aes(xmin=starts/365, xmax=stops/365, ymin=-Inf, ymax=Inf), 
@@ -355,6 +369,12 @@ p.match.prc <-
             aes(x=Time/365, y=prc.match), color=col.cat.red, size=2) +
   geom_line(data=subset(df.match.plot, analytical==analytical_best & apportionment==domain_best & method==method_best & Streams=="Qd > 0.1%"), 
             aes(x=Time/365, y=prc.match), color=col.cat.blu, size=2) +
+  geom_line(data = subset(df.match.plot, 
+                          stream_BC %in% stream_BC_plot &
+                            apportionment == "AdjacentOnly" &
+                            analytical == "hunt" &
+                            method == "Qf.NoApport"),
+            aes(x=Time/365, y=prc.match), linetype = "dashed", color = "black") +
   facet_wrap(pump ~ ., ncol=2, 
              labeller=as_labeller(c("Transient"="Continuous Pumping", "Intermittent"="Intermittent Pumping"))) +
   scale_x_continuous(name="Time [years]", expand=c(0,0), breaks=seq(0,10,2)) +
@@ -370,7 +390,8 @@ p.match.fit <-
   subset(stream_BC %in% stream_BC_plot & 
            apportionment %in% domain_plot &
            analytical %in% analytical_plot &
-           Streams=="Qd > 0.1%") %>% 
+           Streams=="Qd > 0.1%" &
+           method != "Qf.NoApport") %>% 
   ggplot() +
   geom_rect(data=df.NoPump.times, 
             aes(xmin=starts/365, xmax=stops/365, ymin=-Inf, ymax=Inf), 
@@ -383,6 +404,13 @@ p.match.fit <-
             aes(x=Time/365, y=MAE.match/(depletion.prc.modflow.max-depletion.prc.modflow.min)), color=col.cat.red, size=2) +
   geom_line(data=subset(df.match.plot, analytical==analytical_best & apportionment==domain_best & method==method_best & Streams=="Qd > 0.1%"), 
             aes(x=Time/365, y=MAE.match/(depletion.prc.modflow.max-depletion.prc.modflow.min)), color=col.cat.blu, size=2) +
+  geom_line(data = subset(df.match.plot, 
+                          stream_BC %in% stream_BC_plot &
+                            apportionment == "AdjacentOnly" &
+                            analytical == "hunt" &
+                            method == "Qf.NoApport" &
+                            Streams=="Qd > 0.1%"),
+            aes(x=Time/365, y=MAE.match/(depletion.prc.modflow.max-depletion.prc.modflow.min)), linetype = "dashed", color = "black") +
   facet_wrap(pump ~ ., ncol=2, 
              labeller=as_labeller(c("Transient"="Continuous Pumping", "Intermittent"="Intermittent Pumping"))) +
   scale_linetype_discrete(name="Segments\nEvaluated") +
@@ -394,6 +422,7 @@ p.match.fit <-
 ## plot of KGE for all wells/reaches
 p.overall <-
   df.overall.plot %>% 
+  subset(method != "Qf.NoApport") %>% 
   ggplot() +
   geom_rect(data=df.NoPump.times, 
             aes(xmin=starts/365, xmax=stops/365, ymin=-Inf, ymax=Inf), 
@@ -404,17 +433,25 @@ p.overall <-
             aes(x=Time/365, y=KGE.overall), color=col.cat.red, size=2) +
   geom_line(data=subset(df.overall.plot, analytical==analytical_best & apportionment==domain_best & method==method_best),
             aes(x=Time/365, y=KGE.overall), color=col.cat.blu, size=2) +
+  geom_line(data = subset(df.overall.plot, 
+                          stream_BC %in% stream_BC_plot &
+                            apportionment == "AdjacentOnly" &
+                            analytical == "hunt" &
+                            method == "Qf.NoApport"),
+            aes(x=Time/365, y=KGE.overall), linetype = "dashed", color = "black") +
   facet_wrap(pump ~ ., ncol=2, 
              labeller=as_labeller(c("Transient"="(a) Continuous Pumping", "Intermittent"="(b) Intermittent Pumping"))) +
   scale_x_continuous(name="Time [years]", expand=c(0,0), breaks=seq(0,10,2)) +
-  scale_y_continuous(name="KGE,\nAll Segments", limits=c(min(df.overall.plot$KGE.overall), 1)) +
+  scale_y_continuous(name="KGE,\nAll Segments") +
+  coord_cartesian(ylim=c(-2.5,1)) +
   theme(strip.text=element_blank()) +
   NULL
 
 ## plot of MAE for cumulative capture fraction
 p.sum <- 
   df.fit.sum %>% 
-  subset(stream_BC %in% stream_BC_plot) %>% 
+  subset(stream_BC %in% stream_BC_plot &
+           method != "Qf.NoApport") %>% 
   ggplot() +
   geom_rect(data=df.NoPump.times, 
             aes(xmin=starts/365, xmax=stops/365, ymin=-Inf, ymax=Inf), 
@@ -427,6 +464,12 @@ p.sum <-
             aes(x=Time/365, y=MAE.sum/(Qf.total.MODFLOW.max-Qf.total.MODFLOW.min)), color=col.cat.red, size=2) +
   geom_line(data=subset(df.fit.sum, analytical==analytical_best & apportionment==domain_best & method==method_best),
             aes(x=Time/365, y=MAE.sum/(Qf.total.MODFLOW.max-Qf.total.MODFLOW.min)), color=col.cat.blu, size=2) +
+  geom_line(data = subset(df.fit.sum, 
+                          stream_BC %in% stream_BC_plot &
+                            apportionment == "AdjacentOnly" &
+                            analytical == "hunt" &
+                            method == "Qf.NoApport"),
+            aes(x=Time/365, y=MAE.sum/(Qf.total.MODFLOW.max-Qf.total.MODFLOW.min)), linetype = "dashed", color = "black") +
   facet_wrap(pump ~ ., ncol=2, 
              labeller=as_labeller(c("Transient"="(a) Continuous Pumping", "Intermittent"="(b) Intermittent Pumping"))) +
   scale_x_continuous(name="Time [years]", expand=c(0,0), breaks=seq(0,10,2)) +
@@ -456,7 +499,7 @@ p.sum <-
 #        width=190, height=200, units="mm")
 
 # version without axis or legend which can be added with InkScape
-save_plot(file.path("figures+tables", paste0("Figure_CompareAll_", stream_BC_plot, "_NoText.pdf")),
+save_plot(file.path("figures+tables", "ZipperEtAl_NavarroAnalyticalDepletionFunctions", paste0("Figure_CompareAll_", stream_BC_plot, "_NoText.pdf")),
           plot_grid(p.match.prc + theme(legend.position="none",
                                         axis.title.x = element_blank(),
                                         axis.text.x = element_blank()),

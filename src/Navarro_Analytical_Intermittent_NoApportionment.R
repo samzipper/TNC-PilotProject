@@ -107,8 +107,7 @@ shp.streams <- readOGR(dsn=file.path("modflow", "input"), layer="iriv")
 names(shp.streams) <- c("OBJECTID", "REACHCODE", "TerminalPa", "lineLength_m", "TotDASqKM", "StreamOrde", 
                         "TerminalFl", "SLOPE", "FromNode", "ToNode", "SegNum")
 
-# figure out which segments are part of Navarro
-segs.navarro <- shp.streams@data$SegNum[shp.streams@data$TerminalPa==outlet.TerminalPa]
+# calculate stream width
 shp.streams@data$width_m <- WidthFromDA(DA=shp.streams@data$TotDASqKM, w.min=1, w.max=100)
 df.apportion <- left_join(df.apportion, shp.streams@data[,c("SegNum", "width_m")], by="SegNum")
 

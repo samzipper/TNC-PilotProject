@@ -24,7 +24,7 @@ analytical_plot <- "hunt"
 stream_BC_plot <- c("RIV")
 
 # what well to plot?
-wel.plot <- 393  # 365, 393, 421
+wel.plot <- 421  # 365, 393, 421
 
 #### (0) Prep spatial data
 
@@ -90,7 +90,7 @@ if (wel.plot==365){
 }
 if (wel.plot==393){
   shape.val <- 15
-  shape.name <- "Near"
+  shape.name <- "Well"
 }
 if (wel.plot==421) {
   shape.val <- 18
@@ -101,10 +101,10 @@ ggplot(sf.streams) +
   geom_sf(aes(color=cut(depletion.prc, 
                         breaks=c(-0.01, 0.01, 0.05, 0.1, 0.25, 1.0),
                         labels = c("< 0.01", "0.01 - 0.05", "0.05 - 0.10", "0.10 - 0.25", "> 0.25"))),
-          size = 2) +
+          size = 2, show.legend = "line") +
   geom_point(data=df.wel, aes(x=lon, y=lat), color="black", shape=shape.val, size=2) +
   geom_text(data=df.wel, aes(x=lon, y=lat, label=shape.name), 
-            color="black",  hjust = -0.2, vjust = 1.2) +
+            color="black",  hjust = -0.15, vjust = 1.15) +
   geom_sf(data=sf.basin, color=col.gray, fill=NA) +
   facet_wrap(~method) + 
   scale_color_manual(name = "Depletion potential\nafter 10 years",
@@ -121,6 +121,9 @@ ggplot(sf.streams) +
   theme(axis.text.y=element_text(angle=90, hjust=0.5),
         legend.position="bottom",
         legend.background=element_blank(),
-        legend.box.background=element_blank()) +
+        legend.box.background=element_blank(),
+        strip.text=element_text(face="bold.italic"),
+        legend.title=element_text(hjust=0.5)) +
+  #ggsave("test.png", 
   ggsave(file.path("figures+tables", "ZipperEtAl_NavarroAnalyticalDepletionFunctions", paste0("Figure_ExampleResults_", shape.name, ".png")),
-         width = 190, height=190, units="mm")
+         width = 190, height = 175, units="mm")

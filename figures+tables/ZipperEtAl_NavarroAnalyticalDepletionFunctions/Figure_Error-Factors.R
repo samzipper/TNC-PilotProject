@@ -433,7 +433,7 @@ p.byWell <- plot_grid(p.map.well + theme(legend.position="top"),
 #          base_width = 95/25.4, base_height=150/25.4)
 
 
-## barplot fit by horizontal distance
+## scatterplot fit by horizontal distance
 p.bar.dist <-
   df.fit.dist %>% 
   ggplot(aes(x=dist.m.median, y=MAE.overall/(depletion.prc.modflow.max-depletion.prc.modflow.min))) +
@@ -495,7 +495,7 @@ p.geometry <- plot_grid(p.bar.dist + theme(plot.margin=unit(c(0.5, 0.5, 2, 0.5),
 #          base_width = 95/25.4, base_height=150/25.4)
 
 ## both ByWell and Geometry in one plot
-save_plot(file.path("figures+tables", "ZipperEtAl_NavarroAnalyticalDepletionFunctions", "Figure_Error-Factors_ByWell+Geometry.png"),
+save_plot(file.path("figures+tables", "ZipperEtAl_NavarroAnalyticalDepletionFunctions", paste0("Figure_Error-Factors_ByWell+Geometry_", stream_BC_plot, ".png")),
           plot_grid(p.byWell, p.geometry,
                     ncol=2),
           base_width = 190/25.4, base_height=150/25.4)

@@ -107,6 +107,12 @@ df.all <-
   file.path("results", "Navarro_Cannabis_CalculateWellStreamPairs.csv") %>% 
   read.csv(stringsAsFactors=F)
 
+################ UPDATE THIS BASED ON CLOSEST WELL #################
+#########################################################
+
+
+
+
 # predict top of screen based on linear relationship with dtb_m
 # see script Navarro_WellCompletionReports.R
 coef_m <- -3.02

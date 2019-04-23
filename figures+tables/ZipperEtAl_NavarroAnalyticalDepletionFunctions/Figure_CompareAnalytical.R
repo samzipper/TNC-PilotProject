@@ -258,12 +258,13 @@ p.match.prc <-
   df.match.plot %>% 
   subset(stream_BC %in% stream_BC_plot & 
            apportionment %in% domain_plot &
-           analytical %in% analytical_plot) %>% 
+           analytical %in% analytical_plot &
+           Streams=="Qd > 5%") %>% 
   ggplot() +
   geom_rect(data=df.NoPump.times, 
             aes(xmin=starts/365, xmax=stops/365, ymin=-Inf, ymax=Inf), 
             fill=col.gray, alpha=0.25) +
-  geom_line(aes(x=Time/365, y=prc.match, color=analytical, linetype=Streams)) +
+  geom_line(aes(x=Time/365, y=prc.match, color=analytical)) +
   facet_wrap(pump ~ ., ncol=2, 
              labeller=as_labeller(c("Transient"="Continuous Pumping", "Intermittent"="Intermittent Pumping"))) +
   scale_linetype_discrete(name="Segments\nEvaluated") +
@@ -360,7 +361,7 @@ p.sum <-
 #        width=190, height=200, units="mm")
 
 # version without axis or legend which can be added with InkScape
-save_plot(file.path("figures+tables", "Figure_CompareAnalytical_NoText.pdf"),
+save_plot(file.path("figures+tables", "ZipperEtAl_NavarroAnalyticalDepletionFunctions", "Figure_CompareAnalytical_NoText.pdf"),
           plot_grid(p.match.prc + theme(legend.position="none",
                                         axis.title.x = element_blank(),
                                         axis.text.x = element_blank()),
