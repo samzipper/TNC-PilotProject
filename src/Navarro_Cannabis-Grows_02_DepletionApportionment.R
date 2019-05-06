@@ -26,7 +26,7 @@ sf.streams <-
 
 # grow locations from TNC (filtered and transformed in Navarro_Cannabis-Grows_01_CalculateWellStreamPairs.R)
 sf.grows <-
-  sf::st_read(file.path(dir.TNC, "DerivedData", "Navarro_Cannabis-Grows.shp"), stringsAsFactors=F) %>%
+  sf::st_read(file.path(dir.TNC, "DerivedData", "Navarro_Cannabis-Grows.gpkg"), stringsAsFactors=F) %>%
   sf::st_transform(crs.MODFLOW)
 
 ## well-stream geometry output from Navarro_Residential_01_CalculateWellStreamPairs.R
@@ -53,7 +53,7 @@ df.all <-
 
 ## subdivide sf.streams into points for web squared calculation
 # define point spacing and figure out how many points to make
-pt.spacing <- 25  # [m]
+pt.spacing <- 20  # [m]
 shp.streams <- as(sf.streams, "Spatial")
 n.pts <- round(gLength(shp.streams)/pt.spacing)
 set.seed(1)

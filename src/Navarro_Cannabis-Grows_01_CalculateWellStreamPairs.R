@@ -30,6 +30,14 @@ sf.grows <-
   dplyr::rename(GrowNum = FID_allgro) %>% 
   dplyr::select(GrowNum, greenhouse, growsize, plants, outdoor, PARCEL_ID)
 
+# some parcels have more than 1 cultivation site; subset to only the cultivation site with the most plants
+#  (assumption: this is where the well is located)
+sf.grows <- 
+  sf.grows %>% 
+  dplyr::group_by(PARCEL_ID) %>% 
+  filter(plants == max(plants))
+sf.grows <- sf.grows[!duplicated(sf.grows$PARCEL_ID),]  # 5/411 couple parcels have two sites with the same number of plants... just choose one
+
 df.WaterUse <- 
   read.csv(file.path(dir.TNC, "Dillis_NavarroWaterUseEstimates.csv"), stringsAsFactors=F)
 
@@ -288,7 +296,7 @@ df.all %>%
             row.names=F)
 
 sf.grows %>% 
-  sf::st_write(file.path(dir.TNC, "DerivedData", "Navarro_Cannabis-Grows.shp"),
+  sf::st_write(file.path(dir.TNC, "DerivedData", "Navarro_Cannabis-Grows.gpkg"),
                delete_dsn=T, delete_layer=T)   # overwrite
 
 ## plot with everything
