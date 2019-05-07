@@ -100,7 +100,7 @@ p.baseflow.mo.trend <-
   scale_y_continuous(name="Monthly Baseflow [m3/s]")
 
 ## save plots
-ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_StreamflowData.png"),
+ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_StreamflowTrends.png"),
        grid.arrange(p.Q.DOY+labs(title="(a)") + theme(plot.title=element_text(hjust=0.01, vjust=-7, face="plain"),
                                                       plot.margin=unit(c(-5,1,0,1), "mm")), 
                     p.baseflow.mo.trend+labs(title="(b)") + theme(plot.title=element_text(hjust=0, vjust=-7, face="plain"),
