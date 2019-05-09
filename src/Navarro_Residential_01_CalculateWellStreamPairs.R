@@ -272,7 +272,7 @@ df.all %>%
             row.names=F)
 
 sf.houses %>% 
-  sf::st_write(file.path(dir.TNC, "DerivedData", "Navarro_Residential.shp"),
+  sf::st_write(file.path(dir.TNC, "DerivedData", "Navarro_Residential.gpkg"),
                delete_dsn=T, delete_layer=T)   # overwrite
 
 ## plot with everything

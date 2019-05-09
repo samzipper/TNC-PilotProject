@@ -26,21 +26,8 @@ sf.streams <-
 
 # house locations from TNC (filtered and transformed in Navarro_Residential_01_CalculateWellStreamPairs.R)
 sf.houses <-
-  sf::st_read(file.path(dir.TNC, "DerivedData", "Navarro_Residential.shp"), stringsAsFactors=F) %>%
-  sf::st_transform(crs.MODFLOW) %>% 
-  rename(Comments=Commnts,
-         Watershed=Watrshd,
-         County=County,
-         Structure=Structr,
-         Landscaping=Lndscpn,
-         HouseNum=HouseNm,
-         elev_m=elev_m,
-         dtb_m=dtb_m,
-         wte_m=wte_m,
-         lon=lon,
-         lat=lat,
-         screenTopDepth_m=scrnTD_,
-         screenBotDepth_m=scrnBD_)
+  sf::st_read(file.path(dir.TNC, "DerivedData", "Navarro_Residential.gpkg"), stringsAsFactors=F) %>%
+  sf::st_transform(crs.MODFLOW)
 
 ## well-stream geometry output from Navarro_Residential_01_CalculateWellStreamPairs.R
 df.all <- 
@@ -51,7 +38,7 @@ df.all <-
 
 ## subdivide sf.streams into points for web squared calculation
 # define point spacing and figure out how many points to make
-pt.spacing <- 25  # [m]
+pt.spacing <- 20  # [m]
 shp.streams <- as(sf.streams, "Spatial")
 n.pts <- round(gLength(shp.streams)/pt.spacing)
 set.seed(1)
