@@ -125,42 +125,44 @@ df.plot <- left_join(df.pump.month, df.streamflow.month, by=c("MonthNum"="month"
 p.waterUse.abs <-
   ggplot(df.plot, aes(x=Month)) +
   # plot cannabis
-  geom_ribbon(aes(ymin=WaterUseMin_m3d_sum, ymax=WaterUseMax_m3d_sum, group=1), fill=col.cat.grn, alpha=0.25) +
-  geom_line(aes(y=WaterUseMean_m3d_sum, group=1), color=col.cat.grn) +
-  geom_point(aes(y=WaterUseMean_m3d_sum, group=1), color=col.cat.grn) +
+  geom_ribbon(aes(ymin=WaterUseMin_m3d_sum, ymax=WaterUseMax_m3d_sum, group=1), fill="black", alpha=0.15) +
+  geom_line(aes(y=WaterUseMean_m3d_sum, group=1)) +
+  geom_point(aes(y=WaterUseMean_m3d_sum, group=1)) +
   # plot residential
-  geom_line(aes(y=ResWaterUseSum_m3d, group=1), color=col.cat.org) +
-  geom_point(aes(y=ResWaterUseSum_m3d, group=1), color=col.cat.org) +
+  geom_line(aes(y=ResWaterUseSum_m3d, group=1), linetype="dashed") +
+  geom_point(aes(y=ResWaterUseSum_m3d, group=1), shape=1) +
   # plot streamflow - ribbon shows 10% GW presumptive standard from Gleeson & Richter
   geom_ribbon(aes(ymin=baseflow_m3d_mean*0.9, ymax=baseflow_m3d_mean*1.1, group=1), fill=col.cat.blu, alpha=0.25) +
   geom_line(aes(y=baseflow_m3d_mean, group=2), color=col.cat.blu) +
   geom_point(aes(y=baseflow_m3d_mean, group=2), color=col.cat.blu) +
   scale_x_discrete(labels=seq(1,12)) +
-  scale_y_log10(name="Volumetric Flux [m\u00b3 d\u207b\u00b9]")
+  scale_y_log10(name="Volumetric Flux [m\u00b3 d\u207b\u00b9]",
+                expand=c(0.06,0.06))
 
 p.waterUse.prc <-
   ggplot(df.plot, aes(x=Month)) +
   # plot cannabis
   geom_ribbon(aes(ymin=100*WaterUseMin_m3d_sum/baseflow_m3d_mean, ymax=100*WaterUseMax_m3d_sum/baseflow_m3d_mean, group=1), 
-              fill=col.cat.grn, alpha=0.25) +
-  geom_line(aes(y=100*WaterUseMean_m3d_sum/baseflow_m3d_mean, group=1), color=col.cat.grn) +
-  geom_point(aes(y=100*WaterUseMean_m3d_sum/baseflow_m3d_mean, group=1), color=col.cat.grn) +
+              fill="black", alpha=0.15) +
+  geom_line(aes(y=100*WaterUseMean_m3d_sum/baseflow_m3d_mean, group=1)) +
+  geom_point(aes(y=100*WaterUseMean_m3d_sum/baseflow_m3d_mean, group=1)) +
   # plot residential
-  geom_line(aes(y=100*ResWaterUseSum_m3d/baseflow_m3d_mean, group=1), color=col.cat.org) +
-  geom_point(aes(y=100*ResWaterUseSum_m3d/baseflow_m3d_mean, group=1), color=col.cat.org) +
+  geom_line(aes(y=100*ResWaterUseSum_m3d/baseflow_m3d_mean, group=1), linetype="dashed") +
+  geom_point(aes(y=100*ResWaterUseSum_m3d/baseflow_m3d_mean, group=1), shape=1) +
   scale_x_discrete(labels=seq(1,12)) +
-  scale_y_continuous(name="Groundwater Use\n[% of Monthly Baseflow]")
+  scale_y_continuous(name="Groundwater Use [% of Baseflow]")
 
 plot_grid(p.waterUse.abs + 
-            annotate("text", x=8, y=4e2, label="Cannabis", color=col.cat.grn, hjust=0.5, vjust=1) +
-            annotate("text", x=1, y=1e3, label="Residential", color=col.cat.org, hjust=0, vjust=1) +
+            annotate("text", x=4.1, y=1.2e2, label="Cannabis", color="black", hjust=0, vjust=1) +
+            annotate("text", x=1, y=4e3, label="Residential", color="black", hjust=0, vjust=1) +
             annotate("text", x=1, y=3e5, label="Baseflow", color=col.cat.blu, hjust=0), 
           p.waterUse.prc, 
           labels = c("(a)", "(b)"),
           label_size = 10,
           label_fontfamily = "Arial",
           label_fontface = "plain",
-          label_x = 0,
+          label_x = c(0.17, 0.17),
+          label_y = c(1, 0.99),
           align="v", nrow=2) %>% 
   save_plot(filename = file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_WaterUse-BaseflowComparison.png"), 
             plot = .,
