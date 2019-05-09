@@ -15,7 +15,7 @@ sf.streams <-
 # grow locations shapefile
 sf.grows <- 
   sf::st_read(file.path(dir.TNC, "DerivedData", "Navarro_Cannabis-Grows.gpkg")) %>% 
-  subset(Well.rf.pred=="Yes") %>% 
+  subset(Well.rf.pred=="Yes") %>%
   sf::st_transform(crs.MODFLOW)
 
 ## read in cannabis water use data - this is proprietary from TNC/Dillis, cannot be shared
@@ -94,7 +94,7 @@ house.pump <- sum(df.pump.res$m3HouseDay*df.pump.res$MonthLengthDays)
 # load point locations
 sf.houses <- 
   sf::st_read(file.path(dir.TNC, "Structures_Navarro_NAIP_2016", "Structures_Navarro_NAIP_2016.shp")) %>% 
-  subset(Structure=="Res H") %>%                  # 2016 data only
+  subset(Structure=="Res H") %>%                  # houses only
   st_zm(drop = TRUE, what = "ZM") %>%   # drop Z dimension from geometry
   sf::st_transform(crs.MODFLOW)
 sf.houses$WaterUseSum_m3yr <- house.pump
