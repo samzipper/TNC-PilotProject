@@ -79,9 +79,7 @@ df.habitat <-
 # depletion by segment associated with each well - output from Navarro_Cannabis-Grows_02_DepletionBySegment.R
 df.grow <- 
   file.path(dir.TNC, "DerivedData", "Navarro_Cannabis-Grows_03_DepletionBySegment.csv") %>% 
-  read.csv(stringsAsFactors=F) %>% 
-  transform(time_yrs = time_days/365,
-            depletion_m3s = depletion_m3d*86400)
+  read.csv(stringsAsFactors=F)
 
 # load well-stream pairs which has distance
 df.pairs <- 
