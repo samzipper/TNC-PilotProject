@@ -10823,8 +10823,8 @@
      inkscape:pageopacity="1"
      inkscape:pageshadow="2"
      inkscape:zoom="1.1030866"
-     inkscape:cx="280.19604"
-     inkscape:cy="276.33785"
+     inkscape:cx="127.44285"
+     inkscape:cy="446.7487"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -10833,9 +10833,9 @@
      fit-margin-right="0"
      fit-margin-bottom="0"
      inkscape:window-width="1920"
-     inkscape:window-height="1001"
-     inkscape:window-x="-9"
-     inkscape:window-y="-9"
+     inkscape:window-height="1017"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
      inkscape:window-maximized="1" />
   <metadata
      id="metadata7">
@@ -10845,7 +10845,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -12974,7 +12974,7 @@
     </text>
     <g
        id="g8327"
-       transform="translate(-24.453483,-1.5958067)">
+       transform="translate(-26.153259,-1.5958067)">
       <path
          inkscape:connector-curvature="0"
          inkscape:original-d="M 754.8251,540.40992 V 699.96221"
@@ -13011,7 +13011,7 @@
     </g>
     <g
        id="g8327-7"
-       transform="translate(-24.453483,-174.6033)">
+       transform="translate(-26.153259,-174.6033)">
       <path
          inkscape:connector-curvature="0"
          inkscape:original-d="M 754.8251,540.40992 V 699.96221"
@@ -13048,7 +13048,7 @@
     </g>
     <g
        id="g8327-7-0"
-       transform="translate(-24.453483,-530.87632)">
+       transform="translate(-26.153259,-530.87632)">
       <path
          inkscape:connector-curvature="0"
          inkscape:original-d="M 754.8251,540.40992 V 699.96221"
@@ -13085,7 +13085,7 @@
     </g>
     <g
        id="g8327-8"
-       transform="translate(-24.453483,-355.91272)">
+       transform="translate(-26.153259,-355.91272)">
       <path
          inkscape:connector-curvature="0"
          inkscape:original-d="M 754.8251,540.40992 V 699.96221"
@@ -13265,5 +13265,5 @@
            height="293.72128"
            x="-650.90082"
            y="269.88074" /></flowRegion><flowPara
-         id="flowPara7543"></flowPara></flowRoot>  </g>
+         id="flowPara7543" /></flowRoot>  </g>
 </svg>

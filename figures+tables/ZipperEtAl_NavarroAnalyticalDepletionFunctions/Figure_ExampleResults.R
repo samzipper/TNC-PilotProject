@@ -24,7 +24,7 @@ analytical_plot <- "hunt"
 stream_BC_plot <- c("RIV")
 
 # what well to plot?
-wel.plot <- 421  # 365, 393, 421
+wel.plot <- 393  # 365, 393, 421
 
 #### (0) Prep spatial data
 

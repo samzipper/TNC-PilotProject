@@ -11,8 +11,8 @@
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    width="189.82219mm"
-   height="186.75356mm"
-   viewBox="0 0 672.59831 661.72521"
+   height="190.84241mm"
+   viewBox="0 0 672.59831 676.21327"
    id="svg2"
    version="1.1"
    inkscape:version="0.92.3 (2405546, 2018-03-11)"
@@ -1539,8 +1539,8 @@
      inkscape:pageopacity="1"
      inkscape:pageshadow="2"
      inkscape:zoom="1.33"
-     inkscape:cx="358.71913"
-     inkscape:cy="242.9254"
+     inkscape:cx="232.0274"
+     inkscape:cy="473.51672"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -1572,7 +1572,7 @@
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1"
-     transform="translate(-0.1161003,112.91798)">
+     transform="translate(-0.1161003,127.406)">
     <rect
        style="opacity:1;fill:none;fill-opacity:0.07843137;fill-rule:nonzero;stroke:#ff0000;stroke-width:1.25000012;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
        id="rect9001-4"
@@ -2158,7 +2158,7 @@
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.00000095px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke-width:1.25000012;stroke-miterlimit:4;stroke-dasharray:none"
          id="tspan2041"><tspan
    style="fill:#f58231;fill-opacity:1"
-   id="tspan2043">Inv. Distance Squared</tspan> (Eq. 3)</tspan><tspan
+   id="tspan2043">Inverse Distance Squared</tspan> (Eq. 3)</tspan><tspan
          sodipodi:role="line"
          x="337.52124"
          y="177.69601"
@@ -2537,31 +2537,29 @@
     </g>
     <text
        id="text4542-8-7"
-       y="-103.81764"
-       x="7.4680452"
+       y="-100.06764"
+       x="39.13435"
        style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
        xml:space="preserve"><tspan
          style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:12.50000095px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial"
-         y="-103.81764"
-         x="7.4680452"
+         y="-100.06764"
+         x="39.13435"
          id="tspan4544-5-4"
          sodipodi:role="line"><tspan
-   style="font-style:italic;font-size:12.50000095px"
-   id="tspan7928">Question</tspan>: <tspan
-   style="font-weight:normal"
-   id="tspan8012">Which </tspan><tspan
-   style="font-weight:normal;font-size:12.50000095px;fill:#2d8989;fill-opacity:1"
-   id="tspan7930">stream segments</tspan><tspan
-   style="font-weight:normal"
-   id="tspan8014"> will a </tspan><tspan
-   style="font-weight:normal;font-size:12.50000095px;fill:#d01d1d;fill-opacity:1"
-   id="tspan7940">proposed well</tspan><tspan
-   style="font-weight:normal"
-   id="tspan8016"> impact, and how much will each </tspan><tspan
-   style="font-weight:normal;font-size:12.50000095px;fill:#2d8989;fill-opacity:1"
-   id="tspan7938">stream segment</tspan><tspan
-   style="font-weight:normal"
-   id="tspan8018"> be depleted?</tspan></tspan></text>
+           style="font-weight:normal"
+           id="tspan8012">Which </tspan><tspan
+           style="font-weight:normal;font-size:12.50000095px;fill:#2d8989;fill-opacity:1"
+           id="tspan7930">stream segments</tspan><tspan
+           style="font-weight:normal"
+           id="tspan8014"> will a </tspan><tspan
+           style="font-weight:normal;font-size:12.50000095px;fill:#d01d1d;fill-opacity:1"
+           id="tspan7940">proposed well</tspan><tspan
+           style="font-weight:normal"
+           id="tspan8016"> impact, and how much will each </tspan><tspan
+           style="font-weight:normal;font-size:12.50000095px;fill:#2d8989;fill-opacity:1"
+           id="tspan7938">stream segment</tspan><tspan
+           style="font-weight:normal"
+           id="tspan8018"> be depleted?</tspan></tspan></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
@@ -3872,23 +3870,23 @@
        inkscape:connector-curvature="0" />
     <path
        style="fill:none;fill-rule:evenodd;stroke:#a3a3a3;stroke-width:1.25;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker2278)"
-       d="m 147.61764,354.5472 -20.8871,-8.77693"
+       d="m 48.507981,356.21711 -0.01992,-24.54459"
        id="path2106"
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="cc" />
     <text
        id="text4542-5-5-5-9-0-4"
-       y="334.24442"
+       y="332.36942"
        x="215.00887"
        style="font-style:normal;font-weight:normal;font-size:12px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1.25000012;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        xml:space="preserve"><tspan
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke-width:1.25000012;stroke-miterlimit:4;stroke-dasharray:none"
-         y="334.24442"
+         y="332.36942"
          x="215.00887"
          sodipodi:role="line"
          id="tspan7561-7">Closest point to well</tspan><tspan
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke-width:1.25000012;stroke-miterlimit:4;stroke-dasharray:none"
-         y="346.74442"
+         y="344.86942"
          x="215.00887"
          sodipodi:role="line"
          id="tspan2483">on each stream segment</tspan></text>
@@ -3907,38 +3905,38 @@
     <text
        id="text4542-5-5-5-9-0-4-0"
        y="365.7496"
-       x="191.50758"
+       x="48.415474"
        style="font-style:normal;font-weight:normal;font-size:12px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#5d5d5d;fill-opacity:1;stroke:none;stroke-width:1.25000012;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        xml:space="preserve"><tspan
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;text-align:center;text-anchor:middle;fill:#5d5d5d;fill-opacity:1;stroke-width:1.25000012;stroke-miterlimit:4;stroke-dasharray:none"
          y="365.7496"
-         x="191.50758"
+         x="48.415474"
          sodipodi:role="line"
          id="tspan2483-6">Set 1: Polygons from</tspan><tspan
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;text-align:center;text-anchor:middle;fill:#5d5d5d;fill-opacity:1;stroke-width:1.25000012;stroke-miterlimit:4;stroke-dasharray:none"
          y="378.2496"
-         x="191.50758"
+         x="48.415474"
          sodipodi:role="line"
          id="tspan4350">closest points only</tspan></text>
     <text
        id="text4542-5-5-5-9-0-4-0-6"
-       y="190.21971"
-       x="216.35114"
+       y="364.32687"
+       x="210.00716"
        style="font-style:normal;font-weight:normal;font-size:12px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#d61a19;fill-opacity:1;stroke:none;stroke-width:1.25000012;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        xml:space="preserve"><tspan
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;text-align:center;text-anchor:middle;fill:#d61a19;fill-opacity:1;stroke-width:1.25000012;stroke-miterlimit:4;stroke-dasharray:none"
-         y="190.21971"
-         x="216.35114"
+         y="364.32687"
+         x="210.00716"
          sodipodi:role="line"
          id="tspan2483-6-7">Set 2: Polygons from closest</tspan><tspan
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;text-align:center;text-anchor:middle;fill:#d61a19;fill-opacity:1;stroke-width:1.25000012;stroke-miterlimit:4;stroke-dasharray:none"
-         y="202.71971"
-         x="216.35114"
+         y="376.82687"
+         x="210.00716"
          sodipodi:role="line"
          id="tspan3814">points and well point</tspan></text>
     <path
        style="fill:none;fill-rule:evenodd;stroke:#d61a19;stroke-width:1.25;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:3.74999993, 3.74999993;stroke-dashoffset:0;stroke-opacity:1;marker-end:url(#marker3826)"
-       d="m 179.06178,206.6338 -15.60891,21.59253"
+       d="m 152.98095,352.54546 -45.21417,-59.4695"
        id="path3816"
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="cc" />
@@ -3987,5 +3985,16 @@
        id="path5716-2-8-0"
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="cc" />
+    <text
+       id="text4542-8-7-5"
+       y="-116.89588"
+       x="211.36337"
+       style="font-style:normal;font-weight:normal;font-size:12px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.99999994px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       xml:space="preserve"><tspan
+         style="font-style:italic;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:12.50000095px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;stroke-width:0.99999994px"
+         y="-116.89588"
+         x="211.36337"
+         id="tspan4544-5-4-1"
+         sodipodi:role="line">Overview of analytical depletion functions</tspan></text>
   </g>
 </svg>

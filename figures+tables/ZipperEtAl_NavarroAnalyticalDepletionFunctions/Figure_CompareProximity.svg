@@ -7537,19 +7537,19 @@
      inkscape:pageopacity="1"
      inkscape:pageshadow="2"
      inkscape:zoom="1.06"
-     inkscape:cx="110.31203"
-     inkscape:cy="701.36201"
+     inkscape:cx="267.00661"
+     inkscape:cy="384.45023"
      inkscape:document-units="px"
-     inkscape:current-layer="g10544"
+     inkscape:current-layer="layer1"
      showgrid="false"
      fit-margin-top="0"
      fit-margin-left="0"
      fit-margin-right="0"
      fit-margin-bottom="0"
      inkscape:window-width="1920"
-     inkscape:window-height="1001"
-     inkscape:window-x="-9"
-     inkscape:window-y="-9"
+     inkscape:window-height="1017"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
      inkscape:window-maximized="1" />
   <metadata
      id="metadata7">
@@ -7559,7 +7559,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title />
+        <dc:title></dc:title>
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -9537,7 +9537,7 @@
            style="font-style:italic;font-weight:normal;font-size:12.5px;line-height:1.25;text-align:center;text-anchor:middle"
            y="742.79425"
            x="244.82591"
-           sodipodi:role="line">Web squared, Hunt, and ____ stream proximity criteria&quot;</tspan>
+           sodipodi:role="line">Web squared, Hunt, and ____ stream proximity criteria</tspan>
       </text>
       <g
          id="g10522">
@@ -9927,10 +9927,10 @@
     </text>
     <g
        id="g8327"
-       transform="translate(-23.969371,-2.7628808)">
+       transform="translate(-25.844371,-2.7628808)">
       <path
          inkscape:connector-curvature="0"
-         inkscape:original-d="m 754.8251,540.40992 0,159.55229"
+         inkscape:original-d="M 754.8251,540.40992 V 699.96221"
          inkscape:path-effect="#path-effect8138"
          id="path8136"
          d="M 754.8251,540.40992 V 699.96221"
@@ -9964,10 +9964,10 @@
     </g>
     <g
        id="g8327-7"
-       transform="translate(-23.969371,-175.77038)">
+       transform="translate(-25.844371,-175.77038)">
       <path
          inkscape:connector-curvature="0"
-         inkscape:original-d="m 754.8251,540.40992 0,159.55229"
+         inkscape:original-d="M 754.8251,540.40992 V 699.96221"
          inkscape:path-effect="#path-effect8138-3"
          id="path8136-7"
          d="M 754.8251,540.40992 V 699.96221"
@@ -10001,10 +10001,10 @@
     </g>
     <g
        id="g8327-7-0"
-       transform="translate(-23.969371,-532.0434)">
+       transform="translate(-25.844371,-532.0434)">
       <path
          inkscape:connector-curvature="0"
-         inkscape:original-d="m 754.8251,540.40992 0,159.55229"
+         inkscape:original-d="M 754.8251,540.40992 V 699.96221"
          inkscape:path-effect="#path-effect8138-3-4"
          id="path8136-7-5"
          d="M 754.8251,540.40992 V 699.96221"
@@ -10038,10 +10038,10 @@
     </g>
     <g
        id="g8327-8"
-       transform="translate(-23.969371,-357.0798)">
+       transform="translate(-25.844371,-357.0798)">
       <path
          inkscape:connector-curvature="0"
-         inkscape:original-d="m 754.8251,540.40992 0,159.55229"
+         inkscape:original-d="M 754.8251,540.40992 V 699.96221"
          inkscape:path-effect="#path-effect8138-32"
          id="path8136-72"
          d="M 754.8251,540.40992 V 699.96221"

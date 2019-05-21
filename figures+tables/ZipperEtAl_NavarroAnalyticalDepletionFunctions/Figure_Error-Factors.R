@@ -476,9 +476,9 @@ p.bar.length <-
   scale_y_continuous(name="Normalized MAE") +
   coord_cartesian(ylim=c(0, max(df.fit.length$MAE.overall/(df.fit.length$depletion.prc.modflow.max-df.fit.length$depletion.prc.modflow.min))))
 
-p.geometry <- plot_grid(p.bar.dist + theme(plot.margin=unit(c(0.5, 0.5, 2, 0.5), "mm")),
-                        p.bar.vert + theme(plot.margin=unit(c(1, 0.5, 1, 0.5), "mm")),
-                        p.bar.length + theme(plot.margin=unit(c(2, 0.5, 0.5, 0.5), "mm")),
+p.geometry <- plot_grid(p.bar.dist + theme(plot.margin=unit(c(0.5, 1, 2, 0.5), "mm")),
+                        p.bar.vert + theme(plot.margin=unit(c(1, 1, 1, 0.5), "mm")),
+                        p.bar.length + theme(plot.margin=unit(c(2, 1, 0.5, 0.5), "mm")),
                         ncol = 1, 
                         nrow = 3, 
                         align = 'v',
@@ -499,3 +499,8 @@ save_plot(file.path("figures+tables", "ZipperEtAl_NavarroAnalyticalDepletionFunc
           plot_grid(p.byWell, p.geometry,
                     ncol=2),
           base_width = 190/25.4, base_height=150/25.4)
+
+ggplot2::ggsave(file.path("figures+tables", "ZipperEtAl_NavarroAnalyticalDepletionFunctions", paste0("Figure_Error-Factors_ByWell+Geometry_", stream_BC_plot, ".pdf")),
+                plot_grid(p.byWell, p.geometry,
+                          ncol=2),
+                width=190, height=150, units="mm", device=cairo_pdf)

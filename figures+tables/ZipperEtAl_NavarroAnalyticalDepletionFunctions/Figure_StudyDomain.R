@@ -74,6 +74,7 @@ p.elev <-
   scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
   coord_equal() +
   theme(axis.text.y=element_text(angle=90, hjust=0.5),
+        panel.background=element_blank(),
         legend.position=c(0,0),
         legend.justification=c(0,0),
         legend.background=element_blank(),
@@ -93,6 +94,7 @@ p.BC <-
   scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
   coord_equal() +
   theme(axis.text.y=element_text(angle=90, hjust=0.5),
+        panel.background=element_blank(),
         legend.position="bottom",
         legend.box="vertical")
 
@@ -101,5 +103,5 @@ p2 <- ggplotGrob(p.BC)
 p <- cbind(p1, p2, size="first")
 p$heights <- unit.pmax(p1$heights, p1$heights)
 
-ggsave(file.path("figures+tables", "Figure_StudyDomain_NoText.pdf"),
-       p, width=190, height=88, units="mm", device=cairo_pdf)
+ggplot2::ggsave(file.path("figures+tables", "ZipperEtAl_NavarroAnalyticalDepletionFunctions", "Figure_StudyDomain_NoText.tiff"),
+       p, width=190, height=88, units="mm", dpi=320)

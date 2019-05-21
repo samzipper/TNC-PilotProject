@@ -41,6 +41,7 @@ results/Navarro_DecideBestMethod_04_*
 *.png
 *.tif
 *.pdf
+*.tiff
 
 # GIS files
 *.qgs*
