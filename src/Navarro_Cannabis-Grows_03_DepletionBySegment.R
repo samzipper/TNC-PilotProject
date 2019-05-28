@@ -10,11 +10,7 @@ require(streamDepletr)
 df.out <- read.csv(file.path(dir.TNC, "DerivedData", "Navarro_Cannabis-Grows_02_DepletionApportionment.csv"), stringsAsFactors=F)
 
 ### what dates do you want output for? (units: number of days since start of pumping)
-# convert years and dates to DOY since pumping started
-yrs.model <- c(1, 2, 3, 4, 5, 10, 15, 20, 30, 50) 
-DOYs.model <- yday(c("2017-01-15", "2017-02-14", "2017-03-15", "2017-04-15", "2017-05-15", "2017-06-15",
-                     "2017-07-15", "2017-08-15", "2017-09-15", "2017-10-15", "2017-11-15", "2017-12-15"))
-DOYs.all <- rep(DOYs.model, times=length(yrs.model)) + rep(365*(yrs.model-1), each=length(DOYs.model))
+DOYs.all <- unique(df.out$time_days)
 
 ### load and pre-process data
 # domain boundary shapefile
