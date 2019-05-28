@@ -25,22 +25,59 @@ sf.grows <-
 
 df.pump <- left_join(df.pump, sf.grows[,c("GrowNum", "Well.rf.pred")], by="GrowNum")
 
-### residential water use
+### residential water use - output from Navarro_Residential_03_DepletionBySegment.R
 # define pumping rates: 250 gpm in winter, 500 gpm in summer
-df.pump.res <- data.frame(
-  Month = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"),
-  MeanWaterUse_GalHouseDay = c(250, 250, 250, 250, 500, 500, 500, 500, 500, 500, 250, 250)
-)
-df.pump.res$Month <- factor(df.pump.res$Month, levels=c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
-df.pump.res$MonthNum <- match(df.pump.res$Month, month.abb)
-df.pump.res$MonthLengthDays <- lubridate::days_in_month(df.pump.res$MonthNum)
-df.pump.res$m3HouseDay <- df.pump.res$MeanWaterUse_GalHouseDay*gal.to.m3
+df.pump.res <- 
+  file.path("results", "Residential_WaterUse.csv") %>% 
+  read.csv(stringsAsFactors = F) %>% 
+  subset(domain == "Healdsburg")
 
 # load house locations to figure out total
 sf.houses <- 
-  sf::st_read(file.path(dir.TNC, "Structures_Navarro_NAIP_2016", "Structures_Navarro_NAIP_2016.shp")) %>% 
+  file.path(dir.TNC, "Structures_Navarro_NAIP_2016", "Structures_Navarro_NAIP_2016.shp") %>% 
+  sf::st_read() %>% 
   subset(Structure=="Res H")
-df.pump.res$ResWaterUseSum_m3d <- df.pump.res$m3HouseDay*dim(sf.houses)[1]
+sf.houses$HouseNum <- seq(1, dim(sf.houses)[1])
+
+## load point of diversion to screen out surface water users
+# points of diversion
+sf.diversions <- 
+  file.path(dir.TNC, "nav_pointsofdiversion_domestic", "nav_pointsofdiversion_domestic.shp") %>% 
+  sf::st_read() %>% 
+  subset(Beneficial == "Domestic") %>%  # domestic users only
+  subset(POD_Status %in% c("Active", "Certified", "Claimed", "Licensed", "Permitted", "Registered"))  # remove cancelled, closed, inactive, rejected, or revoked
+
+# find nearest house to each point
+nearest_house <- 
+  sf::st_nearest_feature(sf.diversions, sf.houses)
+sf.houses$groundwater <- T
+sf.houses$groundwater[nearest_house] <- F
+
+sum(sf.houses$groundwater==F)
+
+# there are some houses that are nearest to multiple POD; need to remove and re-do until we have 1 house per POD
+sf.houses.2 <- subset(sf.houses, groundwater)
+sf.diversion.2 <- sf.diversions[which(duplicated(nearest_house)), ]
+nearest_house.2 <- 
+  sf::st_nearest_feature(sf.diversion.2, sf.houses.2)
+sf.houses$groundwater[sf.houses$HouseNum %in% sf.houses.2$HouseNum[nearest_house.2]] <- F
+
+sum(sf.houses$groundwater==F)
+
+sf.houses.3 <- subset(sf.houses, groundwater)
+sf.diversion.3 <- sf.diversion.2[which(duplicated(nearest_house.2)), ]
+nearest_house.3 <- 
+  sf::st_nearest_feature(sf.diversion.3, sf.houses.3)
+sf.houses$groundwater[sf.houses$HouseNum %in% sf.houses.3$HouseNum[nearest_house.3]] <- F
+
+sum(sf.houses$groundwater==F) == dim(sf.diversions)[1]
+
+## convert to cubic meters
+df.pump.res$m3HouseDay <- df.pump.res$WaterUseMean_GalHouseDay*gal.to.m3
+df.pump.res$m3HouseDay_std <- df.pump.res$WaterUseStd_GalHouseDay*gal.to.m3
+df.pump.res$ResWaterUseSum_m3d <- df.pump.res$m3HouseDay*sum(sf.houses$groundwater)
+df.pump.res$ResWaterUseMin_m3d <- (df.pump.res$m3HouseDay-df.pump.res$m3HouseDay_std)*sum(sf.houses$groundwater)
+df.pump.res$ResWaterUseMax_m3d <- (df.pump.res$m3HouseDay+df.pump.res$m3HouseDay_std)*sum(sf.houses$groundwater)
 
 #### SI figure: monthly water use at each site with a well
 ggplot(subset(df.pump, Well.rf.pred=="Yes"), aes(x=Month)) +
@@ -120,7 +157,7 @@ df.streamflow.month <-
 
 # join and plot
 df.plot <- left_join(df.pump.month, df.streamflow.month, by=c("MonthNum"="month")) %>% 
-  left_join(df.pump.res[,c("MonthNum", "ResWaterUseSum_m3d")], by="MonthNum")
+  left_join(df.pump.res[,c("MonthNum", "ResWaterUseSum_m3d", "ResWaterUseMin_m3d", "ResWaterUseMax_m3d")], by="MonthNum")
 
 p.waterUse.abs <-
   ggplot(df.plot, aes(x=Month)) +
@@ -129,27 +166,34 @@ p.waterUse.abs <-
   geom_line(aes(y=WaterUseMean_m3d_sum, group=1)) +
   geom_point(aes(y=WaterUseMean_m3d_sum, group=1)) +
   # plot residential
+  geom_ribbon(aes(ymin=ResWaterUseMin_m3d, ymax=ResWaterUseMax_m3d, group=1), fill="black", alpha=0.15) +
   geom_line(aes(y=ResWaterUseSum_m3d, group=1), linetype="dashed") +
   geom_point(aes(y=ResWaterUseSum_m3d, group=1), shape=1) +
-  # plot streamflow - ribbon shows 10% GW presumptive standard from Gleeson & Richter
+  # plot baseflow - ribbon shows 10% GW presumptive standard from Gleeson & Richter
   geom_ribbon(aes(ymin=baseflow_m3d_mean*0.9, ymax=baseflow_m3d_mean*1.1, group=1), fill=col.cat.blu, alpha=0.25) +
   geom_line(aes(y=baseflow_m3d_mean, group=2), color=col.cat.blu) +
   geom_point(aes(y=baseflow_m3d_mean, group=2), color=col.cat.blu) +
-  scale_x_discrete(labels=seq(1,12)) +
+  # aesthetics
+  annotation_logticks(sides = "l", color=col.gray) +
+  scale_x_discrete(labels=seq(1,12), expand=c(0.025,0.025)) +
   scale_y_log10(name="Volumetric Flux [m\u00b3 d\u207b\u00b9]",
-                expand=c(0.06,0.06))
+                expand=c(0.06,0.06),
+                breaks = scales::trans_breaks("log10", function(x) 10^x),
+                labels = scales::trans_format("log10", scales::math_format(10^.x)))
 
 p.waterUse.prc <-
   ggplot(df.plot, aes(x=Month)) +
   # plot cannabis
-  geom_ribbon(aes(ymin=100*WaterUseMin_m3d_sum/baseflow_m3d_mean, ymax=100*WaterUseMax_m3d_sum/baseflow_m3d_mean, group=1), 
+  geom_ribbon(aes(ymin=100*ResWaterUseMin_m3d/baseflow_m3d_mean, ymax=100*ResWaterUseMax_m3d/baseflow_m3d_mean, group=1), 
               fill="black", alpha=0.15) +
   geom_line(aes(y=100*WaterUseMean_m3d_sum/baseflow_m3d_mean, group=1)) +
   geom_point(aes(y=100*WaterUseMean_m3d_sum/baseflow_m3d_mean, group=1)) +
   # plot residential
+  geom_ribbon(aes(ymin=100*WaterUseMin_m3d_sum/baseflow_m3d_mean, ymax=100*WaterUseMax_m3d_sum/baseflow_m3d_mean, group=1), 
+              fill="black", alpha=0.15) +
   geom_line(aes(y=100*ResWaterUseSum_m3d/baseflow_m3d_mean, group=1), linetype="dashed") +
   geom_point(aes(y=100*ResWaterUseSum_m3d/baseflow_m3d_mean, group=1), shape=1) +
-  scale_x_discrete(labels=seq(1,12)) +
+  scale_x_discrete(labels=seq(1,12), expand=c(0.025,0.025)) +
   scale_y_continuous(name="Groundwater Use [% of Baseflow]")
 
 plot_grid(p.waterUse.abs + 
@@ -161,8 +205,8 @@ plot_grid(p.waterUse.abs +
           label_size = 10,
           label_fontfamily = "Arial",
           label_fontface = "plain",
-          label_x = c(0.17, 0.17),
-          label_y = c(1, 0.99),
+          label_x = 0.91,
+          label_y = 0.99,
           align="v", nrow=2) %>% 
   save_plot(filename = file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_WaterUse-BaseflowComparison.png"), 
             plot = .,
