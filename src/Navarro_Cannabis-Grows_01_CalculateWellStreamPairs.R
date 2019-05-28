@@ -18,25 +18,18 @@ sf.basin <-
   sf::st_transform(crs.MODFLOW)
 
 # grow locations shapefile - need to combine two files:
-#   nav_cannabis2016_noduplicates.shp = locations of grows (email from Jen Carah, 4/5/2019)
+#   nav_cannabis2016_noduplicates.shp = locations of cultivation sites (email from Jen Carah, 4/5/2019)
+#   nav_parcels_centroids.shp = centroids of parcels containing cultivation sites (email from Jen Carah, April/May 2019)
 #   Dillis_NavarroWaterUseEstimates.csv = monthly water use estimates (email from Chris Dillis, 4/2/2019)
 # the files are linked based on the file Carah_Navarro_parcel_characteristics.csv
 #  'column C are the fake parcel IDs I gave Chris and column B are the real parcel IDs' (email from Jen Carah, 4/5/2019)
 sf.grows <- 
-  sf::st_read(file.path(dir.TNC, "nav_cannabis2016_noduplicates", "nav_cannabis2016_noduplicates.shp"),
+  sf::st_read(file.path(dir.TNC, "nav_parcels_centroids", "nav_parcels_centroids.shp"),
               stringsAsFactors=F) %>% 
   st_zm(drop = TRUE, what = "ZM") %>%   # drop Z dimension from geometry
   sf::st_transform(crs.MODFLOW) %>% 
-  dplyr::rename(GrowNum = FID_allgro) %>% 
-  dplyr::select(GrowNum, greenhouse, growsize, plants, outdoor, PARCEL_ID)
-
-# some parcels have more than 1 cultivation site; subset to only the cultivation site with the most plants
-#  (assumption: this is where the well is located)
-sf.grows <- 
-  sf.grows %>% 
-  dplyr::group_by(PARCEL_ID) %>% 
-  filter(plants == max(plants))
-sf.grows <- sf.grows[!duplicated(sf.grows$PARCEL_ID),]  # 5/411 couple parcels have two sites with the same number of plants... just choose one
+  dplyr::rename(GrowNum = PARCEL_ID) %>% 
+  dplyr::select(GrowNum)
 
 df.WaterUse <- 
   read.csv(file.path(dir.TNC, "Dillis_NavarroWaterUseEstimates.csv"), stringsAsFactors=F)
@@ -48,7 +41,7 @@ df.WaterUse <-
   left_join(df.WaterUse, df.parcelIDs[,c("PARCEL_ID_FAKE", "PARCEL_ID")], by="PARCEL_ID_FAKE")
 
 sf.grows <-
-  left_join(sf.grows, df.WaterUse, by="PARCEL_ID")
+  left_join(sf.grows, df.WaterUse, by=c("GrowNum"="PARCEL_ID"))
 
 # well completion reports shapefile (to define screen top/bottom)
 sf.wcr <- 
