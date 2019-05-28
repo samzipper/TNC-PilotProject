@@ -9,15 +9,53 @@ require(streamDepletr)
 ## load depletion apportionment output
 df.out <- read.csv(file.path(dir.TNC, "DerivedData", "Navarro_Residential_02_DepletionApportionment.csv"), stringsAsFactors=F)
 
-## define pumping rates: 250 gpm in winter, 500 gpm in summer
-df.pump <- data.frame(
-  Month = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"),
-  MeanWaterUse_GalHouseDay = c(250, 250, 250, 250, 500, 500, 500, 500, 500, 500, 250, 250)
-)
-df.pump$Month <- factor(df.pump$Month, levels=c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
-df.pump$MonthNum <- match(df.pump$Month, month.abb)
+## define pumping rates
+# load in data from state water board
+df.pump.northcoast <- 
+  file.path("data", "WaterUse", "uw_supplier_data040219.csv") %>% 
+  read.csv(stringsAsFactors=F) %>% 
+  transform(date = mdy(Reporting_Month),
+            Year = year(mdy(Reporting_Month)),
+            MonthNum = month(mdy(Reporting_Month))) %>% 
+  subset(R_GPCD_Reported < 5000)  # get rid of some outliers
+
+ggplot(df.pump.northcoast, aes(x=R_GPCD_Calculated, y=R_GPCD_Reported)) + geom_point() + geom_abline(intercept=0, slope=1)
+ggplot(df.pump.northcoast, aes(x=MonthNum, y=R_GPCD_Reported)) + geom_point()
+ggplot(df.pump.northcoast, aes(x=MonthNum, y=R_GPCD_Calculated)) + geom_point()
+
+# summarize by month
+house.size <- 2.65  # assumed residents per house; this middle of range from Mendocino County Water Agency, 2010 report (2.5-2.8 people)
+
+df.pump.region <-
+  df.pump.northcoast %>% 
+  dplyr::group_by(MonthNum) %>% 
+  dplyr::summarize(WaterUseMean_GPCD = mean(R_GPCD_Reported),
+                   WaterUseStd_GPCD = sd(R_GPCD_Reported),
+                   WaterUseMean_GalHouseDay = mean(R_GPCD_Reported*house.size),
+                   WaterUseStd_GalHouseDay = sd(R_GPCD_Reported*house.size)) %>% 
+  transform(domain = "Region")
+
+df.pump.closest <- 
+  df.pump.northcoast %>% 
+  subset(Supplier_Name == "Healdsburg  City of") %>% 
+  dplyr::group_by(MonthNum) %>% 
+  dplyr::summarize(WaterUseMean_GPCD = mean(R_GPCD_Reported),
+                   WaterUseStd_GPCD = sd(R_GPCD_Reported),
+                   WaterUseMean_GalHouseDay = mean(R_GPCD_Reported*house.size),
+                   WaterUseStd_GalHouseDay = sd(R_GPCD_Reported*house.size)) %>% 
+  transform(domain = "Healdsburg")
+
+df.pump <- rbind(df.pump.region, df.pump.closest)
+
+write.csv(df.pump, file.path("results", "Residential_WaterUse.csv"), row.names=F)
+
+ggplot(df.pump, aes(x=MonthNum, y=WaterUseMean_GalHouseDay, color=domain)) + geom_point() +geom_line()
+
+# subset to only healdsburg
+df.pump <- subset(df.pump, domain=="Healdsburg")
+
 df.pump$MonthLengthDays <- lubridate::days_in_month(df.pump$MonthNum)
-df.pump$m3HouseDay <- df.pump$MeanWaterUse_GalHouseDay*gal.to.m3
+df.pump$m3HouseDay <- df.pump$WaterUseMean_GalHouseDay*gal.to.m3
 
 # set up long data frames for intermittent_pumping script
 t.max.yrs <- ceiling(max(df.out$time_days/365))
