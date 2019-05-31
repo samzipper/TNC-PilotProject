@@ -214,3 +214,11 @@ plot_grid(p.waterUse.abs +
             nrow = 2,
             base_width = 95/25.4,
             base_height = 60/25.4)
+
+
+# useful stats
+df.plot[which.max(df.plot$WaterUseMean_m3d_sum), c("MonthNum", "WaterUseMean_m3d_sum")]
+df.plot[which.max(df.plot$ResWaterUseSum_m3d), c("MonthNum", "ResWaterUseSum_m3d")]
+
+df.plot$WaterUseMean_m3d_sum[9]/df.plot$baseflow_m3d_mean[9]
+df.plot$ResWaterUseSum_m3d[9]/df.plot$baseflow_m3d_mean[9]

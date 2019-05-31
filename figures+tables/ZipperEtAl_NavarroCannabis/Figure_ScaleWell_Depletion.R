@@ -108,8 +108,80 @@ df.lines <-
   group_by(year) %>% 
   filter(abs(depletion_prc_cum-0.5) == min(abs(depletion_prc_cum-0.5)))
 
+
+#### calculate relative importance of different predictors
+# calculate distance to closest stream for each grow and bulk transmissivity
+df.grow.closest <- 
+  df.pairs %>% 
+  # only use sites predicted to have wells
+  subset(GrowNum %in% sf.grows$GrowNum[sf.grows$Well.rf.pred=="Yes"]) %>% 
+  group_by(GrowNum) %>% 
+  filter(dist_wellToStream_m == min(dist_wellToStream_m)) %>% 
+  # some wells are equidistant from multiple stream segments; in this case, use highest Tr
+  filter(Tr_bulk_m2d == max(Tr_bulk_m2d))
+
+# trim data frame
+df.analysis <-
+  df.depletion.total.YearMonthGrow %>% 
+  subset(year %in% yrs.plot & month %in% mo.plot) %>% 
+  left_join(df.grow.closest, by=c("GrowNum")) %>% 
+  left_join(sf.grows[,c("GrowNum", "WaterUseTotal_m3y")], by="GrowNum")
+
+ggplot(df.analysis, aes(y=depletion_m3d, x=dist_wellToStream_m, color=factor(year))) +
+  geom_point(alpha=0.5) +
+  stat_smooth(method="loess")
+
+set.seed(1)
+for (yr in yrs.plot){
+  # subset to only wells in this year
+  #df.analysis.yr <- subset(df.analysis, year==yr & depletion_prc_grow > 0.001)
+  df.analysis.yr <- subset(df.analysis, year==yr)
+  
+  ## use relaimpo package
+  ##  explanation: https://advstats.psychstat.org/book/mregression/importance.php
+  # regression of all considered predictors
+  lm.full <- lm(depletion_m3d_grow ~ WaterUseTotal_m3y + dist_wellToStream_m + Tr_bulk_m2d + lmda_m2d + well_dtb_m, 
+                data=df.analysis.yr)
+  
+  # anova to select significant predictors
+  anova.p <- anova(lm.full)$`Pr(>F)`
+  anova.var <- row.names(anova(lm.full))
+  var.keep <- anova.var[anova.p < 0.05 & is.finite(anova.p)]
+  
+  # build formula for boostrap relative importance
+  vars.formula <- as.formula(paste0("depletion_m3d_grow ~ ", paste(var.keep, collapse ="+")))
+  
+  # bootstrap relative importance of retained variables
+  rel.imp <- relaimpo::boot.relimp(formula = vars.formula, 
+                                   data = df.analysis.yr,
+                                   b = 1000, 
+                                   type = "lmg")
+  
+  # extract important bits
+  rel.imp.eval <- relaimpo::booteval.relimp(rel.imp)
+  df.yr <- data.frame(var = var.keep,
+                      R2.overall = rel.imp.eval$est["R2"],
+                      R2.var = rel.imp.eval$est[paste0(var.keep, ".lmg")],
+                      R2.var.upper =  rel.imp.eval$lmg.upper[1,],
+                      R2.var.lower = rel.imp.eval$lmg.lower[1,],
+                      year = yr)
+  
+  if (yr==yrs.plot[1]){
+    df.fit <- df.yr
+  } else {
+    df.fit <- rbind(df.fit, df.yr)
+  }
+  
+}
+
+df.fit$var <- factor(df.fit$var, levels = c("WaterUseTotal_m3y", "dist_wellToStream_m", "Tr_bulk_m2d"),
+                     labels =c("WaterUseTotal_m3y"="Water Use", 
+                               "dist_wellToStream_m"="Distance to\nClosest Stream", 
+                               "Tr_bulk_m2d"="Transmissivity"))
+
 ## Figure: cumulative distribution function
-ggplot(df.depletion.rank) +
+p.rank <-
+  ggplot(df.depletion.rank) +
   geom_line(aes(x=depletion_rank_prc, y=depletion_prc_cum, color=factor(year))) + 
   annotate("segment", x=-Inf, xend=df.lines$depletion_rank_prc, 
            y=0.5, yend=0.5,
@@ -131,155 +203,45 @@ ggplot(df.depletion.rank) +
         legend.justification=c(1,1),
         legend.background=element_blank(),
         plot.margin = unit(c(1.5,4.5,0,0), "mm")) +
-  ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_ScaleWell_Depletion_PercentCDF.png"),
-         width=95, height=85, units="mm")
-
-#### calculate relative importance of different predictors
-# calculate distance to closest stream for each grow
-df.grow.closest <- 
-  df.pairs %>% 
-  # only use sites predicted to have wells
-  subset(GrowNum %in% sf.grows$GrowNum[sf.grows$Well.rf.pred=="Yes"]) %>% 
-  group_by(GrowNum) %>% 
-  filter(dist_wellToStream_m == min(dist_wellToStream_m)) %>% 
-  # some wells are equidistant from multiple stream segments; in this case, use highest Tr
-  filter(Tr_bulk_m2d == max(Tr_bulk_m2d)) %>% 
-  transform(SegNum_GrowNum = paste0(SegNum, "_", GrowNum))
-
-# trim data frame
-df.analysis <-
-  df.depletion.total.YearMonthGrow %>% 
-  subset(year %in% yrs.plot & month %in% mo.plot) %>% 
-  left_join(df.grow.closest, by=c("GrowNum")) %>% 
-  left_join(sf.grows[,c("GrowNum", "WaterUseTotal_m3y")], by="GrowNum")
-
-ggplot(df.analysis, aes(y=depletion_m3d, x=dist_wellToStream_m, color=factor(year))) +
-  geom_point(alpha=0.5) +
-  stat_smooth(method="loess")
-
-set.seed(1)
-prc.sample <- 0.8
-n.iter <- 100
-for (yr in yrs.plot){
-  # subset to only wells in this year
-  df.analysis.yr <- subset(df.analysis, year==yr)
-  
-  # number to sample
-  n.sample <- round(dim(df.analysis.yr)[1]*prc.sample)
-  
-  for (iter in 1:n.iter){
-    
-    ## depletion_m3d_grow = depletion caused in all segments by that site
-    df.analysis.i <- dplyr::sample_n(df.analysis.yr, n.sample)
-    
-    # build statistical models and extract R2
-    lm.full <- lm(depletion_m3d_grow ~ WaterUseTotal_m3y + dist_wellToStream_m + Tr_bulk_m2d + S_bulk + lmda_m2d + well_dtb_m, 
-                  data=subset(df.analysis.i, year==yr & depletion_prc_grow > 0.001))
-    
-    lm.drop.water <- lm(depletion_m3d_grow ~ dist_wellToStream_m + Tr_bulk_m2d + S_bulk + lmda_m2d + well_dtb_m, 
-                        data=subset(df.analysis.i, year==yr & depletion_prc_grow > 0.001))
-    
-    lm.drop.dist <- lm(depletion_m3d_grow ~ WaterUseTotal_m3y + Tr_bulk_m2d + S_bulk + lmda_m2d + well_dtb_m, 
-                       data=subset(df.analysis.i, year==yr & depletion_prc_grow > 0.001))
-    
-    lm.drop.Tr <- lm(depletion_m3d_grow ~ WaterUseTotal_m3y + dist_wellToStream_m + S_bulk + lmda_m2d + well_dtb_m, 
-                     data=subset(df.analysis.i, year==yr & depletion_prc_grow > 0.001))
-    
-    lm.drop.S <- lm(depletion_m3d_grow ~ WaterUseTotal_m3y + dist_wellToStream_m + Tr_bulk_m2d + lmda_m2d + well_dtb_m, 
-                    data=subset(df.analysis.i, year==yr & depletion_prc_grow > 0.001))
-    
-    lm.drop.lmda <- lm(depletion_m3d_grow ~ WaterUseTotal_m3y + dist_wellToStream_m + Tr_bulk_m2d + S_bulk + well_dtb_m, 
-                       data=subset(df.analysis.i, year==yr & depletion_prc_grow > 0.001))
-    
-    lm.drop.dtb <- lm(depletion_m3d_grow ~ WaterUseTotal_m3y + dist_wellToStream_m + Tr_bulk_m2d + S_bulk + lmda_m2d, 
-                      data=subset(df.analysis.i, year==yr & depletion_prc_grow > 0.001))
-    
-    if (iter==1 & yr==yrs.plot[1]){
-      df.fit <- data.frame(iter = iter, 
-                           year = yr,
-                           adj.R2.full = summary(lm.full)$adj.r.squared,
-                           adj.R2.drop.dist = summary(lm.drop.dist)$adj.r.squared,
-                           adj.R2.drop.water = summary(lm.drop.water)$adj.r.squared,
-                           adj.R2.drop.Tr = summary(lm.drop.Tr)$adj.r.squared,
-                           adj.R2.drop.S = summary(lm.drop.S)$adj.r.squared,
-                           adj.R2.drop.lmda = summary(lm.drop.lmda)$adj.r.squared,
-                           adj.R2.drop.dtb = summary(lm.drop.dtb)$adj.r.squared)
-    } else {
-      df.fit <- rbind(df.fit, 
-                      data.frame(iter = iter, 
-                                 year = yr,
-                                 adj.R2.full = summary(lm.full)$adj.r.squared,
-                                 adj.R2.drop.dist = summary(lm.drop.dist)$adj.r.squared,
-                                 adj.R2.drop.water = summary(lm.drop.water)$adj.r.squared,
-                                 adj.R2.drop.Tr = summary(lm.drop.Tr)$adj.r.squared,
-                                 adj.R2.drop.S = summary(lm.drop.S)$adj.r.squared,
-                                 adj.R2.drop.lmda = summary(lm.drop.lmda)$adj.r.squared,
-                                 adj.R2.drop.dtb = summary(lm.drop.dtb)$adj.r.squared))
-    }
-    
-    print(paste0("year ", yr, " iter ", iter, " complete"))
-    
-  }
-}
-
-# calculate change in R2 for each variable
-df.fit$del.adj.R2.drop.dist <- (df.fit$adj.R2.full - df.fit$adj.R2.drop.dist)/df.fit$adj.R2.full
-df.fit$del.adj.R2.drop.water <- (df.fit$adj.R2.full - df.fit$adj.R2.drop.water)/df.fit$adj.R2.full
-df.fit$del.adj.R2.drop.Tr <- (df.fit$adj.R2.full - df.fit$adj.R2.drop.Tr)/df.fit$adj.R2.full
-df.fit$del.adj.R2.drop.S <- (df.fit$adj.R2.full - df.fit$adj.R2.drop.S)/df.fit$adj.R2.full
-df.fit$del.adj.R2.drop.lmda <- (df.fit$adj.R2.full - df.fit$adj.R2.drop.lmda)/df.fit$adj.R2.full
-df.fit$del.adj.R2.drop.dtb <- (df.fit$adj.R2.full - df.fit$adj.R2.drop.dtb)/df.fit$adj.R2.full
-
-df.fit.summary <- 
-  df.fit %>% 
-  group_by(year) %>% 
-  summarize(adj.R2.mean = mean(adj.R2.full, na.rm=T),
-            adj.R2.std = sd(adj.R2.full, na.rm=T),
-            change.dist.mean = mean(del.adj.R2.drop.dist, na.rm=T),
-            change.dist.std = sd(del.adj.R2.drop.dist, na.rm=T),
-            change.water.mean = mean(del.adj.R2.drop.water, na.rm=T),
-            change.water.std = sd(del.adj.R2.drop.water, na.rm=T),
-            change.Tr.mean = mean(del.adj.R2.drop.Tr, na.rm=T),
-            change.Tr.std = sd(del.adj.R2.drop.Tr, na.rm=T),
-            change.S.mean = mean(del.adj.R2.drop.S, na.rm=T),
-            change.S.std = sd(del.adj.R2.drop.S, na.rm=T),
-            change.lmda.mean = mean(del.adj.R2.drop.lmda, na.rm=T),
-            change.lmda.std = sd(del.adj.R2.drop.lmda, na.rm=T),
-            change.dtb.mean = mean(del.adj.R2.drop.dtb, na.rm=T),
-            change.dtb.std = sd(del.adj.R2.drop.dtb, na.rm=T)) %>% 
-  melt(id=c("year", "adj.R2.mean", "adj.R2.std")) %>% 
-  transform(var = str_split_fixed(variable, pattern="[.]", n=3)[,2],
-            metric = str_split_fixed(variable, pattern="[.]", n=3)[,3]) %>% 
-  dplyr::select(year, value, var, metric) %>% 
-  dcast(year + var ~ metric) %>% 
-  transform(lab = factor(var, levels=c("water", "dist", "Tr", "S", "lmda", "dtb"), 
-                         labels=c("Water Use", "Distance to\nClosest Stream", "Transmissivity", "Storativity", "Streambed\nConductance", "Depth to\nBedrock")))
-
-df.fit.summary$error.min <- df.fit.summary$mean - df.fit.summary$std
-df.fit.summary$error.max <- df.fit.summary$mean + df.fit.summary$std
-
-df.fit.summary$error.min[df.fit.summary$error.min < 0] <- 0
-df.fit.summary$error.max[df.fit.summary$error.max > 1] <- 1
+  #ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_ScaleWell_Depletion_PercentCDF.png"),
+  #       width=95, height=85, units="mm") +
+  NULL
 
 ## Figure: importance of different variables
-ggplot(df.fit.summary, aes(x=lab, y=mean, fill=factor(year))) + 
+p.vars <- 
+  ggplot(df.fit, aes(x=var, y=R2.var, fill=factor(year))) + 
   geom_bar(stat="identity", position="dodge") +
   geom_hline(yintercept=0, color=col.gray) +
-  geom_errorbar(aes(ymin=error.min, ymax=error.max),
+  geom_errorbar(aes(ymin=R2.var.lower, ymax=R2.var.upper),
                 width=.2,
                 position=position_dodge(.9)) +
-  scale_y_continuous(name="% Reduction in Adjusted R2", 
-                     labels=scales::percent) +
-  scale_x_discrete(name="Variable Dropped from Model") +
+  scale_y_continuous(name="Streamflow Depletion Variance Explained", 
+                     labels=scales::percent_format(accuracy = 2)) +
+  scale_x_discrete(name=NULL) +
   scale_fill_manual(name = "Years of\nPumping", 
                     values=c(col.cat.grn, col.cat.org, col.cat.red)) +
   theme(legend.position=c(1,1),
         legend.justification=c(1,1),
         legend.background=element_blank()) +
-  ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_ScaleWell_Depletion_VariableImportance.png"),
-         width=190, height=85, units="mm")
+  #ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_ScaleWell_Depletion_VariableImportance.png"),
+  #       width=190, height=85, units="mm") +
+  NULL
 
-df.fit %>% 
-  group_by(year) %>% 
-  summarize(adj.R2.mean = mean(adj.R2.full, na.rm=T),
-            adj.R2.std = sd(adj.R2.full, na.rm=T))
+
+## combined figures
+plot_grid(p.rank, 
+          p.vars, 
+          nrow=1,
+          align="tb",
+          rel_widths=c(1,1),
+          labels=c("(a)", "(b)"),
+          label_size = 10,
+          label_fontfamily = "Arial",
+          label_fontface = "plain",
+          label_x = c(0.16, 0.14),
+          label_y = 0.99) %>% 
+  save_plot(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_ScaleWell_Depletion_PercentCDF+VariableImportance.png"),
+            plot = .,
+            nrow=1,
+            base_width=190/25.4,
+            base_height=95/25.4)

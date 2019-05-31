@@ -189,7 +189,7 @@ plot_grid(p.vol,
           label_size = 10,
           label_fontfamily = "Arial",
           label_fontface = "plain",
-          label_x = 0.16,
+          label_x = 0.135,
           label_y = 0.99,
           rel_heights=c(1,1),
           align="v", nrow=2) %>% 
@@ -199,3 +199,13 @@ plot_grid(p.vol,
             nrow = 2,
             base_width = 95/25.4,
             base_height = 70/25.4)
+
+df.depletion.summary %>% 
+  dplyr::group_by(WaterUser, year) %>% 
+  dplyr::filter(depletion_m3d_Navarro == max(depletion_m3d_Navarro))
+
+df.depletion.summary %>% 
+  transform(depletion_prc = depletion_m3d_Navarro/baseflow_m3d) %>% 
+  dplyr::group_by(WaterUser, year) %>% 
+  dplyr::filter(depletion_prc == max(depletion_prc)) %>% 
+  dplyr::select(year, month, depletion_m3d_Navarro, baseflow_m3d, WaterUser, depletion_prc)
