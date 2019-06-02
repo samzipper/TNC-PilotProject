@@ -116,10 +116,49 @@ df.grow.depletion.summary <-
   transform(WaterUser="Cannabis")
 
 #### load and process residential data
+# load house locations
+sf.houses <- 
+  file.path(dir.TNC, "Structures_Navarro_NAIP_2016", "Structures_Navarro_NAIP_2016.shp") %>% 
+  sf::st_read() %>% 
+  subset(Structure=="Res H")
+sf.houses$HouseNum <- seq(1, dim(sf.houses)[1])
+
+# load point of diversion to screen out surface water users
+sf.diversions <- 
+  file.path(dir.TNC, "nav_pointsofdiversion_domestic", "nav_pointsofdiversion_domestic.shp") %>% 
+  sf::st_read() %>% 
+  subset(Beneficial == "Domestic") %>%  # domestic users only
+  subset(POD_Status %in% c("Active", "Certified", "Claimed", "Licensed", "Permitted", "Registered"))  # remove cancelled, closed, inactive, rejected, or revoked
+
+# find nearest house to each point
+nearest_house <- 
+  sf::st_nearest_feature(sf.diversions, sf.houses)
+sf.houses$groundwater <- T
+sf.houses$groundwater[nearest_house] <- F
+
+sum(sf.houses$groundwater==F)
+
+# there are some houses that are nearest to multiple POD; need to remove and re-do until we have 1 house per POD
+sf.houses.2 <- subset(sf.houses, groundwater)
+sf.diversion.2 <- sf.diversions[which(duplicated(nearest_house)), ]
+nearest_house.2 <- 
+  sf::st_nearest_feature(sf.diversion.2, sf.houses.2)
+sf.houses$groundwater[sf.houses$HouseNum %in% sf.houses.2$HouseNum[nearest_house.2]] <- F
+
+sum(sf.houses$groundwater==F)
+
+sf.houses.3 <- subset(sf.houses, groundwater)
+sf.diversion.3 <- sf.diversion.2[which(duplicated(nearest_house.2)), ]
+nearest_house.3 <- 
+  sf::st_nearest_feature(sf.diversion.3, sf.houses.3)
+sf.houses$groundwater[sf.houses$HouseNum %in% sf.houses.3$HouseNum[nearest_house.3]] <- F
+
+sum(sf.houses$groundwater==F) == dim(sf.diversions)[1]
+
 # depletion by segment associated with each well - output from Navarro_Residential_03_DepletionBySegment.R
 df.res <- 
   file.path(dir.TNC, "DerivedData", "Navarro_Residential_03_DepletionBySegment.csv") %>% 
-  read.csv(stringsAsFactors=F)
+  read.csv(stringsAsFactors=F) 
 
 # calculate year and month
 df.res$year.dec <- df.res$time_days/365 + 1
@@ -129,7 +168,8 @@ df.res$month <- round((df.res$year.dec - df.res$year)*12)+1
 # trim and summarize data frame
 df.res.depletion.summary <-
   df.res %>% 
-  subset(SegNum %in% df.habitat$SegNum) %>% 
+  subset(HouseNum %in% sf.houses$HouseNum[sf.houses$groundwater]) %>%  # groundwater users only
+  subset(SegNum %in% df.habitat$SegNum) %>%   # navarro only
   subset(year %in% yrs.plot) %>% 
   # sum for all segments in Navarro
   group_by(year, month) %>% 
@@ -167,7 +207,7 @@ p.prc <-
   geom_line() + 
   geom_point() +
   scale_x_continuous(name = "Month", breaks=seq(1,12)) +
-  scale_y_continuous(name = "Streamflow Depletion [% of Baseflow]") +
+  scale_y_continuous(name = "Streamflow Depletion [% of Baseflow]", limits=c(0,10), breaks=seq(0,10,2)) +
   scale_color_manual(name = "Years of Pumping", 
                      values=c(col.cat.grn, col.cat.org, col.cat.red)) +
   scale_linetype_manual(name = "Water User", 
