@@ -142,9 +142,19 @@ sf.basin.facet <-
   transform(time_days = times_plot[3]) %>% 
   rbind(sf.basin.facet, .)
 
-# #### Analysis of streamflow depletion at different buffer distances
+#### Analysis of streamflow depletion at different buffer distances
+# # also include depth to bedrock and water table depth
+# r.dtb <- raster(paste0(dir.gis, "Navarro_Cannabis_DTB_30m.tif"))
+# r.wte <- raster(paste0(dir.gis, "Navarro_Cannabis_WTE_30m.tif"))
+# r.dem.30m <- raster(paste0(dir.gis, "Navarro_Cannabis_DEM_30m.tif"))
+# r.wtd <- r.dem.30m - r.wte
+# r.wtd[r.wtd < 0] <- 0
+# 
+# r.dtb.coarse <- raster::aggregate(r.dtb, fact=res(r.t.3.mask)[1]/res(r.dtb)[1])
+# r.wtd.coarse <- raster::aggregate(r.wtd, fact=res(r.t.3.mask)[1]/res(r.wtd)[1])
+# 
 # buff_interval <- 100
-# buffers <- seq(buff_interval, 4000, buff_interval)
+# buffers <- seq(buff_interval, 3000, buff_interval)
 # for (b in 1:length(buffers)){
 # 
 #   # bookkeeping
@@ -192,11 +202,22 @@ sf.basin.facet <-
 #                      depletion_m3d_HighValue = raster::extract(r.t.3.mask, sf.streams.donut, fun=mean, na.rm=T, weight=T))
 #     )
 # 
+#   # extract bedrock depth
+#   df.dtb.dist <- data.frame(buff_dist = buff_dist,
+#                             buff_range = paste0(buff_previous, "-", buff_dist, " m"),
+#                             buff_range_center = (buff_previous + buff_dist)/2,
+#                             SegNum = sf.streams.buffer$SegNum,
+#                             IP_class = sf.streams.buffer$IP_class,
+#                             DTB_m_HighValue = raster::extract(r.dtb.coarse, sf.streams.donut, fun=mean, na.rm=T, weight=T),
+#                             WTD_m_HighValue = raster::extract(r.wtd.coarse, sf.streams.donut, fun=mean, na.rm=T, weight=T))
+# 
 #   if (b == 1){
 #     df.buff <- df.buff.dist
+#     df.dtb <- df.dtb.dist
 #     buff_list <- paste0(buff_previous, "-", buff_dist, " m")
 #   } else {
 #     df.buff <- rbind(df.buff, df.buff.dist)
+#     df.dtb <- rbind(df.dtb, df.dtb.dist)
 #     buff_list <- c(buff_list, paste0(buff_previous, "-", buff_dist, " m"))
 #   }
 # 
@@ -205,8 +226,15 @@ sf.basin.facet <-
 # }
 # 
 # write.csv(df.buff, file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_ScaleSegment_Depletion_df.buff.csv"), quote=F, row.names=F)
+# write.csv(df.dtb, file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_ScaleSegment_Depletion_df.dtb.csv"), quote=F, row.names=F)
 
 df.buff <- read.csv(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_ScaleSegment_Depletion_df.buff.csv"), stringsAsFactors=F)
+df.dtb <- read.csv(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_ScaleSegment_Depletion_df.dtb.csv"), stringsAsFactors=F)
+
+# join df.buff and df.dtb
+df.buff <-
+  dplyr::left_join(df.buff, df.dtb) %>% 
+  transform(well_in_alluvium = DTB_m_HighValue > WTD_m_HighValue)
 
 # mean for each buffer distance
 df.buff.mean <-
@@ -266,6 +294,7 @@ p.maps <-
 p.dist <- 
   ggplot() + 
   geom_line(data=df.buff, aes(x=buff_range_center, y=depletion_m3d_HighValue, group=SegNum), alpha=0.3, color=col.cat.red) +
+  geom_line(data=subset(df.buff, well_in_alluvium), aes(x=buff_range_center, y=depletion_m3d_HighValue, group=SegNum), color=col.cat.red) +
   geom_line(data=df.buff.mean, aes(x=buff_range_center, y=depletion_m3d_HighValue_mean), size=2, color=col.cat.blu) +
   facet_wrap(~time_days,
              nrow = 1,
