@@ -86,6 +86,77 @@ df.pump.summary <-
                                sum(df.pump.yr$WaterUseSum_m3yr[df.pump.yr$GrowNum %in% GrowNum.far])),
              n.grows = c(length(GrowNum.high), length(GrowNum.low), length(GrowNum.far)))
 
+## prep residential data
+# load house locations
+sf.houses <- 
+  file.path(dir.TNC, "Structures_Navarro_NAIP_2016", "Structures_Navarro_NAIP_2016.shp") %>% 
+  sf::st_read() %>% 
+  subset(Structure=="Res H")
+sf.houses$HouseNum <- seq(1, dim(sf.houses)[1])
+
+# load point of diversion to screen out surface water users
+sf.diversions <- 
+  file.path(dir.TNC, "nav_pointsofdiversion_domestic", "nav_pointsofdiversion_domestic.shp") %>% 
+  sf::st_read() %>% 
+  subset(Beneficial == "Domestic") %>%  # domestic users only
+  subset(POD_Status %in% c("Active", "Certified", "Claimed", "Licensed", "Permitted", "Registered"))  # remove cancelled, closed, inactive, rejected, or revoked
+
+# find nearest house to each point
+nearest_house <- 
+  sf::st_nearest_feature(sf.diversions, sf.houses)
+sf.houses$groundwater <- T
+sf.houses$groundwater[nearest_house] <- F
+
+sum(sf.houses$groundwater==F)
+
+# there are some houses that are nearest to multiple POD; need to remove and re-do until we have 1 house per POD
+sf.houses.2 <- subset(sf.houses, groundwater)
+sf.diversion.2 <- sf.diversions[which(duplicated(nearest_house)), ]
+nearest_house.2 <- 
+  sf::st_nearest_feature(sf.diversion.2, sf.houses.2)
+sf.houses$groundwater[sf.houses$HouseNum %in% sf.houses.2$HouseNum[nearest_house.2]] <- F
+
+sum(sf.houses$groundwater==F)
+
+sf.houses.3 <- subset(sf.houses, groundwater)
+sf.diversion.3 <- sf.diversion.2[which(duplicated(nearest_house.2)), ]
+nearest_house.3 <- 
+  sf::st_nearest_feature(sf.diversion.3, sf.houses.3)
+sf.houses$groundwater[sf.houses$HouseNum %in% sf.houses.3$HouseNum[nearest_house.3]] <- F
+
+sum(sf.houses$groundwater==F) == dim(sf.diversions)[1]
+
+## intersect with stream buffer
+sf.houses.GW <- 
+  sf::st_transform(sf.houses, sf::st_crs(sf.streams.high.buffer)) %>% 
+  subset(groundwater)
+sf.houses.high <- sf::st_intersection(sf.streams.high.buffer, sf.houses.GW)  # within 1 km of high-value stream segment
+sf.houses.low <- 
+  sf::st_intersection(sf.streams.all.buffer, sf.houses.GW) %>%     # within 1 km of any stream segment
+  subset(!(HouseNum %in% sf.houses.high$HouseNum))
+
+n.res.gw <- dim(sf.houses.GW)[1]
+n.res.high <- dim(sf.houses.high)[1]
+n.res.low <- dim(sf.houses.low)[1]
+
+# define pumping rates per house
+df.pump.res <- 
+  file.path("results", "Residential_WaterUse.csv") %>% 
+  read.csv(stringsAsFactors = F) %>% 
+  subset(domain == "Healdsburg")
+df.pump.res$m3HouseDay <- df.pump.res$WaterUseMean_GalHouseDay*gal.to.m3
+df.pump.res$m3HouseDay_std <- df.pump.res$WaterUseStd_GalHouseDay*gal.to.m3
+
+m3.house.yr <- sum(df.pump.res$m3HouseDay*lubridate::days_in_month(df.pump.res$MonthNum))
+
+# summarize residential pumping by proximity group
+df.pump.res.summary <-
+  data.frame(grow_class = c("< 1 km to\nHigh Potential", "< 1 km to\nLow Potential", "> 1 km\nto Stream"),
+             WaterUse_m3yr = c(n.res.high*m3.house.yr,
+                               n.res.low*m3.house.yr,
+                               (n.res.gw - n.res.high - n.res.low)*m3.house.yr),
+             n.grows = c(n.res.high, n.res.low, (n.res.gw - n.res.high - n.res.low)))
+
 ## prep map background
 sf.basin <-
   sf::st_read(file.path("data", "NHD", "WBD", "WBDHU10_Navarro.shp")) %>%
@@ -103,10 +174,19 @@ df.dem <-
 p.bar <-
   ggplot(df.pump.summary, aes(x=grow_class)) +
   geom_bar(aes(y=WaterUse_m3yr/1e4, fill=grow_class), stat="identity") +
-  geom_text(aes(y=WaterUse_m3yr/1e4+median(df.pump.summary$WaterUse_m3yr/1e4)*.05, label=paste0(n.grows, " parcels"))) +
+  geom_text(aes(y=WaterUse_m3yr/1e4+median(df.pump.summary$WaterUse_m3yr/1e4)*.06, label=paste0(n.grows, " parcels"))) +
   scale_fill_manual(guide=F, values=c(col.cat.red, "black", col.cat.blu)) +
-  scale_y_continuous(name="Cannabis Groundwater Use [x 10,000 m\u00b3 yr\u207b\u00b9]",
-                     limits=c(0, max(df.pump.summary$WaterUse_m3yr/1e4)*1.08), expand=c(0,0)) +
+  scale_y_continuous(name="Cannabis Groundwater Use\n[x 10,000 m\u00b3 yr\u207b\u00b9]",
+                     limits=c(0, max(df.pump.summary$WaterUse_m3yr/1e4)*1.1), expand=c(0,0)) +
+  scale_x_discrete(name="Proximity to Stream")
+
+p.bar.res <-
+  ggplot(df.pump.res.summary, aes(x=grow_class)) +
+  geom_bar(aes(y=WaterUse_m3yr/1e4, fill=grow_class), stat="identity") +
+  geom_text(aes(y=WaterUse_m3yr/1e4+median(df.pump.res.summary$WaterUse_m3yr/1e4)*.09, label=paste0(n.grows, " houses"))) +
+  scale_fill_manual(guide=F, values=c(col.cat.red, "black", col.cat.blu)) +
+  scale_y_continuous(name="Residential Groundwater Use\n[x 10,000 m\u00b3 yr\u207b\u00b9]",
+                     limits=c(0, max(df.pump.res.summary$WaterUse_m3yr/1e4)*1.1), expand=c(0,0)) +
   scale_x_discrete(name="Proximity to Stream")
 
 p.map <-
@@ -127,23 +207,51 @@ p.map <-
         legend.background=element_blank(),
         legend.box.background=element_blank()) +
     guides(color=guide_legend(override.aes = list(fill=c("black", col.cat.red)), 
-                              keyheight=0.05, keywidth=3, title.hjust=0, title.vjust=0.6),
-           fill=guide_colorbar(title.hjust=0.5, title.vjust=0.8, order=1, barwidth=2, barheight=5))
+                              keyheight=0.05, keywidth=3, title.hjust=0, title.vjust=0.6, order=1),
+           fill=guide_colorbar(title.hjust=0.5, title.vjust=0.8, order=2, barwidth=2, barheight=5))
 
 ## save plots
-plot_grid(p.map, 
-          p.bar, 
-          nrow=1,
-          rel_widths=c(1,0.95),
-          align="t",
-          labels = c("(a)", "(b)"),
+# top row: just map
+# bottom row: both bar plots
+plot_grid(p.bar, p.bar.res,
+          nrow = 1,
+          align = "b",
+          labels = c("(b)", "(c)"),
           label_size = 10,
           label_fontfamily = "Arial",
           label_fontface = "plain",
-          label_x = c(0.1, 0.08),
+          label_x = c(0.05, 0.07),
           label_y = c(0.99, 0.99)) %>% 
+  plot_grid(p.map, 
+            .,
+            nrow=2,
+            rel_heights = c(1,0.5),
+            labels = c("(a)", " "),
+            label_size = 10,
+            label_fontfamily = "Arial",
+            label_fontface = "plain",
+            label_x = c(0.21, 0.07),
+            label_y = c(0.99, 0.99)) %>% 
   save_plot(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_SummaryResults.png"),
             plot = .,
             nrow=1,
             base_width=190/25.4,
-            base_height=95/25.4)
+            base_height=190/25.4)
+
+# ## save plots (no residential)
+# plot_grid(p.map, 
+#           p.bar, 
+#           nrow=1,
+#           rel_widths=c(1,0.95),
+#           align="t",
+#           labels = c("(a)", "(b)"),
+#           label_size = 10,
+#           label_fontfamily = "Arial",
+#           label_fontface = "plain",
+#           label_x = c(0.1, 0.08),
+#           label_y = c(0.99, 0.99)) %>% 
+#   save_plot(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_SummaryResults.png"),
+#             plot = .,
+#             nrow=1,
+#             base_width=190/25.4,
+#             base_height=95/25.4)

@@ -26,7 +26,7 @@ sf.grows <-
 df.pump <- left_join(df.pump, sf.grows[,c("GrowNum", "Well.rf.pred")], by="GrowNum")
 
 ### residential water use - output from Navarro_Residential_03_DepletionBySegment.R
-# define pumping rates: 250 gpm in winter, 500 gpm in summer
+# define pumping rates
 df.pump.res <- 
   file.path("results", "Residential_WaterUse.csv") %>% 
   read.csv(stringsAsFactors = F) %>% 
@@ -222,3 +222,15 @@ df.plot[which.max(df.plot$ResWaterUseSum_m3d), c("MonthNum", "ResWaterUseSum_m3d
 
 df.plot$WaterUseMean_m3d_sum[9]/df.plot$baseflow_m3d_mean[9]
 df.plot$ResWaterUseSum_m3d[9]/df.plot$baseflow_m3d_mean[9]
+
+# total water use [m3/yr]
+sum(df.plot$ResWaterUseSum_m3d*lubridate::days_in_month(df.plot$MonthNum))
+sum(df.plot$WaterUseMean_m3d_sum*lubridate::days_in_month(df.plot$MonthNum))
+
+sum(df.plot$ResWaterUseSum_m3d*lubridate::days_in_month(df.plot$MonthNum))+sum(df.plot$WaterUseMean_m3d_sum*lubridate::days_in_month(df.plot$MonthNum))
+
+# traditional ag estimated to use 1825 acre-feet (=2251101 m3), of which 97% from surface water
+2251101*0.97
+
+sum(df.plot$ResWaterUseSum_m3d*lubridate::days_in_month(df.plot$MonthNum))/(2251101*0.97)
+sum(df.plot$WaterUseMean_m3d_sum*lubridate::days_in_month(df.plot$MonthNum))/(2251101*0.97)
