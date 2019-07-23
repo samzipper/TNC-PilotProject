@@ -51,8 +51,8 @@ sf.subbasin <-
 # combine habitat sf into one
 sf.all <-
   sf.streams %>% 
-  dplyr::select(SegNum, Coho_IP_mean, Coho_IP_max, Chinook_IP_mean, Chinook_IP_max, Steel_IP_mean, Steel_IP_max) %>% 
-  melt(id=c("SegNum", "geometry"), value.name="IP", variable.name="Species_IP_metric") %>% 
+  dplyr::select(SegNum, Coho_IP_mean, Coho_IP_max, Chinook_IP_mean, Chinook_IP_max, Steel_IP_mean, Steel_IP_max, geometry) %>% 
+  reshape2::melt(id=c("SegNum", "geometry"), value.name="IP", variable.name="Species_IP_metric") %>% 
   replace_na(list(IP=0)) %>%   # stream segments with no IP data indicates not suitable habitat
   transform(IP_class = cut(IP, 
                            breaks=c(0,0.7,1), 
@@ -60,8 +60,8 @@ sf.all <-
                            include.lowest=T)) %>% 
   transform(species = str_split_fixed(Species_IP_metric, pattern="_", n=3)[,1],
             metric = str_split_fixed(Species_IP_metric, pattern="_", n=3)[,3]) %>% 
-  subset(species == "Coho" & metric == "max")
-
+  subset(species == "Coho" & metric == "max") %>% 
+  sf::st_sf()
 
 ## plot as a raster
 sf.grows.wateruse <-
@@ -116,9 +116,9 @@ dplyr::left_join(df.wateruse, df.res.wateruse, by=c("x", "y")) %>%
   melt(id=c("x", "y")) %>% 
   ggplot() +
   geom_raster(aes(x=x, y=y, fill=value/1000)) +
-  geom_sf(data=sf.basin, color=col.gray, fill=NA) +
-  geom_sf(data=sf.streams, color="white") +
-  geom_sf(data=sf.all, aes(color=IP_class)) +
+  geom_sf(data=sf.basin, color=col.gray, fill=NA, aes(geometry = geometry)) +
+  geom_sf(data=sf.streams, color="white", aes(geometry = geometry)) +
+  geom_sf(data=sf.all, aes(color=IP_class, geometry = geometry)) +
   facet_wrap(~variable, labeller=as_labeller(c("can_m3yr"="(a) Cannabis", "res_m3yr"="(b) Residential"))) +
   scale_fill_viridis(name="Annual Groundwater Use [x1000 m\u00b3]", na.value=NA, trans="log10",
                      limits=c(0.1, max(df.res.wateruse$res_m3yr/1000, na.rm=T)),
@@ -135,7 +135,7 @@ dplyr::left_join(df.wateruse, df.res.wateruse, by=c("x", "y")) %>%
         legend.box="vertical",
         legend.margin = margin(0,0,0,0, unit="mm")) +
   guides(color=guide_legend(override.aes = list(fill=c("black", col.cat.red)), 
-                            keyheight=0.05, keywidth=3, title.hjust=0.5, title.vjust=0.6),
+                            keyheight=0.01, keywidth=4, title.hjust=0.5, title.vjust=0.6),
          fill=guide_colorbar(title.hjust=0.5, title.vjust=0.8, order=1)) +
   ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_Habitat+GrowLocations-raster.png"),
          width=190, height=128, units="mm") +
