@@ -249,3 +249,90 @@ df.depletion.summary %>%
   dplyr::group_by(WaterUser, year) %>% 
   dplyr::filter(depletion_prc == max(depletion_prc)) %>% 
   dplyr::select(year, month, depletion_m3d_Navarro, baseflow_m3d, WaterUser, depletion_prc)
+
+## Figure: remaining flow after accounting for depletion
+# total depletion (residential and cannabis)
+df.depletion.combined <- 
+  df.depletion.summary %>% 
+  dplyr::group_by(year, month) %>% 
+  dplyr::summarize(depletion_m3d_sum = sum(depletion_m3d_Navarro))
+
+# summarize Q by calendar year and month
+df.Q.cal.yr.mo <-
+  summarize(group_by(df.Q, year, month),
+            discharge_m3d.mean = mean(discharge_m3d),
+            discharge_m3d.cum = sum(discharge_m3d),
+            baseflow_m3d.mean = mean(baseflow_m3d),
+            baseflow_m3d.cum = sum(baseflow_m3d))
+
+# baseflow from dry, wet, average year
+Q_sep <- 
+  df.Q.cal.yr.mo %>% 
+  subset(month == 9)
+Q_sep$rank <- rank(Q_sep$discharge_m3d.mean)
+quants <- stats::quantile(Q_sep$discharge_m3d.mean, probs = c(0.05, 0.5, 0.95))
+
+yr_dry <- Q_sep$year[which.min(abs(Q_sep$discharge_m3d.mean - stats::quantile(Q_sep$discharge_m3d.mean, probs = 0.05)))]
+yr_ave <-Q_sep$year[which.min(abs(Q_sep$discharge_m3d.mean - stats::quantile(Q_sep$discharge_m3d.mean, probs = 0.5)))]
+yr_wet <- Q_sep$year[which.min(abs(Q_sep$discharge_m3d.mean - stats::quantile(Q_sep$discharge_m3d.mean, probs = 0.95)))]
+
+df.depletion.dry <- 
+  df.Q.cal.yr.mo %>% 
+  subset(year == yr_dry) %>% 
+  dplyr::right_join(df.depletion.combined, by = "month", suffix = c(".cal", ".depletion")) %>% 
+  dplyr::mutate(discharge_depleted_m3d = discharge_m3d.mean - depletion_m3d_sum,
+                yr = "dry")
+
+df.depletion.ave <- 
+  df.Q.cal.yr.mo %>% 
+  subset(year == yr_ave) %>% 
+  dplyr::right_join(df.depletion.combined, by = "month", suffix = c(".cal", ".depletion")) %>% 
+  dplyr::mutate(discharge_depleted_m3d = discharge_m3d.mean - depletion_m3d_sum,
+                yr = "ave")
+
+df.depletion.wet <- 
+  df.Q.cal.yr.mo %>% 
+  subset(year == yr_wet) %>% 
+  dplyr::right_join(df.depletion.combined, by = "month", suffix = c(".cal", ".depletion")) %>% 
+  dplyr::mutate(discharge_depleted_m3d = discharge_m3d.mean - depletion_m3d_sum,
+                yr = "wet")
+
+df.depleted <- bind_rows(df.depletion.dry, df.depletion.ave, df.depletion.wet)
+df.annotation <- tibble::tibble(yr = c("dry", "ave", "wet"),
+                                Q_threshold = 8.4*cfs.to.m3d)
+
+ggplot(subset(df.depleted, month %in% seq(6,10))) +
+  geom_hline(data = df.annotation, aes(yintercept = Q_threshold/86400), color = col.gray) +
+  #geom_point(aes(x = month, y = discharge_depleted_m3d/86400, color = factor(year.depletion))) +
+  geom_line(aes(x = month, y = discharge_depleted_m3d/86400, color = factor(year.depletion))) +
+  geom_line(aes(x = month, y = discharge_m3d.mean/86400), color = "black") +
+  facet_wrap(~ factor(yr, levels = c("dry", "ave", "wet"), 
+                      labels = c(paste0("(a) Dry Year (", yr_dry, ")"),
+                                 paste0("(b) Average Year (", yr_ave, ")"),
+                                 paste0("(c) Wet Year (", yr_wet, ")"))), 
+             scales = "free_x",
+             ncol = 1) +
+  scale_x_continuous(name = "Month", breaks=seq(1,12), expand = c(0,0)) +
+  scale_y_log10(name = "Mean Monthly Streamflow [m\u00b3 s\u207b\u00b9]") +
+  scale_color_manual(name = "Flow After #\nYears of Pumping", 
+                     values=c(col.cat.grn, col.cat.org, col.cat.red)) +
+  theme(legend.position = "bottom",
+        legend.title = element_text(hjust = 0.5),
+        plot.margin = margin(0, 2, 0, 0.5, unit = "mm")) +
+  ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_ScaleWatershed_DepletedFlow.png"),
+         width = 95, height = 180, units = "mm")
+  NULL
+  
+# how many years/months would the baseflow standard be exceeded if not for 1 year of pumping
+df.Q.yr.mo %>% 
+  dplyr::left_join(subset(df.depletion.combined, year == 1)) %>% 
+  dplyr::mutate(flow_remaining_m3d = discharge_m3d.mean - depletion_m3d_sum,
+                flow_without_depletion_m3d = discharge_m3d.mean + depletion_m3d_sum) %>% 
+  subset(discharge_m3d.mean > (8.4*cfs.to.m3d) & flow_remaining_m3d < (8.4*cfs.to.m3d))
+
+df.Q.yr.mo %>% 
+  dplyr::left_join(subset(df.depletion.combined, year == 1)) %>% 
+  dplyr::mutate(flow_remaining_m3d = discharge_m3d.mean - depletion_m3d_sum,
+                flow_without_depletion_m3d = discharge_m3d.mean + depletion_m3d_sum) %>% 
+  subset(flow_without_depletion_m3d > (8.4*cfs.to.m3d) & discharge_m3d.mean < (8.4*cfs.to.m3d))
+
