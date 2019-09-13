@@ -74,10 +74,6 @@ r.dtb <- raster(paste0(dir.gis, "Navarro_Cannabis_DTB_30m.tif"))
 r.wte <- raster(paste0(dir.gis, "Navarro_Cannabis_WTE_30m.tif"))
 r.dem.30m <- raster(paste0(dir.gis, "Navarro_Cannabis_DEM_30m.tif"))
 r.wtd <- r.dem.30m - r.wte
-r.wtd[r.wtd < 0] <- 0
-
-r.dtb.coarse <- raster::aggregate(r.dtb, fact=res(r.t.3.mask)[1]/res(r.dtb)[1])
-r.wtd.coarse <- raster::aggregate(r.wtd, fact=res(r.t.3.mask)[1]/res(r.wtd)[1])
 
 # scroll through pump factors
 for (p in pumps_plot){
@@ -159,6 +155,10 @@ for (p in pumps_plot){
   ## cycle through buffer intervals
   buff_interval <- 100
   buffers <- seq(buff_interval, 3000, buff_interval)
+  r.wtd[r.wtd < 0] <- 0
+  
+  r.dtb.coarse <- raster::aggregate(r.dtb, fact=res(r.t.3.mask)[1]/res(r.dtb)[1])
+  r.wtd.coarse <- raster::aggregate(r.wtd, fact=res(r.t.3.mask)[1]/res(r.wtd)[1])
   for (b in 1:length(buffers)){
     
     # bookkeeping

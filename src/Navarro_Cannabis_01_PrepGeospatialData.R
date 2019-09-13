@@ -25,12 +25,12 @@ shp.adj <- readOGR(dsn="data/NHD/WBD", layer="WBDHU12_Navarro+Adjacent")
 
 # relevant rasters (from script Navarro_Clip+PlotGeospatialData.R)
 # # set up r.lulc to use as a boundary/mask
-# r.lulc <- 
-#   paste0(dir.nlcd, "NLCD2011_LC_California/NLCD2011_LC_California.tif") %>% 
-#   raster() 
-# r.lulc <- 
-#   crop(r.lulc, extent(spTransform(shp.adj, crs(r.lulc)))) %>% 
-#   projectRaster(from=., crs=crs(crs.MODFLOW), res=30, method="ngb") %>% 
+# r.lulc <-
+#   paste0(dir.gis, "Navarro_NLCD2011_LULC_30m.tif") %>%
+#   raster()
+# r.lulc <-
+#   crop(r.lulc, extent(spTransform(shp.adj, crs(r.lulc)))) %>%
+#   projectRaster(from=., crs=crs(crs.MODFLOW), res=30, method="ngb") %>%
 #   mask(., spTransform(shp.adj, crs.MODFLOW),
 #        filename=paste0(dir.gis, "Navarro_Cannabis_LULC_30m.tif"), datatype="INT2S", overwrite=T)
 
@@ -78,14 +78,14 @@ r.dtb <- raster(paste0(dir.gis, "Navarro_Cannabis_DTB_30m.tif"))
 # read in aquifers raster
 r.aquifers <- raster(paste0(dir.gis, "Navarro_Cannabis_GroundwaterBasins_30m.tif"))
 
-## some output from MODFLOW model
+# ## some output from MODFLOW model
 # # steady-state water table elevation
 # r.wte <- raster(file.path("modflow", "input", "ibound.tif"))  # load ibound raster as a template for water table elevation
 # m.wte <- as.matrix(read.csv(file.path("modflow", "Navarro-SteadyState", "RIV", "mfnwt", "wte.csv"), header=F))
 # r.wte[] <- m.wte
-# r.wte <- 
-#   r.wte %>% 
-#   resample(., r.lulc, method="bilinear") %>% 
+# r.wte <-
+#   r.wte %>%
+#   resample(., r.lulc, method="bilinear") %>%
 #   mask(., spTransform(shp.adj, crs.MODFLOW),
 #        filename=paste0(dir.gis, "Navarro_Cannabis_WTE_30m.tif"), overwrite=T)
 
