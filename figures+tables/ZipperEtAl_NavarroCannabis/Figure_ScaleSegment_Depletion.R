@@ -47,12 +47,13 @@ sf.basin <-
 # add IP_class to depletion
 df.depletion <- 
   left_join(df.depletion, df.habitat, by="SegNum") %>% 
+  subset(pump_factor == 1) %>% 
   replace_na(list("IP_class"="Outside Navarro"))
 
 # summarize depletion in high ecological value segments by time_days and WellNum
 df.value <-
   df.depletion %>% 
-  group_by(time_days, WellNum, IP_class) %>% 
+  group_by(time_days, WellNum, IP_class, pump_factor) %>% 
   summarize(depletion_m3d.HighValue = sum(depletion_m3d))
 
 sf.value <- 
@@ -120,29 +121,32 @@ df.Qf <- rbind(df.Qf.t.1, df.Qf.t.2, df.Qf.t.3)
 # make stream and basin boundaries facet-compatible
 sf.streams.facet <- 
   sf.streams %>% 
-  transform(time_days = times_plot[1])
+  dplyr::mutate(time_days = times_plot[1])
 sf.streams.facet <- 
   sf.streams %>% 
-  transform(time_days = times_plot[2]) %>% 
+  dplyr::mutate(time_days = times_plot[2]) %>% 
   rbind(sf.streams.facet, .)
 sf.streams.facet <- 
   sf.streams %>% 
-  transform(time_days = times_plot[3]) %>% 
+  dplyr::mutate(time_days = times_plot[3]) %>% 
   rbind(sf.streams.facet, .)
 
 sf.basin.facet <- 
   sf.basin %>% 
-  transform(time_days = times_plot[1])
+  dplyr::mutate(time_days = times_plot[1])
 sf.basin.facet <- 
   sf.basin %>% 
-  transform(time_days = times_plot[2]) %>% 
+  dplyr::mutate(time_days = times_plot[2]) %>% 
   rbind(sf.basin.facet, .)
 sf.basin.facet <- 
   sf.basin %>% 
-  transform(time_days = times_plot[3]) %>% 
+  dplyr::mutate(time_days = times_plot[3]) %>% 
   rbind(sf.basin.facet, .)
 
 #### Analysis of streamflow depletion at different buffer distances
+
+buff_interval <- 100
+
 # # also include depth to bedrock and water table depth
 # r.dtb <- raster(paste0(dir.gis, "Navarro_Cannabis_DTB_30m.tif"))
 # r.wte <- raster(paste0(dir.gis, "Navarro_Cannabis_WTE_30m.tif"))
@@ -153,7 +157,6 @@ sf.basin.facet <-
 # r.dtb.coarse <- raster::aggregate(r.dtb, fact=res(r.t.3.mask)[1]/res(r.dtb)[1])
 # r.wtd.coarse <- raster::aggregate(r.wtd, fact=res(r.t.3.mask)[1]/res(r.wtd)[1])
 # 
-# buff_interval <- 100
 # buffers <- seq(buff_interval, 3000, buff_interval)
 # for (b in 1:length(buffers)){
 # 
@@ -262,7 +265,7 @@ time_labels_df <-
 p.maps <- 
   ggplot(data=df.Qf) +
   geom_raster(aes(x = lon, y=lat, fill=depletion_m3d.HighValue)) +
-  geom_sf(data=subset(sf.streams.facet, IP_class != "Outside Navarro"), aes(color=IP_class)) +
+  geom_sf(data=subset(sf.streams.facet, IP_class != "Outside Navarro"), aes(geometry=geometry, color=IP_class)) +
   facet_wrap(~(time_days),
              nrow = 1,
              labeller = as_labeller(time_labels_ac)) +
