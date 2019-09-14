@@ -296,6 +296,7 @@ p.maps <-
 ## Figure: depletion as a function of buffer distance
 p.dist <- 
   ggplot() + 
+  geom_vline(xintercept = 1200, color = col.gray) + # from script Figure_ScaleSegment_Depletion-SensitivityAnalysis.R
   geom_line(data=df.buff, aes(x=buff_range_center, y=depletion_m3d_HighValue, group=SegNum), alpha=0.3, color=col.cat.red) +
   geom_line(data=subset(df.buff, well_in_alluvium), aes(x=buff_range_center, y=depletion_m3d_HighValue, group=SegNum), color=col.cat.red) +
   geom_line(data=df.buff.mean, aes(x=buff_range_center, y=depletion_m3d_HighValue_mean), size=2, color=col.cat.blu) +

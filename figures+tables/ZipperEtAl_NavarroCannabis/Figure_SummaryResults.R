@@ -26,8 +26,8 @@ sf.streams <-
   replace_na(list("IP_class" = "Outside Navarro")) %>% 
   subset(IP_class != "Outside Navarro")
 
-# make 1 km buffer around stream segments
-buff_dist <- 1000  # [m]
+# make 1.2 km buffer around stream segments (From Figure_ScaleSegment_Depletino-SensitivityAnalysis.R)
+buff_dist <- 1200  # [m]
 sf.streams.high.buffer <-
   sf.streams %>%
   subset(IP_class=="High") %>%
@@ -80,7 +80,7 @@ GrowNum.far <- GrowNum.far[!(GrowNum.far %in% GrowNum.high) & !(GrowNum.far %in%
 
 # summarize pumping by proximity group
 df.pump.summary <-
-  data.frame(grow_class = c("< 1 km to\nHigh Potential", "< 1 km to\nLow Potential", "> 1 km\nto Stream"),
+  data.frame(grow_class = c("< 1.2 km to\nHigh Potential", "< 1.2 km to\nLow Potential", "> 1.2 km\nto Stream"),
              WaterUse_m3yr = c(sum(df.pump.yr$WaterUseSum_m3yr[df.pump.yr$GrowNum %in% GrowNum.high]),
                                sum(df.pump.yr$WaterUseSum_m3yr[df.pump.yr$GrowNum %in% GrowNum.low]),
                                sum(df.pump.yr$WaterUseSum_m3yr[df.pump.yr$GrowNum %in% GrowNum.far])),
@@ -151,7 +151,7 @@ m3.house.yr <- sum(df.pump.res$m3HouseDay*lubridate::days_in_month(df.pump.res$M
 
 # summarize residential pumping by proximity group
 df.pump.res.summary <-
-  data.frame(grow_class = c("< 1 km to\nHigh Potential", "< 1 km to\nLow Potential", "> 1 km\nto Stream"),
+  data.frame(grow_class = c("< 1.2 km to\nHigh Potential", "< 1.2 km to\nLow Potential", "> 1.2 km\nto Stream"),
              WaterUse_m3yr = c(n.res.high*m3.house.yr,
                                n.res.low*m3.house.yr,
                                (n.res.gw - n.res.high - n.res.low)*m3.house.yr),
@@ -174,7 +174,7 @@ df.dem <-
 p.bar <-
   ggplot(df.pump.summary, aes(x=grow_class)) +
   geom_bar(aes(y=WaterUse_m3yr/1e4, fill=grow_class), stat="identity") +
-  geom_text(aes(y=WaterUse_m3yr/1e4+median(df.pump.summary$WaterUse_m3yr/1e4)*.06, label=paste0(n.grows, " parcels"))) +
+  geom_text(aes(y=WaterUse_m3yr/1e4+median(df.pump.summary$WaterUse_m3yr/1e4)*.075, label=paste0(n.grows, " parcels"))) +
   scale_fill_manual(guide=F, values=c(col.cat.red, "black", col.cat.blu)) +
   scale_y_continuous(name="Cannabis Groundwater Use\n[x 10,000 m\u00b3 yr\u207b\u00b9]",
                      limits=c(0, max(df.pump.summary$WaterUse_m3yr/1e4)*1.1), expand=c(0,0)) +
@@ -183,7 +183,7 @@ p.bar <-
 p.bar.res <-
   ggplot(df.pump.res.summary, aes(x=grow_class)) +
   geom_bar(aes(y=WaterUse_m3yr/1e4, fill=grow_class), stat="identity") +
-  geom_text(aes(y=WaterUse_m3yr/1e4+median(df.pump.res.summary$WaterUse_m3yr/1e4)*.09, label=paste0(n.grows, " houses"))) +
+  geom_text(aes(y=WaterUse_m3yr/1e4+median(df.pump.res.summary$WaterUse_m3yr/1e4)*.14, label=paste0(n.grows, " houses"))) +
   scale_fill_manual(guide=F, values=c(col.cat.red, "black", col.cat.blu)) +
   scale_y_continuous(name="Residential Groundwater Use\n[x 10,000 m\u00b3 yr\u207b\u00b9]",
                      limits=c(0, max(df.pump.res.summary$WaterUse_m3yr/1e4)*1.1), expand=c(0,0)) +
@@ -221,7 +221,7 @@ plot_grid(p.bar, p.bar.res,
           label_fontfamily = "Arial",
           label_fontface = "plain",
           label_x = c(0.05, 0.07),
-          label_y = c(0.99, 0.99)) %>% 
+          label_y = c(0.99, 0.92)) %>% 
   plot_grid(p.map, 
             .,
             nrow=2,
@@ -230,7 +230,7 @@ plot_grid(p.bar, p.bar.res,
             label_size = 10,
             label_fontfamily = "Arial",
             label_fontface = "plain",
-            label_x = c(0.21, 0.07),
+            label_x = c(0.2, 0.07),
             label_y = c(0.99, 0.99)) %>% 
   save_plot(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_SummaryResults.png"),
             plot = .,
