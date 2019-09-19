@@ -107,3 +107,12 @@ ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_Streamf
                                                                   plot.margin=unit(c(-7,1,0,1), "mm")), 
                     ncol=1, heights=c(0.75,1)),
        width=190, height=160, units="mm")
+
+
+ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_StreamflowTrends.pdf"),
+       grid.arrange(p.Q.DOY+labs(title="(a)") + theme(plot.title=element_text(hjust=0.01, vjust=-7, face="plain"),
+                                                      plot.margin=unit(c(-5,1,0,1), "mm")), 
+                    p.baseflow.mo.trend+labs(title="(b)") + theme(plot.title=element_text(hjust=0, vjust=-7, face="plain"),
+                                                                  plot.margin=unit(c(-7,1,0,1), "mm")), 
+                    ncol=1, heights=c(0.75,1)),
+       width=190, height=160, units="mm", device=cairo_pdf)

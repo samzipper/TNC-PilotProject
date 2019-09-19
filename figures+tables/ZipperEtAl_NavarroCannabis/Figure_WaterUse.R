@@ -215,6 +215,26 @@ plot_grid(p.waterUse.abs +
             base_width = 95/25.4,
             base_height = 60/25.4)
 
+plot_grid(p.waterUse.abs + 
+            annotate("text", x=4.1, y=1.2e2, label="Cannabis", color="black", hjust=0, vjust=1) +
+            annotate("text", x=1, y=4e3, label="Residential", color="black", hjust=0, vjust=1) +
+            annotate("text", x=1, y=3e5, label="Baseflow", color=col.cat.blu, hjust=0), 
+          p.waterUse.prc, 
+          labels = c("(a)", "(b)"),
+          label_size = 10,
+          label_fontfamily = "Arial",
+          label_fontface = "plain",
+          label_x = 0.91,
+          label_y = 0.99,
+          align="v", nrow=2) %>% 
+  save_plot(filename = file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_WaterUse-BaseflowComparison.pdf"), 
+            plot = .,
+            ncol = 1,
+            nrow = 2,
+            base_width = 95/25.4,
+            base_height = 60/25.4,
+            device=cairo_pdf)
+## PDF does not render superscript negative sign in y-axis correctly; need to manually fix in Inkscape
 
 # useful stats
 df.plot[which.max(df.plot$WaterUseMean_m3d_sum), c("MonthNum", "WaterUseMean_m3d_sum")]

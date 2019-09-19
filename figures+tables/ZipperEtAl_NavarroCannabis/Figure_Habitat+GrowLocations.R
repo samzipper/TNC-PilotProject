@@ -112,7 +112,8 @@ df.res.wateruse <-
   set_colnames(c("x", "y", "res_m3yr"))
 
 ## raster, cannabis and residential
-dplyr::left_join(df.wateruse, df.res.wateruse, by=c("x", "y")) %>% 
+p.raster <- 
+  dplyr::left_join(df.wateruse, df.res.wateruse, by=c("x", "y")) %>% 
   melt(id=c("x", "y")) %>% 
   ggplot() +
   geom_raster(aes(x=x, y=y, fill=value/1000)) +
@@ -140,6 +141,9 @@ dplyr::left_join(df.wateruse, df.res.wateruse, by=c("x", "y")) %>%
   ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_Habitat+GrowLocations-raster.png"),
          width=190, height=128, units="mm") +
   NULL
+
+ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_Habitat+GrowLocations-raster.pdf"),
+       width=190, height=128, units="mm", device=cairo_pdf)
 
 # ## raster, residential only
 # ggplot() +

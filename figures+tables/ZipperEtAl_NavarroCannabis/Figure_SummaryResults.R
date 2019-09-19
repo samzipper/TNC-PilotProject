@@ -175,8 +175,8 @@ p.bar <-
   ggplot(df.pump.summary, aes(x=grow_class)) +
   geom_bar(aes(y=WaterUse_m3yr/1e4, fill=grow_class), stat="identity") +
   geom_text(aes(y=WaterUse_m3yr/1e4+median(df.pump.summary$WaterUse_m3yr/1e4)*.075, label=paste0(n.grows, " parcels"))) +
-  scale_fill_manual(guide=F, values=c(col.cat.red, "black", col.cat.blu)) +
-  scale_y_continuous(name="Cannabis Groundwater Use\n[x 10,000 m\u00b3 yr\u207b\u00b9]",
+  scale_fill_manual(guide=F, values=c(col.cat.red, "black", col.cat.grn)) +
+  scale_y_continuous(name="Cannabis Groundwater Use\n[x 10,000 m\u00b3/yr]",
                      limits=c(0, max(df.pump.summary$WaterUse_m3yr/1e4)*1.1), expand=c(0,0)) +
   scale_x_discrete(name="Proximity to Stream")
 
@@ -184,8 +184,8 @@ p.bar.res <-
   ggplot(df.pump.res.summary, aes(x=grow_class)) +
   geom_bar(aes(y=WaterUse_m3yr/1e4, fill=grow_class), stat="identity") +
   geom_text(aes(y=WaterUse_m3yr/1e4+median(df.pump.res.summary$WaterUse_m3yr/1e4)*.14, label=paste0(n.grows, " houses"))) +
-  scale_fill_manual(guide=F, values=c(col.cat.red, "black", col.cat.blu)) +
-  scale_y_continuous(name="Residential Groundwater Use\n[x 10,000 m\u00b3 yr\u207b\u00b9]",
+  scale_fill_manual(guide=F, values=c(col.cat.red, "black", col.cat.grn)) +
+  scale_y_continuous(name="Residential Groundwater Use\n[x 10,000 m\u00b3/yr]",
                      limits=c(0, max(df.pump.res.summary$WaterUse_m3yr/1e4)*1.1), expand=c(0,0)) +
   scale_x_discrete(name="Proximity to Stream")
 
@@ -237,6 +237,32 @@ plot_grid(p.bar, p.bar.res,
             nrow=1,
             base_width=190/25.4,
             base_height=190/25.4)
+
+plot_grid(p.bar, p.bar.res,
+          nrow = 1,
+          align = "b",
+          labels = c("(b)", "(c)"),
+          label_size = 10,
+          label_fontfamily = "Arial",
+          label_fontface = "plain",
+          label_x = c(0.05, 0.07),
+          label_y = c(0.99, 0.92)) %>% 
+  plot_grid(p.map, 
+            .,
+            nrow=2,
+            rel_heights = c(1,0.5),
+            labels = c("(a)", " "),
+            label_size = 10,
+            label_fontfamily = "Arial",
+            label_fontface = "plain",
+            label_x = c(0.2, 0.07),
+            label_y = c(0.99, 0.99)) %>% 
+  save_plot(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_SummaryResults.pdf"),
+            plot = .,
+            nrow=1,
+            base_width=190/25.4,
+            base_height=190/25.4,
+            device=cairo_pdf)
 
 # ## save plots (no residential)
 # plot_grid(p.map, 

@@ -308,16 +308,30 @@ p.dist <-
   NULL
 
 ## save plots
+# PNG version is exported from Inkscape
+# plot_grid(p.maps + theme(plot.margin = unit(c(0,2,0,6), "mm")), 
+#           p.dist + theme(plot.margin = unit(c(0,2,0,1), "mm")), 
+#           nrow=2,
+#           align="rl",
+#           rel_heights=c(1,0.7)) %>% 
+#   save_plot(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_ScaleSegment_Depletion_MapDepletion+BuffDist.png"),
+#             plot = .,
+#             nrow=2,
+#             base_width=190/25.4,
+#             base_height=78/25.4)
+
 plot_grid(p.maps + theme(plot.margin = unit(c(0,2,0,6), "mm")), 
           p.dist + theme(plot.margin = unit(c(0,2,0,1), "mm")), 
           nrow=2,
           align="rl",
           rel_heights=c(1,0.7)) %>% 
-  save_plot(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_ScaleSegment_Depletion_MapDepletion+BuffDist.png"),
+  save_plot(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_ScaleSegment_Depletion_MapDepletion+BuffDist.pdf"),
             plot = .,
             nrow=2,
             base_width=190/25.4,
-            base_height=78/25.4)
+            base_height=78/25.4,
+            device=cairo_pdf)
+## PDF does not render superscript negative sign in y-axis correctly; need to manually fix in Inkscape
 
 ## investigate weird lines in buff dist plots
 subset(df.buff, time_days == max(df.buff$time_days) & buff_dist==3800 & depletion_m3d_HighValue > 0.1)

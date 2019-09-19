@@ -59,8 +59,8 @@ df.all <- df.all[complete.cases(df.all), ]
 p.elev <-
   ggplot() +
   geom_raster(data=df.all, aes(x=lon, y=lat, fill=dem)) +
-  geom_sf(data=sf.basin, color=col.cat.red, fill=NA) +
-  geom_sf(data=sf.streams, color="white") +
+  geom_sf(data=sf.basin, aes(geometry = geometry), color=col.cat.red, fill=NA) +
+  geom_sf(data=sf.streams, aes(geometry = geometry), color="white") +
   scale_fill_viridis(name="Land Surface\nElevation [m]", breaks=c(0,500,1000)) +
   scale_x_continuous(name="Easting [m]", expand=c(0,0), breaks=map.breaks.x) +
   scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +
@@ -74,9 +74,9 @@ p.elev <-
 p.DTB <- 
   ggplot() +
   geom_raster(data=df.all, aes(x=lon, y=lat, fill=dtb)) +
-  geom_sf(data=sf.basin, color=col.cat.red, fill=NA) +
-  geom_sf(data=sf.streams, color="white") +
-  geom_sf(data=sf.wel, shape=21, color="black", size=0.2) +
+  geom_sf(data=sf.basin, aes(geometry = geometry), color=col.cat.red, fill=NA) +
+  geom_sf(data=sf.streams, aes(geometry = geometry), color="white") +
+  geom_sf(data=sf.wel, aes(geometry = geometry), shape=21, color="black", size=0.2) +
   scale_fill_viridis(name="Depth To\nBedrock [m]", direction=-1) +
   scale_x_continuous(name="Easting [m]", expand=c(0,0), breaks=map.breaks.x) +
   scale_y_continuous(name="Northing [m]", expand=c(0,0), breaks=map.breaks.y) +

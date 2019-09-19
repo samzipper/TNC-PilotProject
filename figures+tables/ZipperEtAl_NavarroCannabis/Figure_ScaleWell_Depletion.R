@@ -127,10 +127,6 @@ df.analysis <-
   left_join(df.grow.closest, by=c("GrowNum")) %>% 
   left_join(sf.grows[,c("GrowNum", "WaterUseTotal_m3y")], by="GrowNum")
 
-ggplot(df.analysis, aes(y=depletion_m3d, x=dist_wellToStream_m, color=factor(year))) +
-  geom_point(alpha=0.5) +
-  stat_smooth(method="loess")
-
 set.seed(1)
 for (yr in yrs.plot){
   # subset to only wells in this year
@@ -202,7 +198,7 @@ p.rank <-
   theme(legend.position=c(1,1),
         legend.justification=c(1,1),
         legend.background=element_blank(),
-        plot.margin = unit(c(1.5,4.5,0,0), "mm")) +
+        plot.margin = unit(c(1.5,4.5,0,1), "mm")) +
   #ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_ScaleWell_Depletion_PercentCDF.png"),
   #       width=95, height=85, units="mm") +
   NULL
@@ -245,3 +241,21 @@ plot_grid(p.rank,
             nrow=1,
             base_width=190/25.4,
             base_height=95/25.4)
+
+plot_grid(p.rank, 
+          p.vars, 
+          nrow=1,
+          align="tb",
+          rel_widths=c(1,1),
+          labels=c("(a)", "(b)"),
+          label_size = 10,
+          label_fontfamily = "Arial",
+          label_fontface = "plain",
+          label_x = c(0.16, 0.14),
+          label_y = 0.99) %>% 
+  save_plot(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_ScaleWell_Depletion_PercentCDF+VariableImportance.pdf"),
+            plot = .,
+            nrow=1,
+            base_width=190/25.4,
+            base_height=95/25.4,
+            device=cairo_pdf)

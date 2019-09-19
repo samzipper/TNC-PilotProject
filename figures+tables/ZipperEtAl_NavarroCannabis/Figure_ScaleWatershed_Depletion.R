@@ -240,6 +240,25 @@ plot_grid(p.vol,
             base_width = 95/25.4,
             base_height = 70/25.4)
 
+plot_grid(p.vol, 
+          p.prc, 
+          labels = c("(a)", "(b)"), 
+          label_size = 10,
+          label_fontfamily = "Arial",
+          label_fontface = "plain",
+          label_x = 0.135,
+          label_y = 0.99,
+          rel_heights=c(1,1),
+          align="v", nrow=2) %>% 
+  save_plot(filename = file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_ScaleWatershed_Depletion_Depletion+Baseflow.pdf"), 
+            plot = .,
+            ncol = 1,
+            nrow = 2,
+            base_width = 95/25.4,
+            base_height = 70/25.4,
+            device=cairo_pdf)
+## PDF does not render superscript negative sign in y-axis correctly; need to manually fix in Inkscape
+
 df.depletion.summary %>% 
   dplyr::group_by(WaterUser, year) %>% 
   dplyr::filter(depletion_m3d_Navarro == max(depletion_m3d_Navarro))
@@ -301,7 +320,8 @@ df.depleted <- bind_rows(df.depletion.dry, df.depletion.ave, df.depletion.wet)
 df.annotation <- tibble::tibble(yr = c("dry", "ave", "wet"),
                                 Q_threshold = 8.4*cfs.to.m3d)
 
-ggplot(subset(df.depleted, month %in% seq(6,10))) +
+p.depleted <- 
+  ggplot(subset(df.depleted, month %in% seq(6,10))) +
   geom_hline(data = df.annotation, aes(yintercept = Q_threshold/86400), color = col.gray) +
   #geom_point(aes(x = month, y = discharge_depleted_m3d/86400, color = factor(year.depletion))) +
   geom_line(aes(x = month, y = discharge_depleted_m3d/86400, color = factor(year.depletion))) +
@@ -322,6 +342,10 @@ ggplot(subset(df.depleted, month %in% seq(6,10))) +
   ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_ScaleWatershed_DepletedFlow.png"),
          width = 95, height = 180, units = "mm")
   NULL
+  
+p.depleted +
+  ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_ScaleWatershed_DepletedFlow.pdf"),
+         width = 95, height = 180, units = "mm", device=cairo_pdf)
   
 # how many years/months would the baseflow standard be exceeded if not for 1 year of pumping
 df.Q.yr.mo %>% 
