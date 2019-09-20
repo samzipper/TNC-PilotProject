@@ -318,11 +318,14 @@ df.depletion.wet <-
 
 df.depleted <- bind_rows(df.depletion.dry, df.depletion.ave, df.depletion.wet)
 df.annotation <- tibble::tibble(yr = c("dry", "ave", "wet"),
-                                Q_threshold = 8.4*cfs.to.m3d)
+                                Q_threshold = 8.4*cfs.to.m3d,
+                                annotation = c("Aquatic Baseflow\nStandard", "", ""))
 
 p.depleted <- 
   ggplot(subset(df.depleted, month %in% seq(6,10))) +
   geom_hline(data = df.annotation, aes(yintercept = Q_threshold/86400), color = col.gray) +
+  geom_text(data = df.annotation, aes(x = 8.75, y = Q_threshold/86400, label = annotation), color = col.gray) +
+  #annotate("text", x = Inf, y = Q_threshold/86400, label = "Aquatic Baseflow Standard") +
   #geom_point(aes(x = month, y = discharge_depleted_m3d/86400, color = factor(year.depletion))) +
   geom_line(aes(x = month, y = discharge_depleted_m3d/86400, color = factor(year.depletion))) +
   geom_line(aes(x = month, y = discharge_m3d.mean/86400), color = "black") +
@@ -340,7 +343,7 @@ p.depleted <-
         legend.title = element_text(hjust = 0.5),
         plot.margin = margin(0, 2, 0, 0.5, unit = "mm")) +
   ggsave(file.path("figures+tables", "ZipperEtAl_NavarroCannabis", "Figure_ScaleWatershed_DepletedFlow.png"),
-         width = 95, height = 180, units = "mm")
+         width = 95, height = 180, units = "mm") +
   NULL
   
 p.depleted +
