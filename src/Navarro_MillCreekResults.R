@@ -125,3 +125,5 @@ df.depletion.summary <-
   rbind(df.grow.depletion.summary, df.res.depletion.summary)
 
 ## save output
+df.depletion.summary %>% 
+  readr::write_csv(file.path("results", "Navarro_MillCreekResults.csv"))
